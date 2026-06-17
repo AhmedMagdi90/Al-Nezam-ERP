@@ -1,0 +1,585 @@
+<div x-data="{ sidebarCollapsed: false, sidebarTab: '{% if user_role == 'supervisor' %}backlog{% else %}pending{% endif %}', sidebarSearch: '' }"
+    :class="sidebarCollapsed ? 'w-16' : '{% if full_width %}w-full{% else %}w-80{% endif %}'"
+    class="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-lg shadow-md flex flex-col transition-all duration-300 overflow-hidden flex-shrink-0 h-full">
+
+    <!-- Sidebar Header -->
+    <div class="p-4 border-b border-slate-200 flex flex-col gap-3 flex-shrink-0">
+        <div class="flex items-center justify-between gap-2">
+            <!-- Tabs -->
+            <div class="flex bg-slate-200/50 p-1 rounded-lg w-full" x-show="!sidebarCollapsed">
+                {% if user_role == 'supervisor' %}
+                <!-- Supervisor Tabs -->
+                <button @click="sidebarTab = 'backlog'"
+                    :class="sidebarTab === 'backlog' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'"
+                    class="flex-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide transition-all">
+                    Backlog
+                </button>
+                {% if unmanned_orders %}
+                <button @click="sidebarTab = 'unmanned'"
+                    :class="sidebarTab === 'unmanned' ? 'bg-white shadow text-red-600' : 'text-slate-500 hover:text-slate-700'"
+                    class="flex-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-1">
+                    Assign <span class="bg-red-100 text-red-600 px-1 rounded-full text-[9px]">{{
+                        unmanned_orders.count|default:0 }}</span>
+                </button>
+                {% endif %}
+                {% if pending_logs_count %}
+                <button @click="sidebarTab = 'approvals'"
+                    :class="sidebarTab === 'approvals' ? 'bg-white shadow text-emerald-600' : 'text-slate-500 hover:text-slate-700'"
+                    class="flex-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-1">
+                    Checks <span class="bg-emerald-100 text-emerald-600 px-1 rounded-full text-[9px]">{{
+                        pending_logs_count|default:0 }}</span>
+                </button>
+                {% endif %}
+                {% else %}
+                <!-- Planner Tabs -->
+                <button @click="sidebarTab = 'pending'"
+                    :class="sidebarTab === 'pending' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'"
+                    class="flex-1 px-2 py-1 rounded text-[10px] font-bold tracking-wide transition-all flex items-center justify-center gap-1">
+                    Pending <span id="pendingWosCountBadge" data-pending-wos-count
+                        class="bg-blue-100 text-blue-600 px-1 rounded-full text-[9px] normal-case">0</span>
+                </button>
+
+                {% if planner_actions_count %}
+                <button @click="sidebarTab = 'planner_approvals'"
+                    :class="sidebarTab === 'planner_approvals' ? 'bg-white shadow text-emerald-600' : 'text-slate-500 hover:text-slate-700'"
+                    class="flex-1 px-2 py-1 rounded text-[10px] font-bold tracking-wide transition-all flex items-center justify-center gap-1">
+                    Approvals <span class="bg-emerald-100 text-emerald-600 px-1 rounded-full text-[9px] normal-case">{{ planner_actions_count|default:"0" }}</span>
+                </button>
+                {% endif %}
+
+                {% if qc_pending_count %}
+                <button @click="sidebarTab = 'qc_pending'"
+                    :class="sidebarTab === 'qc_pending' ? 'bg-white shadow text-amber-600' : 'text-slate-500 hover:text-slate-700'"
+                    class="flex-1 px-2 py-1 rounded text-[10px] font-bold tracking-wide transition-all flex items-center justify-center gap-1">
+                    QC Pending <span class="bg-amber-100 text-amber-600 px-1 rounded-full text-[9px] normal-case">{{ qc_pending_count|default:"0" }}</span>
+                </button>
+                {% endif %}
+
+                <!-- QUALITY ALERTS TAB -->
+                {% if quality_alerts %}
+                <button @click="sidebarTab = 'quality'"
+                    :class="sidebarTab === 'quality' ? 'bg-white shadow text-red-600' : 'text-slate-500 hover:text-slate-700'"
+                    class="flex-1 px-2 py-1 rounded text-[10px] font-bold tracking-wide transition-all flex items-center justify-center gap-1">
+                    Quality <span class="bg-red-100 text-red-600 px-1 rounded-full text-[9px] normal-case">{{
+                        quality_alerts_count|default:quality_alerts.count }}</span>
+                </button>
+                {% endif %}
+                {% endif %}
+</div>
+
+<script>
+  // Force planner quality actions to use fresh CSRF and canonical endpoint.
+  (function () {
+    if (window.__plannerQualitySubmitHookInstalled) return;
+    window.__plannerQualitySubmitHookInstalled = true;
+
+    document.addEventListener('submit', function (event) {
+      const form = event.target;
+      if (!(form instanceof HTMLFormElement)) return;
+
+      const hasRepairAction = !!form.querySelector('input[name="create_repair_wo"]');
+      const hasScrapAction = !!form.querySelector('input[name="compensate_scrap_wo"]');
+      const hasAcceptScrapAction = !!form.querySelector('input[name="accept_scrap_wo"]');
+      if (!hasRepairAction && !hasScrapAction && !hasAcceptScrapAction) return;
+
+      event.preventDefault();
+
+      const endpoint = '/manufacturing/dashboard/';
+      const csrfToken = (window.getCsrfToken && window.getCsrfToken()) || '';
+      const formData = new FormData(form);
+
+      // Keep backend tab state for smooth return.
+      if (!formData.get('tab')) formData.set('tab', 'manufacturing');
+
+      fetch(endpoint, {
+        method: 'POST',
+        headers: csrfToken ? { 'X-CSRFToken': csrfToken } : {},
+        body: formData,
+        credentials: 'same-origin',
+        redirect: 'follow'
+      })
+        .then(function (response) {
+          // Follow server redirect/messages by navigating to final URL.
+          window.location.href = response.url || endpoint;
+        })
+        .catch(function () {
+          // Fallback to native submit if fetch fails unexpectedly.
+          form.action = endpoint;
+          form.submit();
+        });
+    }, true);
+  })();
+</script>
+
+<script>
+  window.openWorkOrderForReleaseFromSidebar = function (woId, presetQty = null) {
+    if (!woId) return;
+
+    window.dispatchEvent(new CustomEvent('planner-close-advanced'));
+
+    const run = () => {
+      if (!window.openWorkOrderModal) {
+        if (window.appNotify) window.appNotify("Open Work Order modal is not available.", 'warning');
+        return;
+      }
+
+      if (presetQty !== null && presetQty !== undefined) {
+        window.__releasePresetQty = Number(presetQty);
+      } else {
+        window.__releasePresetQty = null;
+      }
+
+      // Explicitly avoid auto-release side effect; open the release form.
+      window.__openReleaseAfterDrawer = false;
+      window.openWorkOrderModal(woId);
+
+      let tries = 0;
+      const tryOpen = () => {
+        tries += 1;
+        if (window.currentDrawerWO && String(window.currentDrawerWO.id) === String(woId) && window.openReleaseModal) {
+          window.openReleaseModal();
+          return;
+        }
+        if (tries < 20) {
+          setTimeout(tryOpen, 120);
+        } else {
+          if (window.startNextStageNow) {
+            const qty = Number(presetQty || 0);
+            if (qty > 0) {
+              const ask = typeof window.appConfirm === 'function'
+                ? window.appConfirm(`Release all ${qty} available units to the next stage now?`, {
+                    title: 'Release to Next Stage',
+                    confirmText: 'Release',
+                    kind: 'warning'
+                  })
+                : Promise.resolve(window.confirm(`Release all ${qty} available units to the next stage now?`));
+              ask.then((confirmed) => {
+                if (!confirmed) return;
+                window.startNextStageNow(woId, qty);
+              });
+              return;
+            }
+          }
+          if (window.appNotify) window.appNotify("Could not open release form. Please refresh and retry.", 'error');
+        }
+      };
+      setTimeout(tryOpen, 150);
+    };
+
+    setTimeout(run, 120);
+  };
+
+  // Fallback: ensure Start Next Stage works even if timeline.js is cached
+  if (!window.startNextStageNow) {
+    window.startNextStageNow = function (woId, availableQty) {
+      const qty = Number(availableQty || 0);
+      if (!woId || qty <= 0) {
+        if (window.appNotify) window.appNotify("No available quantity to release.", 'warning');
+        return;
+      }
+      fetch(`/manufacturing/api/work-order/${woId}/release/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ release_quantity: qty, machine_id: null })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            if (data.new_wo_id && window.openWorkOrderModal) {
+              setTimeout(() => window.openWorkOrderModal(data.new_wo_id), 50);
+            }
+            if (window.initGanttChart) window.initGanttChart(true);
+          } else {
+            if (window.appNotify) window.appNotify(data.error || "Failed to start next stage.", 'error');
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          if (window.appNotify) window.appNotify("Release Error: " + err, 'error');
+        });
+    };
+  }
+</script>
+            {% if not full_width %}
+            <button @click="sidebarCollapsed = !sidebarCollapsed"
+                class="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"
+                :title="sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'">
+                <i class="ph" :class="sidebarCollapsed ? 'ph-caret-right' : 'ph-caret-left'"></i>
+            </button>
+            {% endif %}
+        </div>
+
+        <!-- Smart Search Input -->
+        <div x-show="!sidebarCollapsed" x-transition>
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                <input type="text" x-model="sidebarSearch" placeholder="Search orders..."
+                    class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-shadow">
+            </div>
+        </div>
+    </div>
+
+    <!-- List Content -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar" x-show="!sidebarCollapsed"
+        x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100">
+
+        <!-- PLANNER: PENDING ORDERS LIST -->
+        {% if user_role != 'supervisor' %}
+        <div x-show="sidebarTab === 'pending'" class="space-y-3">
+            {% if release_ready_tasks %}
+            <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">Next Stage Ready ({{ release_ready_count|default:"0" }})</div>
+            {% for wo in release_ready_tasks %}
+            <div onclick="openWorkOrderForReleaseFromSidebar('{{ wo.id }}', {{ wo.available_qty|default:0 }})"
+                class="p-3 bg-white border border-indigo-200 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group">
+                <div class="flex items-start justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                    <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full">
+                        Ready
+                    </span>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+                <div class="flex items-center gap-2 text-xs text-slate-600">
+                    <i class="ph ph-stack"></i>
+                    <span>Next: {{ wo.next_stage_name }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-600 mt-1">
+                    <i class="ph ph-check-circle"></i>
+                    <span>Available: {{ wo.available_qty }}</span>
+                </div>
+                <div class="mt-3 flex gap-2">
+                    <button onclick="event.stopPropagation(); openWorkOrderForReleaseFromSidebar('{{ wo.id }}', {{ wo.available_qty|default:0 }})"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                        Start Next Stage
+                    </button>
+                    <button onclick="event.stopPropagation(); window.dispatchEvent(new CustomEvent('planner-close-advanced')); setTimeout(() => startNextStageNow('{{ wo.id }}', {{ wo.available_qty|default:0 }}), 100)"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">
+                        Release All
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+            <div class="border-b border-slate-200/60 my-2"></div>
+            {% endif %}
+
+            {% for wo in pending_wos %}
+            <div onclick="openWorkOrderModal('{{ wo.id }}')" draggable="true"
+                ondragstart="handleSidebarDragStart(event, '{{ wo.id }}', '{{ wo.product_name|escapejs }}', '{{ wo.suggested_machine_type }}')"
+                x-show="$el.innerText.toLowerCase().includes(sidebarSearch.toLowerCase())"
+                class="p-3 bg-white border border-blue-200 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group">
+                <div class="flex items-start justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                    <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full">
+                        Pending
+                    </span>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+                <div class="flex items-center gap-2 text-xs text-slate-600">
+                    <i class="ph ph-package"></i>
+                    <span>Qty: {{ wo.quantity }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-600 mt-1">
+                    <i class="ph ph-calendar-blank"></i>
+                    <span>Due: {{ wo.due_date|date:"M d" }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-slate-400">
+                <i class="ph ph-check-circle text-4xl mb-2"></i>
+                <p class="text-xs font-medium">All orders scheduled!</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- PLANNER: APPROVALS -->
+        <div x-show="sidebarTab === 'planner_approvals'" class="space-y-3" x-cloak>
+            {% for wo in planner_actions %}
+            <div onclick="openWorkOrderModal('{{ wo.id }}')"
+                class="p-3 bg-white border border-emerald-200 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group">
+                <div class="flex items-start justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                    <span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full">
+                        Completed
+                    </span>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+                <div class="flex items-center gap-2 text-xs text-slate-600">
+                    <i class="ph ph-check-circle"></i>
+                    <span>Final stage approved</span>
+                </div>
+                <div class="mt-3 flex gap-2">
+                    <button onclick="event.stopPropagation(); openWorkOrderModal('{{ wo.id }}')"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                        Open
+                    </button>
+                    <button onclick="event.stopPropagation(); closePlannerAction('{{ wo.id }}')"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+                        Close WO
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-slate-400">
+                <i class="ph ph-check-circle text-4xl mb-2"></i>
+                <p class="text-xs font-medium">No approvals pending.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- PLANNER: QC PENDING -->
+        <div x-show="sidebarTab === 'qc_pending'" class="space-y-3" x-cloak>
+            {% for wo in qc_pending %}
+            <div
+                class="p-3 bg-white border border-amber-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative group">
+                <div class="flex items-start justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                    <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full">
+                        QC Pending
+                    </span>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+                <div class="flex items-center gap-2 text-xs text-slate-600">
+                    <i class="ph ph-shield-check"></i>
+                    <span>Awaiting quality approval</span>
+                </div>
+                <div class="mt-3 flex gap-2">
+                    <a href="/manufacturing/quality-check/{% if user_role == 'planner' %}?mode=planner{% endif %}"
+                        class="flex-1 py-1.5 text-xs font-bold rounded-lg bg-amber-600 text-white hover:bg-amber-700 text-center">
+                        Open QC
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-slate-400">
+                <i class="ph ph-check-circle text-4xl mb-2"></i>
+                <p class="text-xs font-medium">No QC pending</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- PLANNER: QUALITY INBOX -->
+        <div x-show="sidebarTab === 'quality'" class="space-y-3" x-cloak>
+            {% for qc in quality_alerts %}
+            <div
+                class="p-3 bg-white border border-red-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative group">
+                <div class="flex items-start justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-700">QC Alert #{{ qc.id }}</span>
+                    <span class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full">Defect</span>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{
+                    qc.work_order.product_name }}
+                </h4>
+
+                <div class="flex items-center gap-2 text-xs text-slate-600 mb-3">
+                    <div
+                        class="flex items-center gap-1 bg-red-50 text-red-700 px-1.5 py-0.5 rounded border border-red-100">
+                        <i class="ph ph-wrench"></i>
+                        <span class="font-bold">Repair: {{ qc.repair_quantity }}</span>
+                    </div>
+                    <span class="text-slate-400">Good: {{ qc.good_quantity }}</span>
+                    <span class="text-rose-600 font-semibold">Scrap: {{ qc.faulty_quantity }}</span>
+                </div>
+
+                {% if qc.notes %}
+                <div class="text-[10px] text-slate-500 italic mb-2 bg-slate-50 p-1.5 rounded border border-slate-100">
+                    "{{ qc.notes }}"
+                </div>
+                {% endif %}
+
+                {% if qc.status == 'new' and qc.repair_quantity|default:0 > 0 %}
+                <form id="repairForm-{{ qc.id }}" method="POST" action="/manufacturing/dashboard/" class="mb-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="manufacturing">
+                    <input type="hidden" name="create_repair_wo" value="true">
+                    <input type="hidden" name="quality_check_id" value="{{ qc.id }}">
+                    <button type="submit" form="repairForm-{{ qc.id }}" formaction="/manufacturing/dashboard/" formmethod="post"
+                        class="w-full py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded shadow-sm hover:shadow flex items-center justify-center gap-1 transition-all">
+                        <i class="ph ph-hammer"></i> Create Repair Order
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if qc.scrap_remaining|default:0 > 0 %}
+                <div class="text-[10px] text-slate-500 mb-2">
+                    Target WO: #{{ qc.target_work_order.id }} | Remaining uncompensated scrap: <span class="font-bold text-rose-600">{{ qc.scrap_remaining }}</span>
+                </div>
+                <form id="scrapForm-{{ qc.id }}" method="POST" action="/manufacturing/dashboard/" class="space-y-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="manufacturing">
+                    <input type="hidden" name="compensate_scrap_wo" value="true">
+                    <input type="hidden" name="quality_check_id" value="{{ qc.id }}">
+                    <label class="block text-[10px] font-bold uppercase tracking-wide text-slate-500">Increase WO Qty By</label>
+                    <input
+                        type="number"
+                        name="compensation_qty"
+                        min="1"
+                        max="{{ qc.scrap_remaining }}"
+                        value="{{ qc.scrap_remaining }}"
+                        class="w-full border border-slate-200 rounded-md px-2 py-1 text-xs font-semibold text-slate-700"
+                    >
+                    <button type="submit" form="scrapForm-{{ qc.id }}" formaction="/manufacturing/dashboard/" formmethod="post"
+                        class="w-full py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded shadow-sm hover:shadow flex items-center justify-center gap-1 transition-all">
+                        <i class="ph ph-trend-up"></i> Compensate Scrap
+                    </button>
+                </form>
+                <form id="acceptScrapForm-{{ qc.id }}" method="POST" action="/manufacturing/dashboard/" class="space-y-2 mt-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="tab" value="manufacturing">
+                    <input type="hidden" name="accept_scrap_wo" value="true">
+                    <input type="hidden" name="quality_check_id" value="{{ qc.id }}">
+                    <label class="block text-[10px] font-bold uppercase tracking-wide text-slate-500">Reduce WO Qty By</label>
+                    <input
+                        type="number"
+                        name="accepted_qty"
+                        min="1"
+                        max="{{ qc.scrap_remaining }}"
+                        value="{{ qc.scrap_remaining }}"
+                        class="w-full border border-slate-200 rounded-md px-2 py-1 text-xs font-semibold text-slate-700"
+                    >
+                    <button type="submit" form="acceptScrapForm-{{ qc.id }}" formaction="/manufacturing/dashboard/" formmethod="post"
+                        class="w-full py-1.5 bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs rounded shadow-sm hover:shadow flex items-center justify-center gap-1 transition-all">
+                        <i class="ph ph-check-circle"></i> Accept Scrap (Finalize Lower Qty)
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-slate-400">
+                <i class="ph ph-check-circle text-4xl mb-2"></i>
+                <p class="text-xs font-medium">No quality alerts</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- SUPERVISOR: BACKLOG LIST -->
+        {% if user_role == 'supervisor' %}
+        <div x-show="sidebarTab === 'backlog'" class="space-y-3">
+            {% for wo in pending_orders %}
+            <div onclick="openWorkerAssignModal('{{ wo.id }}', '{{ wo.product_name|escapejs }}', '{{ wo.machine.display_label|default:'Pending Machine'|escapejs }}')"
+                draggable="true"
+                ondragstart="handleSidebarDragStart(event, '{{ wo.id }}', '{{ wo.product_name|escapejs }}', '{{ wo.suggested_machine_type }}')"
+                x-show="$el.innerText.toLowerCase().includes(sidebarSearch.toLowerCase())"
+                class="p-3 bg-white border border-amber-200 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group">
+                <div class="flex items-start justify-between mb-2">
+
+                    <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                    <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full">
+                        Pending
+                    </span>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+                {% if wo.customer__name %}
+                <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                    <i class="ph ph-user"></i>
+                    <span class="truncate">{{ wo.customer__name }}</span>
+                </div>
+                {% endif %}
+                <div class="flex items-center gap-2 text-xs text-slate-600">
+                    <i class="ph ph-package"></i>
+                    <span>Qty: {{ wo.quantity }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-600 mt-1">
+                    <i class="ph ph-calendar-blank"></i>
+                    <span>Due: {{ wo.due_date|date:"M d" }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-8 text-slate-400">
+                <i class="ph ph-check-circle text-4xl mb-2"></i>
+                <p class="text-xs font-medium">All orders scheduled!</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 2. UNMANNED LIST (Supervisor) -->
+        {% if unmanned_orders %}
+        <div x-show="sidebarTab === 'unmanned'" class="space-y-3" x-cloak>
+            {% for wo in unmanned_orders %}
+            <div x-show="$el.innerText.toLowerCase().includes(sidebarSearch.toLowerCase())"
+                class="p-3 bg-white border border-red-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative group">
+
+                <div class="flex items-start justify-between mb-2">
+                    <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                    <span
+                        class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full flex items-center gap-1">
+                        <i class="ph ph-user-minus"></i> Unstaffed
+                    </span>
+                </div>
+
+                <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+
+                <div class="flex items-center gap-2 text-xs text-slate-600 mb-2">
+                    <i class="ph ph-factory text-indigo-500"></i>
+                    <span class="font-medium text-indigo-700">{{ wo.machine.display_label }}</span>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-500 mb-3">
+                    <div class="flex items-center gap-1">
+                        <i class="ph ph-calendar"></i>
+                        {{ wo.start_date|date:"D H:i" }}
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <i class="ph ph-timer"></i>
+                        <span>~1h</span>
+                    </div>
+                </div>
+
+                <!-- Assignment Button -->
+                <button onclick="openWorkerAssignModal('{{ wo.id }}', '{{ wo.product_name }}', '{{ wo.machine.display_label }}')"
+                    class="w-full py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                    <i class="ph ph-user-plus"></i> Assign Worker
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- 3. APPROVALS LIST (Supervisor) -->
+        {% if pending_logs %}
+        <div x-show="sidebarTab === 'approvals'" class="space-y-3" x-cloak>
+            {% for log in pending_logs %}
+            <div
+                class="p-3 bg-white border border-emerald-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative">
+                <div class="flex justify-between items-start mb-1">
+                    <span class="text-[10px] font-bold uppercase text-slate-500">{{ log.work_order.product_name
+                        }}</span>
+                    <span
+                        class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">Report</span>
+                </div>
+                <div class="flex items-center gap-2 mb-2">
+                    <div
+                        class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                        {{ log.worker.username|slice:":2"|upper }}
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800">{{ log.worker.username }}</div>
+                        <div class="text-[10px] text-slate-500 flex items-center gap-1">
+                            <i class="ph ph-clock"></i> {{ log.created_at|date:"H:i" }}
+                            <span class="px-1">•</span>
+                            <span class="font-bold text-indigo-600">{{ log.quantity }} {{
+                                log.work_order.bom.uom|default:"pcs" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <button onclick="approveLog('{{ log.id }}', 'reject')"
+                        class="py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 text-[10px] font-bold rounded flex items-center justify-center transition-colors">
+                        Reject
+                    </button>
+                    <button onclick="approveLog('{{ log.id }}', 'approve')"
+                        class="py-1 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 text-[10px] font-bold rounded flex items-center justify-center transition-colors">
+                        Approve
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endif %} <!-- End supervisor sections -->
+
+    </div>
+
+</div>

@@ -1,0 +1,103 @@
+<!-- Ultra-Compact Controls - Single Row -->
+<div class="flex items-center gap-2 py-2">
+
+    <!-- Search Icon Button -->
+    <button
+        class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-white hover:border-blue-500 transition-all text-slate-600 hover:text-blue-600"
+        onclick="document.getElementById('timelineSearch').classList.toggle('hidden')" title="Search">
+        <i class="ph ph-magnifying-glass text-sm"></i>
+    </button>
+
+    <!-- Hidden Search Input (toggleable) -->
+    <input type="text" id="timelineSearch" placeholder="Search Machine/WO"
+        class="hidden pl-3 pr-3 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-48">
+
+    <!-- Status Filter Dropdown -->
+    <select id="timelineFilter" onchange="filterTimeline()"
+        class="pl-3 pr-8 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-600 font-medium cursor-pointer hover:bg-white transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px] bg-no-repeat bg-[right:10px_center]">
+        <option value="all">Status</option>
+        <option value="active">Active</option>
+        <option value="pending">Pending</option>
+        <option value="maintenance">Maintenance</option>
+    </select>
+
+    <!-- Divider -->
+    <div class="h-6 w-px bg-slate-200"></div>
+
+    <!-- Shift Selector - Icons Only -->
+    <div class="flex items-center gap-1" x-data="{ selectedShift: 'morning' }">
+        <span class="text-[10px] font-bold text-slate-500 mr-1">Shift:</span>
+        <div class="flex bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+            <button @click="selectedShift = 'morning'"
+                :class="selectedShift === 'morning' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                class="p-2 rounded-md transition-all" title="Morning Shift (6AM-2PM)">
+                <i class="ph ph-sun text-sm"></i>
+            </button>
+            <button @click="selectedShift = 'afternoon'"
+                :class="selectedShift === 'afternoon' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                class="p-2 rounded-md transition-all" title="Afternoon Shift (2PM-10PM)">
+                <i class="ph ph-sun-dim text-sm"></i>
+            </button>
+            <button @click="selectedShift = 'night'"
+                :class="selectedShift === 'night' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                class="p-2 rounded-md transition-all" title="Night Shift (10PM-6AM)">
+                <i class="ph ph-moon text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- View Range Selector - Icons Only -->
+    <div class="flex items-center gap-1" x-data="{ selectedView: 'day' }">
+        <span class="text-[10px] font-bold text-slate-500 mr-1">View:</span>
+        <div class="flex bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+            <button @click="selectedView = 'day'; setGanttView('24h')"
+                :class="selectedView === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                class="p-2 rounded-md transition-all" title="Day View">
+                <i class="ph ph-calendar-blank text-sm"></i>
+            </button>
+            <button @click="selectedView = 'week'"
+                :class="selectedView === 'week' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                class="p-2 rounded-md transition-all" title="Week View">
+                <i class="ph ph-calendar text-sm"></i>
+            </button>
+            <button @click="selectedView = 'month'"
+                :class="selectedView === 'month' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                class="p-2 rounded-md transition-all" title="Month View">
+                <i class="ph ph-calendar-dots text-sm"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Spacer -->
+    <div class="flex-1"></div>
+
+    <!-- Refresh Button -->
+    <button onclick="window.initGanttChart(true)"
+        class="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+        title="Refresh Timeline">
+        <i class="ph ph-arrow-clockwise text-sm"></i>
+    </button>
+
+    <!-- Status Legend Toggle -->
+    <button
+        class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-white hover:border-slate-300 transition-all text-slate-600"
+        onclick="document.getElementById('statusLegend').classList.toggle('hidden')" title="Toggle Status Legend">
+        <i class="ph ph-info text-sm"></i>
+    </button>
+</div>
+
+<!-- Collapsible Status Legend -->
+<div id="statusLegend" class="hidden flex items-center gap-3 text-xs pb-2 px-2">
+    <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
+        <span class="text-slate-600 font-medium">Pending</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 bg-blue-600 rounded-full"></span>
+        <span class="text-slate-600 font-medium">Active</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+        <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+        <span class="text-slate-600 font-medium">Complete</span>
+    </div>
+</div>

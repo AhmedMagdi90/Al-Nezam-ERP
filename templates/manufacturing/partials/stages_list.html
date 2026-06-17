@@ -1,0 +1,15 @@
+{% for stage in stages %}
+<div class="flex items-center justify-between border-b py-2">
+  <span class="font-semibold flex items-center gap-2">
+    {{ stage.name }}
+    {% if stage.is_quality_check %}
+    <span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200">QA</span>
+    {% endif %}
+  </span>
+  <span class="px-2 py-1 text-xs rounded text-white" style="background-color: {{ stage.color }}">
+    {{ stage.machine.display_label|default:"No Machine" }}
+  </span>
+</div>
+{% empty %}
+<p class="text-gray-500 text-sm">No stages defined yet.</p>
+{% endfor %}

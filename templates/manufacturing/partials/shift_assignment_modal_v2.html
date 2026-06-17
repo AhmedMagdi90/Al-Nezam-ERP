@@ -1,0 +1,432 @@
+<dialog id="shiftAssignmentModal_v2" class="modal bg-transparent p-0 overflow-hidden outline-none"
+    x-data="shiftManager()">
+
+    <!-- Backdrop Blur -->
+    <div class="fixed inset-0 bg-slate-900/10 backdrop-blur-[60px] transition-opacity"></div>
+
+    <div class="relative bg-white/30 backdrop-blur-[80px] mx-auto rounded-[64px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.1)] border border-white/40 overflow-hidden flex flex-col animate-in zoom-in duration-500 transition-all"
+        :class="isFullScreen ? 'w-full h-full mt-0 rounded-none' : 'w-[95vw] max-w-6xl h-[85vh] mt-[5vh]'">
+
+        <!-- Header -->
+        <div class="px-8 py-6 flex-shrink-0 border-b border-white/20">
+            <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-black text-slate-800 tracking-tightest">Shift Assignments</h2>
+                        <p class="text-xs font-bold text-slate-500 opacity-60">Deploy workers to machine stations</p>
+                    </div>
+                    <!-- Full Screen Toggle -->
+                    <button @click="isFullScreen = !isFullScreen"
+                        class="p-2 rounded-xl hover:bg-white/40 text-slate-400 hover:text-indigo-600 transition-all"
+                        :title="isFullScreen ? 'Exit Full Screen' : 'Enter Full Screen'">
+                        <i class="ph text-xl" :class="isFullScreen ? 'ph-arrows-in' : 'ph-arrows-out'"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <!-- Search Bar -->
+                    <div class="relative group w-64">
+                        <i
+                            class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors"></i>
+                        <input type="text" x-model="searchQuery" placeholder="Search machines..."
+                            class="w-full bg-white/40 border border-white/60 rounded-xl py-2.5 pl-10 pr-4 text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all placeholder-slate-400">
+                    </div>
+
+                    <form method="dialog">
+                        <button
+                            class="w-10 h-10 rounded-xl bg-white/40 border border-white flex items-center justify-center text-slate-400 hover:text-slate-800 transition-all">
+                            <i class="ph ph-x text-lg"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Controls & Tabs -->
+            <div class="flex flex-col gap-4">
+                <!-- Top Row: Date & Shift -->
+                <div class="flex items-center gap-4">
+                    <div class="bg-white/40 rounded-xl px-4 py-2 border border-white/60 flex items-center gap-3">
+                        <label class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date</label>
+                        <input type="date" x-model="assignmentDate" @change="loadAssignments()"
+                            class="bg-transparent border-none outline-none text-sm font-black text-slate-800 p-0 focus:ring-0">
+                    </div>
+                    <div class="h-8 w-px bg-white/20"></div>
+                    <div class="flex bg-white/40 rounded-xl p-1 border border-white/60">
+                        <template x-for="s in ['day', 'middle', 'night']">
+                            <button @click="shiftType = s; loadAssignments()"
+                                :class="shiftType === s ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'"
+                                class="px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
+                                x-text="s">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                    <button @click="activeTab = 'all'"
+                        :class="activeTab === 'all' ? 'bg-slate-800 text-white shadow-lg' : 'bg-white/40 text-slate-500 hover:bg-white/60'"
+                        class="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0 border border-white/40">
+                        All Machines
+                    </button>
+                    <template x-for="type in machineTypes" :key="type">
+                        <button @click="activeTab = type"
+                            :class="activeTab === type ? 'bg-slate-800 text-white shadow-lg' : 'bg-white/40 text-slate-500 hover:bg-white/60'"
+                            class="px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex-shrink-0 border border-white/40"
+                            x-text="type || 'Other'">
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Machine List (Grid) -->
+        <div class="flex-1 px-8 py-6 overflow-y-auto custom-scrollbar bg-slate-50/30">
+            <!-- Loading State -->
+            <div x-show="machines.length === 0"
+                class="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
+                <i class="ph ph-spinner animate-spin text-3xl mb-3"></i>
+                <p class="text-[10px] font-bold uppercase tracking-widest">Loading Inventory...</p>
+            </div>
+
+            <!-- Empty Filter State -->
+            <div x-show="machines.length > 0 && filteredMachines.length === 0"
+                class="h-64 flex flex-col items-center justify-center text-slate-400 opacity-60">
+                <i class="ph ph-magnifying-glass text-3xl mb-3"></i>
+                <p class="text-[10px] font-bold uppercase tracking-widest">No machines found for this filter</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                x-show="filteredMachines.length > 0">
+                <template x-for="machine in filteredMachines" :key="machine.id">
+                    <div
+                        class="bg-white/60 backdrop-blur-sm p-4 rounded-[24px] border border-white hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-1 transition-all group duration-300">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300 shadow-sm">
+                                    <i class="ph ph-factory text-lg"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-sm font-bold text-slate-800 truncate" x-text="machine.display_name || machine.name"></h4>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest"
+                                            x-text="machine.code + ' (#' + machine.id + ')'"></span>
+                                        <span
+                                            class="px-1.5 py-0.5 rounded-md bg-slate-200 text-slate-500 text-[8px] font-bold uppercase"
+                                            x-text="machine.type || 'Other'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-data="{ search: '' }">
+                            <!-- Custom Searchable Dropdown -->
+                            <div class="relative">
+                                <button type="button"
+                                    @click="openDropdown = (openDropdown === machine.id ? null : machine.id); search = ''"
+                                    :class="assignments[machine.id] ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-500 shadow-sm'"
+                                    class="w-full border rounded-xl py-3 px-4 text-[11px] font-black flex items-center justify-between outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all active:scale-[0.98]">
+                                    <div class="flex items-center gap-2 overflow-hidden">
+                                        <i class="ph text-base"
+                                            :class="assignments[machine.id] ? 'ph-user-circle-gear text-indigo-500' : 'ph-user-plus text-slate-300'"></i>
+                                        <span class="truncate"
+                                            x-text="getSelectedWorkerName(machine.id) || 'Tap to Assign Worker'"></span>
+                                    </div>
+                                    <i class="ph ph-caret-down text-xs transition-transform duration-300"
+                                        :class="openDropdown === machine.id ? 'rotate-180' : ''"></i>
+                                </button>
+
+                                <!-- Dropdown Menu -->
+                                <div x-show="openDropdown === machine.id" @click.away="openDropdown = null"
+                                    x-transition:enter="transition ease-out duration-200"
+                                    x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                                    x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                                    x-transition:leave="transition ease-in duration-100"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    class="absolute left-0 right-0 mt-3 p-3 bg-white/95 backdrop-blur-xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-white z-50 overflow-hidden">
+
+                                    <!-- Search Input -->
+                                    <div class="relative mb-3">
+                                        <i
+                                            class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                        <input type="text" x-model="search" placeholder="Search by name or ID..."
+                                            @click.stop
+                                            class="w-full bg-slate-50 border border-slate-100 rounded-2xl py-2.5 pl-10 pr-4 text-[10px] font-bold outline-none focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all placeholder-slate-400">
+                                    </div>
+
+                                    <!-- Workers List -->
+                                    <div class="max-h-60 overflow-y-auto custom-scrollbar flex flex-col gap-1 pr-1">
+                                        <button type="button"
+                                            @click="assignments[machine.id] = null; openDropdown = null"
+                                            class="flex items-center justify-between px-4 py-2.5 rounded-xl hover:bg-slate-50 text-[10px] font-black text-slate-400 transition-colors">
+                                            <span>Clear Assignment</span>
+                                            <i class="ph ph-prohibit"></i>
+                                        </button>
+                                        <div class="h-px bg-slate-50 my-2"></div>
+
+                                        <template x-for="worker in getFilteredWorkers(machine.id, search)"
+                                            :key="worker.id">
+                                            <button type="button"
+                                                @click="assignments[machine.id] = worker.id; openDropdown = null"
+                                                class="flex items-center justify-between px-4 py-3 rounded-2xl transition-all group relative overflow-hidden"
+                                                :class="assignments[machine.id] == worker.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'hover:bg-indigo-50 text-slate-700'">
+                                                <div class="flex items-center gap-3 relative z-10">
+                                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px]"
+                                                        :class="assignments[machine.id] == worker.id ? 'bg-white/20' : 'bg-slate-100 text-slate-400'">
+                                                        <span
+                                                            x-text="(worker.full_name || worker.username).charAt(0).toUpperCase()"></span>
+                                                    </div>
+                                                    <div class="text-left">
+                                                        <p class="text-[10px] font-black leading-tight"
+                                                            x-text="worker.full_name || worker.username"></p>
+                                                        <p class="text-[8px] font-bold opacity-60"
+                                                            x-text="'Employee #' + worker.id"></p>
+                                                    </div>
+                                                </div>
+                                                <template x-if="isWorkerCertified(machine.id, worker.id)">
+                                                    <div class="flex items-center gap-1.5 relative z-10">
+                                                        <span
+                                                            class="text-[7px] font-black uppercase tracking-widest px-2 py-1 rounded-lg"
+                                                            :class="assignments[machine.id] == worker.id ? 'bg-white/20 text-white' : 'bg-emerald-50 text-emerald-600'">
+                                                            Certified
+                                                        </span>
+                                                        <i class="ph ph-seal-check text-xs"
+                                                            :class="assignments[machine.id] == worker.id ? 'text-white' : 'text-emerald-500'"></i>
+                                                    </div>
+                                                </template>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Sticky Footer -->
+        <div
+            class="px-8 py-5 bg-white/80 backdrop-blur-xl border-t border-white/60 flex justify-between items-center z-10">
+            <div class="flex items-center gap-3">
+                <span class="flex h-2 w-2 relative">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                    <span x-text="Object.keys(assignments).filter(k => assignments[k]).length"></span> Workers Deployed
+                </p>
+            </div>
+            <button @click="saveAssignments()"
+                class="px-8 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2">
+                <i class="ph ph-check-circle text-base"></i>
+                <span>Finalize Assignments</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function shiftManager() {
+            return {
+                isFullScreen: false,
+                machines: [],
+                certifiedWorkersPool: {}, // machineId -> [workers]
+                assignments: {}, // machineId -> workerId
+                assignmentDate: new Date().toISOString().split('T')[0],
+                shiftType: 'day',
+                isLoading: false,
+                searchQuery: '',
+                activeTab: 'all',
+                machineTypes: [],
+                allWorkers: [],
+                openDropdown: null, // Track which machine's dropdown is open
+
+                async init() {
+                    console.log("Shift Manager UX Enhanced Initializing...");
+                    await this.loadInitialData();
+                },
+
+                get filteredMachines() {
+                    let filtered = this.machines;
+
+                    // Filter by Tab (Type)
+                    if (this.activeTab !== 'all') {
+                        filtered = filtered.filter(m => (m.type || 'Other') === this.activeTab);
+                    }
+
+                    // Filter by Search
+                    if (this.searchQuery) {
+                        const q = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(m =>
+                            m.name.toLowerCase().includes(q) ||
+                            m.code.toLowerCase().includes(q)
+                        );
+                    }
+
+                    return filtered;
+                },
+
+                async loadInitialData() {
+                    try {
+                        // Load Machines
+                        const mRes = await fetch('/manufacturing/api/v1/machines/');
+                        const mData = await mRes.json();
+                        this.machines = Array.isArray(mData) ? mData : (mData.results || []);
+
+                        // Extract Unique Types for Tabs
+                        const types = new Set(this.machines.map(m => m.type || null));
+                        this.machineTypes = Array.from(types).map(t => t || 'Other').sort();
+
+                        // Load All Workers
+                        const wRes = await fetch('/manufacturing/api/v1/certifications/all_workers/');
+                        this.allWorkers = await wRes.json();
+
+                        // Load Assignments for current selection
+                        await this.loadAssignments();
+                    } catch (e) {
+                        console.error("Failed to load initial data", e);
+                        if (typeof Toast !== 'undefined') Toast.show('Failed to load machines', 'error');
+                    }
+                },
+
+                async loadAssignments() {
+                    console.log("Loading assignments...");
+                    try {
+                        const res = await fetch(`/manufacturing/api/v1/shift-assignments/?date=${this.assignmentDate}&shift=${this.shiftType}`);
+                        if (!res.ok) throw new Error("Failed to fetch assignments");
+
+                        const data = await res.json();
+                        const results = Array.isArray(data) ? data : (data.results || []);
+
+                        // Reset assignments
+                        this.assignments = {};
+                        results.forEach(asgn => {
+                            this.assignments[asgn.machine] = asgn.worker;
+                        });
+
+                        // Deep copy current pool to avoid direct mutation issues during async
+                        let updatedPool = JSON.parse(JSON.stringify(this.certifiedWorkersPool));
+                        let hasChanges = false;
+
+                        // Identify machines that need data
+                        const machinesToFetch = this.machines.filter(m => !updatedPool[m.id]); // undefined check
+
+                        if (machinesToFetch.length > 0) {
+                            console.log(`Fetching workers for ${machinesToFetch.length} machines...`);
+
+                            await Promise.all(machinesToFetch.map(async (machine) => {
+                                try {
+                                    const certRes = await fetch(`/manufacturing/api/v1/certifications/certified-workers/${machine.id}/`);
+                                    if (certRes.ok) {
+                                        updatedPool[machine.id] = await certRes.json();
+                                    } else {
+                                        console.warn(`Fetch failed for machine ${machine.id}: ${certRes.status}`);
+                                        updatedPool[machine.id] = []; // Fallback to empty so it doesn't get stuck on loading
+                                    }
+                                } catch (e) {
+                                    console.error(`Error fetching machine ${machine.id}`, e);
+                                    updatedPool[machine.id] = []; // Fallback on error
+                                }
+                            }));
+
+                            hasChanges = true;
+                        }
+
+                        // Apply updates atomically
+                        if (hasChanges) {
+                            this.certifiedWorkersPool = updatedPool;
+                            console.log("Worker pool updated:", this.certifiedWorkersPool);
+                        }
+
+                    } catch (e) {
+                        console.error("Critical error in loadAssignments:", e);
+                        if (typeof Toast !== 'undefined') Toast.show('Error loading data', 'error');
+                    }
+                },
+
+                getCertifiedWorkers(machineId) {
+                    return this.certifiedWorkersPool[machineId] || [];
+                },
+
+                isWorkerCertified(machineId, workerId) {
+                    const pool = this.certifiedWorkersPool[machineId] || [];
+                    return pool.some(w => w.id == workerId);
+                },
+
+                getSelectedWorkerName(machineId) {
+                    const workerId = this.assignments[machineId];
+                    if (!workerId) return null;
+                    const worker = this.allWorkers.find(w => w.id == workerId);
+                    return worker ? (worker.full_name || worker.username) : 'Unknown';
+                },
+
+                getFilteredWorkers(machineId, search) {
+                    let workers = [...this.allWorkers];
+
+                    if (search) {
+                        const q = search.toLowerCase();
+                        workers = workers.filter(w =>
+                            (w.full_name || '').toLowerCase().includes(q) ||
+                            w.username.toLowerCase().includes(q)
+                        );
+                    }
+
+                    // Sort: certified first
+                    const pool = this.certifiedWorkersPool[machineId] || [];
+                    const certifiedIds = new Set(pool.map(w => w.id));
+
+                    return workers.sort((a, b) => {
+                        const aCert = certifiedIds.has(a.id);
+                        const bCert = certifiedIds.has(b.id);
+                        if (aCert && !bCert) return -1;
+                        if (!aCert && bCert) return 1;
+                        return (a.full_name || a.username).localeCompare(b.full_name || b.username);
+                    });
+                },
+
+                async saveAssignments() {
+                    const payload = {
+                        date: this.assignmentDate,
+                        shift_type: this.shiftType,
+                        assignments: this.machines.map(machine => {
+                            const wId = this.assignments[machine.id];
+                            return {
+                                machine_id: machine.id,
+                                worker_id: wId ? parseInt(wId) : null
+                            };
+                        })
+                    };
+
+                    try {
+                        const res = await fetch('/manufacturing/api/v1/shift-assignments/bulk_assign/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (res.ok) {
+                            if (typeof Toast !== 'undefined') {
+                                Toast.show('Assignments finalized successfully', 'success');
+                            }
+                            document.getElementById('shiftAssignmentModal_v2').close();
+                            setTimeout(() => { window.location.reload(); }, 800);
+                        } else {
+                            const error = await res.json();
+                            if (typeof Toast !== 'undefined') Toast.show('Save failed', 'error');
+                            else alert("Failed to save");
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        if (typeof Toast !== 'undefined') Toast.show('Network error', 'error');
+                    }
+                }
+            }
+        }
+    </script>
+</dialog>

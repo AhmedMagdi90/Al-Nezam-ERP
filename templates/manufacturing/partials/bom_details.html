@@ -1,0 +1,104 @@
+{% load duration_tags %}
+<div>
+  <h3 class="text-xl font-bold text-gray-800 mb-3">
+    🧱 {{ bom.product.name }} <span class="text-gray-500 text-sm">({{ bom.version }})</span>
+  </h3>
+  <p class="text-sm text-gray-600 mb-4">👤 Created by {{ bom.created_by.username }} on {{ bom.created_at|date:"Y-m-d" }}
+  </p>
+
+  {% if bom.attachment %}
+  <div class="mb-4 rounded-lg border border-indigo-100 bg-indigo-50 p-3">
+    <div class="mb-2 flex items-center justify-between gap-3">
+      <div class="min-w-0">
+        <div class="text-xs font-bold uppercase tracking-wide text-indigo-700">BOM Attachment</div>
+        <div class="truncate text-sm font-semibold text-gray-800">{{ bom.attachment_name|default:bom.attachment.name }}</div>
+      </div>
+      <a href="{{ bom.attachment.url }}" target="_blank" rel="noopener"
+        class="rounded bg-indigo-600 px-3 py-2 text-xs font-bold uppercase tracking-wide text-white hover:bg-indigo-700">
+        Open
+      </a>
+    </div>
+    {% with lower_name=bom.attachment.name|lower %}
+      {% if ".jpg" in lower_name or ".jpeg" in lower_name or ".png" in lower_name %}
+      <img src="{{ bom.attachment.url }}" alt="{{ bom.attachment_name|default:bom.attachment.name }}"
+        class="max-h-72 w-full rounded border border-indigo-100 bg-white object-contain">
+      {% elif ".pdf" in lower_name %}
+      <iframe src="{{ bom.attachment.url }}" title="{{ bom.attachment_name|default:bom.attachment.name }}"
+        class="h-72 w-full rounded border border-indigo-100 bg-white"></iframe>
+      {% endif %}
+    {% endwith %}
+  </div>
+  {% endif %}
+
+  <!-- Components Table -->
+  <table class="w-full text-sm border-collapse border border-gray-200 mb-4">
+    <thead class="bg-gray-100 text-gray-700">
+      <tr>
+        <th class="p-2 border">Material</th>
+        <th class="p-2 border">Quantity</th>
+        <th class="p-2 border">Unit</th>
+        <th class="p-2 border">Cost/Unit</th>
+        <th class="p-2 border">Wastage %</th>
+        <th class="p-2 border">Type</th>
+        <th class="p-2 border">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for comp in components %}
+      <tr class="border-b hover:bg-gray-50">
+        <td class="p-2 border">{{ comp.material_name }}</td>
+        <td class="p-2 border text-right">{{ comp.quantity }}</td>
+        <td class="p-2 border">{{ comp.unit }}</td>
+        <td class="p-2 border text-right">{{ comp.cost_per_unit }}</td>
+        <td class="p-2 border text-right">{{ comp.wastage_percent|default:"0" }}%</td>
+        <td class="p-2 border text-center">{{ comp.source_type|title }}</td>
+        <td class="p-2 border text-right font-semibold">{{ comp.total_cost|default:"-" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Operations/Routing Table -->
+  <h4 class="text-lg font-bold text-gray-800 mb-2 mt-6 flex items-center gap-2">
+    ⚙️ Operations Routing
+  </h4>
+  {% if bom.operations.all %}
+  <table class="w-full text-sm border-collapse border border-gray-200 mb-4 ">
+    <thead class="bg-blue-50 text-blue-900 border-b border-blue-100">
+      <tr>
+        <th class="p-2 border border-blue-100 w-16 text-center">Step</th>
+        <th class="p-2 border border-blue-100">Machine</th>
+        <th class="p-2 border border-blue-100">Stage</th>
+        <th class="p-2 border border-blue-100 w-24 text-center">Duration</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for op in bom.operations.all %}
+      <tr class="border-b hover:bg-gray-50">
+        <td class="p-2 border text-center font-bold text-gray-500">{{ op.order }}</td>
+        <td class="p-2 border font-medium text-gray-700">{{ op.machine.display_label|default:"-" }}</td>
+        <td class="p-2 border">
+          {% if op.stage %}
+          <span class="px-2 py-1 rounded text-xs font-bold"
+            style="background-color: {{ op.stage.color }}20; color: {{ op.stage.color }}; border: 1px solid {{ op.stage.color }}40;">
+            {{ op.stage.name }}
+          </span>
+          {% else %}
+          <span class="text-gray-400">-</span>
+          {% endif %}
+        </td>
+        <td class="p-2 border text-center text-gray-600">{{ op.duration_minutes|humanize_duration_minutes }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="p-4 bg-gray-50 rounded border border-gray-200 text-gray-500 italic text-sm text-center mb-6">
+    No specific operations defined for this BOM.
+  </div>
+  {% endif %}
+
+  <div class="text-right font-bold text-lg text-gray-700">
+    💰 Total Cost: <span class="text-blue-600">{{ total_cost }}</span>
+  </div>
+</div>

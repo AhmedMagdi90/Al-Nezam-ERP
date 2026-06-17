@@ -1,0 +1,1267 @@
+<!-- Edit Task Drawer (Slide-in from Right) -->
+<div id="editTaskDrawer"
+    class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-[110] transform translate-x-full transition-all duration-300 flex flex-col max-w-full">
+    <!-- Drawer Header -->
+    <div
+        class="p-4 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-blue-100">
+        <div>
+            <h3 id="drawerTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                Edit Work Order
+            </h3>
+            <div id="drawerSubtitle" class="text-xs text-slate-500 font-medium">WO #...</div>
+        </div>
+        <button type="button" onclick="window.closeEditDrawer && window.closeEditDrawer(); return false;" class="p-2 hover:bg-white rounded-lg transition-colors">
+            <i class="ph ph-x text-slate-600 text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Drawer Body (Scrollable) -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+        <!-- WO ID (Hidden/Read-Only) -->
+        <input type="hidden" id="drawerTaskId">
+
+        <div id="drawerPlannerMetaGrid" class="space-y-4">
+            <!-- Customer -->
+            <div id="drawerCustomerSection">
+                <label class="block text-xs font-bold text-slate-600 mb-1">Customer</label>
+                <div
+                    class="px-3 py-2 bg-blue-50 rounded-lg border border-blue-100 text-sm text-blue-800 flex items-center gap-2 min-h-[42px]">
+                    <i class="ph ph-user"></i> <span id="drawerCustomerDisplay" class="font-bold">Customer Name</span>
+                </div>
+            </div>
+
+            <div id="drawerBomVersionCard"
+                class="hidden rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">BOM Version</div>
+                        <div id="drawerBomVersionText" class="mt-1 font-bold">Current BOM</div>
+                        <p id="drawerBomVersionHint" class="mt-1 text-xs text-amber-800"></p>
+                    </div>
+                            <button id="drawerApplyLatestBomBtn" type="button"
+                                onclick="window.applyLatestBomToDrawerWO && window.applyLatestBomToDrawerWO()"
+                                class="hidden shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-amber-700">
+                                Apply
+                            </button>
+                        </div>
+                        <div id="drawerBomChangeActions" class="mt-3 hidden flex flex-wrap gap-2"></div>
+                    </div>
+
+            <div id="drawerBomAttachmentCard"
+                class="hidden rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-3 text-sm text-indigo-950">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-700">BOM Attachment</div>
+                        <div id="drawerBomAttachmentName" class="mt-1 truncate font-bold">Attachment</div>
+                        <p class="mt-1 text-xs text-indigo-800">Open visual instructions or PDF before routing work.</p>
+                    </div>
+                    <a id="drawerBomAttachmentOpen" href="#" target="_blank" rel="noopener"
+                        class="inline-flex shrink-0 items-center gap-1 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-indigo-700">
+                        <i class="ph ph-download-simple"></i> Open
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quantity -->
+            <div id="drawerQuantitySection">
+                <label class="block text-xs font-bold text-slate-600 mb-1">Quantity</label>
+                <input type="number" id="drawerQuantity"
+                    class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <div id="drawerQtyBreakdown"
+                    class="mt-1 hidden text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md px-2 py-1">
+                    <div class="flex flex-wrap gap-x-3 gap-y-1">
+                        <span>Base: <span id="drawerBaseQty">0</span></span>
+                        <span>Scrap: <span id="drawerCompQty">0</span></span>
+                        <span>Reported: <span id="drawerFinishedQty">0</span></span>
+                    </div>
+                    <div id="drawerQtyFloorMsg" class="mt-1 hidden text-rose-700">
+                        Quantity cannot go below <span id="drawerMinQty">0</span>.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Priority -->
+            <div id="drawerPrioritySection">
+                <label class="block text-xs font-bold text-slate-600 mb-1">Priority</label>
+                <select id="drawerPriority"
+                    class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <option value="Low">Low</option>
+                    <option value="Normal">Normal</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Stage Selection (Dynamic) -->
+        <div id="drawerStageSection" class="hidden">
+        <div id="drawerStageContainer" class="hidden">
+            <label id="drawerStageLabel" class="block text-xs font-bold text-slate-600 mb-1">Production Stage</label>
+            <select id="drawerStage"
+                class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">-- Select Stage --</option>
+            </select>
+        </div>
+        </div>
+
+        <div id="drawerRoutePlannerCard"
+            class="rounded-2xl border border-indigo-200 bg-gradient-to-br from-slate-50 via-white to-indigo-50 px-3 py-3 space-y-3">
+            <div class="grid gap-3 xl:grid-cols-[minmax(260px,0.7fr)_minmax(420px,1.3fr)] xl:items-start">
+                <div class="min-w-0 space-y-1">
+                    <div class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-indigo-700">
+                        BOM Route Board
+                    </div>
+                    <div id="drawerRouteWorkOrderIdentity"
+                        class="rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
+                        <div id="drawerRouteWorkOrderCode" class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">WO #...</div>
+                        <div id="drawerRouteProductName" class="mt-0.5 truncate text-base font-black text-slate-950">Work Order</div>
+                    </div>
+                    <div class="text-sm font-extrabold text-slate-900">Plan all BOM stages in one screen</div>
+                    <p id="drawerRoutePlannerHint" class="max-w-xl text-[11px] text-slate-500">
+                        BOM-only machines, smart search, manual assignment, and per-stage recommendations.
+                    </p>
+                    <div id="drawerRouteBomVersionCard"
+                        class="hidden rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">BOM Version</div>
+                                <div id="drawerRouteBomVersionText" class="mt-1 font-bold">Current BOM</div>
+                                <p id="drawerRouteBomVersionHint" class="mt-1 text-xs text-amber-800"></p>
+                            </div>
+                            <button id="drawerRouteApplyLatestBomBtn" type="button"
+                                onclick="window.applyLatestBomToDrawerWO && window.applyLatestBomToDrawerWO()"
+                                class="hidden shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-white hover:bg-amber-700">
+                                Apply
+                            </button>
+                        </div>
+                        <div id="drawerRouteBomChangeActions" class="mt-3 hidden flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+                <div class="min-w-0 space-y-2">
+                    <div class="rounded-2xl border border-indigo-200 bg-white/90 px-4 py-2.5">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-xs font-bold text-slate-800">WO Flow</div>
+                                <p class="text-[11px] text-slate-500">Series waits for the previous stage. Parallel lets assigned stages run independently.</p>
+                            </div>
+                            <div class="inline-flex shrink-0 rounded-xl border border-slate-200 bg-slate-50 p-1">
+                                <label class="cursor-pointer">
+                                    <input type="radio" id="drawerRouteFlowSeries" name="drawerRouteFlowMode" value="series" class="peer sr-only" checked>
+                                    <span class="inline-flex rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 transition peer-checked:bg-slate-950 peer-checked:text-white">Series</span>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" id="drawerRouteFlowParallel" name="drawerRouteFlowMode" value="parallel" class="peer sr-only">
+                                    <span class="inline-flex rounded-lg px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 transition peer-checked:bg-slate-950 peer-checked:text-white">Parallel</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <label class="relative block">
+                        <span class="pointer-events-none absolute left-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                            <i class="ph ph-magnifying-glass text-sm"></i>
+                            Search
+                        </span>
+                        <input type="text" id="drawerRouteSearch"
+                            placeholder="Stage, machine name, machine code, or machine type..."
+                            class="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-24 pr-3 text-sm font-semibold text-slate-700 placeholder-slate-400 shadow-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100">
+                    </label>
+                </div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-white/90 p-2.5">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                    <div class="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">Stage To Machine Plan</div>
+                    <div class="text-[11px] font-semibold text-slate-400">Compact BOM-only planner</div>
+                </div>
+                <div id="drawerRouteStageList" class="min-h-[220px]"></div>
+            </div>
+        </div>
+
+        <div id="drawerMaterialReadinessCard"
+            class="rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <div class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Material Readiness</div>
+                    <div id="drawerMaterialStatusLabel" class="mt-1 text-sm font-black text-slate-900">Not Checked</div>
+                    <p id="drawerMaterialSummary" class="mt-1 text-[11px] text-slate-500">Confirm BOM materials before production starts.</p>
+                    <p id="drawerMaterialNextAction" class="mt-1 text-[11px] font-bold text-slate-600">Waiting for store confirmation.</p>
+                </div>
+                <span id="drawerMaterialStatusLamp" class="mt-1 h-3 w-3 shrink-0 rounded-full bg-slate-300"></span>
+            </div>
+            <div id="drawerMaterialRows" class="mt-3 max-h-40 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50/70 divide-y divide-slate-100"></div>
+            <label id="drawerMaterialAvailablePercentWrap" class="mt-3 block">
+                <span class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Available % For Partial Material</span>
+                <input id="drawerMaterialAvailablePercent" type="number" min="1" max="99" step="1"
+                    class="w-full rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2 text-xs font-semibold text-amber-900 placeholder-amber-300 focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                    placeholder="Enter percent store can cover now">
+            </label>
+            <label id="drawerMaterialDeliveryDateWrap" class="mt-3 block">
+                <span class="mb-1 block text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Expected Delivery Date</span>
+                <input id="drawerMaterialDeliveryDate" type="date"
+                    class="w-full rounded-xl border border-sky-200 bg-sky-50/60 px-3 py-2 text-xs font-semibold text-sky-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-100">
+            </label>
+            <textarea id="drawerMaterialShortageNote"
+                class="mt-3 hidden w-full rounded-xl border border-rose-200 bg-rose-50/60 px-3 py-2 text-xs font-semibold text-rose-800 placeholder-rose-300 focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                placeholder="Optional note for partial or not available material"></textarea>
+            <div id="drawerMaterialActions" class="mt-3 flex flex-wrap gap-2">
+                <button type="button" data-material-status="ready"
+                    onclick="window.updateDrawerMaterialReadiness && window.updateDrawerMaterialReadiness('ready')"
+                    class="drawer-material-action rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-emerald-700 hover:bg-emerald-100">
+                    OK
+                </button>
+                <button type="button" data-material-status="shortage"
+                    onclick="window.updateDrawerMaterialReadiness && window.updateDrawerMaterialReadiness('shortage')"
+                    class="drawer-material-action rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-rose-700 hover:bg-rose-100">
+                    Not Available
+                </button>
+                <button type="button" data-material-status="partial"
+                    onclick="window.updateDrawerMaterialReadiness && window.updateDrawerMaterialReadiness('partial')"
+                    class="drawer-material-action rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-amber-700 hover:bg-amber-100">
+                    Partially OK
+                </button>
+                <button type="button" data-material-status="not_checked"
+                    onclick="window.updateDrawerMaterialReadiness && window.updateDrawerMaterialReadiness('not_checked')"
+                    class="drawer-material-action rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-600 hover:bg-slate-50">
+                    Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Machine Selection -->
+        <div id="drawerMachineSection" class="hidden">
+            <label id="drawerMachineLabel" class="block text-xs font-bold text-slate-600 mb-1">Assigned Machine</label>
+            <select id="drawerMachine"
+                class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">-- Select Machine --</option>
+            </select>
+            <div id="drawerSplitHint"
+                class="mt-2 hidden text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                Remaining qty: <span id="drawerRemainingQty">0</span>. To move work to another machine, use
+                <button type="button" class="text-blue-600 hover:underline"
+                    onclick="window.openSplitModal && openSplitModal()">Split Remaining</button>.
+            </div>
+            <div id="drawerReleaseHint"
+                class="mt-2 hidden text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1">
+                Produced: <span id="drawerApprovedQty">0</span>,
+                Released: <span id="drawerReleasedQty">0</span>,
+                Available: <span id="drawerReleaseAvailable">0</span>.
+                <span id="drawerQcPendingMsg" class="ml-1 text-amber-700 hidden">QC pending.</span>
+                <button type="button" class="text-emerald-700 hover:underline"
+                    onclick="window.openReleaseModal && openReleaseModal()">Move to Next Stage</button>.
+            </div>
+        </div>
+
+        <!-- Start Date & Time (moved to bottom) -->
+        <div id="drawerStartDateSection">
+            <label id="drawerStartDateLabel" class="block text-xs font-bold text-slate-600 mb-1">Start Date & Time</label>
+            <input type="datetime-local" id="drawerStartDate"
+                class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+    </div>
+
+    <!-- Drawer Footer (Actions) -->
+    <div
+        class="p-4 border-t border-slate-200 flex flex-wrap items-center gap-2 bg-gradient-to-r from-slate-50 to-blue-50">
+        <button type="button" id="drawerCancelButton" onclick="window.closeEditDrawer && window.closeEditDrawer(); return false;"
+            class="inline-flex items-center justify-center px-4 py-2 text-sm text-slate-600 bg-white hover:bg-slate-100 rounded-xl font-semibold border border-slate-200 transition shadow-sm">
+            Cancel
+        </button>
+        <details id="drawerHistoryActions"
+            data-audit-base-href="{% url 'reports_dashboard' %}"
+            class="relative inline-flex">
+            <summary
+                class="list-none inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-100 [&::-webkit-details-marker]:hidden">
+                Audit
+                <i class="ph ph-caret-down text-sm"></i>
+            </summary>
+            <div class="absolute bottom-full left-0 z-20 mb-2 min-w-[220px] rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-200/70">
+                <div class="px-2 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Report Center</div>
+                <a id="drawerRouteAuditLink"
+                    href="{% url 'reports_dashboard' %}?section=audit"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onclick="this.closest('details')?.removeAttribute('open')"
+                    class="mt-1 flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                    <span>WO Audit</span>
+                    <i class="ph ph-arrow-square-out text-slate-400"></i>
+                </a>
+                <a id="drawerStageAuditLink"
+                    href="{% url 'reports_dashboard' %}?section=audit"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onclick="this.closest('details')?.removeAttribute('open')"
+                    class="hidden flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50">
+                    <span>Stage Audit</span>
+                    <i class="ph ph-arrow-square-out text-indigo-300"></i>
+                </a>
+                <a id="drawerMachineAuditLink"
+                    href="{% url 'reports_dashboard' %}?section=audit"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onclick="this.closest('details')?.removeAttribute('open')"
+                    class="hidden flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50">
+                    <span>Machine Audit</span>
+                    <i class="ph ph-arrow-square-out text-cyan-300"></i>
+                </a>
+            </div>
+        </details>
+        <div id="drawerStatusContainer" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+            <label for="drawerStatus" class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">WO Status</label>
+            <select id="drawerStatus"
+                class="min-w-[170px] border-0 bg-transparent pr-7 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-0 cursor-pointer">
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="hold">On Hold</option>
+                <option value="completed">Completed</option>
+                <option value="canceled">Canceled</option>
+                <option value="archived">Archived</option>
+            </select>
+        </div>
+        <div id="drawerCycleState"
+            class="hidden min-w-[260px] max-w-full rounded-xl border px-3 py-2 text-xs font-bold shadow-sm">
+            <div class="flex items-start gap-2">
+                <i id="drawerCycleIcon" class="ph ph-arrow-circle-right mt-0.5 text-base"></i>
+                <div class="min-w-0">
+                    <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Next Action</div>
+                    <div id="drawerCycleLabel" class="truncate text-slate-800">Next action</div>
+                    <div id="drawerCycleOwner" class="mt-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500"></div>
+                </div>
+            </div>
+        </div>
+        <span id="btnWrapper_Clean" class="inline-flex items-center gap-2">
+            <button id="drawerSplitBtn_New"
+                onclick="event.stopPropagation(); if(window.openSplitModal) window.openSplitModal(); else if(window.appNotify) window.appNotify('Split action is not available right now.', 'warning')"
+                class="inline-flex items-center justify-center px-4 py-2 text-sm text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl font-semibold border border-blue-200/60 transition shadow-sm hidden">
+                Split
+            </button>
+            <button id="drawerCombineSplitBtn"
+                onclick="event.stopPropagation(); if(window.combineCurrentSplitGroup) window.combineCurrentSplitGroup(); else if(window.appNotify) window.appNotify('Combine split is not available right now.', 'warning')"
+                class="inline-flex items-center justify-center px-4 py-2 text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl font-semibold border border-indigo-200/60 transition shadow-sm hidden">
+                Combine Split
+            </button>
+            <button id="drawerReleaseBtn_New"
+                onclick="event.stopPropagation(); console.log('Release Clicked (Clean)'); if(window.openReleaseModal) window.openReleaseModal(); else if(window.appNotify) window.appNotify('Release action is not available right now.', 'warning')"
+                class="inline-flex items-center justify-center px-4 py-2 text-sm text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl font-semibold border border-emerald-200/60 transition shadow-sm hidden">
+                Release
+            </button>
+        </span>
+        <button onclick="unscheduleTask()"
+            id="drawerUnscheduleButton"
+            class="inline-flex items-center justify-center px-4 py-2 text-sm text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl font-semibold border border-rose-200/60 transition shadow-sm">
+            Unschedule
+        </button>
+        <button onclick="saveTaskChanges()"
+            id="drawerSaveButton"
+            class="ml-auto inline-flex items-center justify-center px-5 py-2 text-sm text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl font-bold shadow-lg shadow-blue-200/60 transition">
+            Save Changes
+        </button>
+    </div>
+</div>
+<!-- Overlay -->
+<div id="drawerOverlay" onclick="window.closeEditDrawer && window.closeEditDrawer(); return false;" class="fixed inset-0 bg-black/20 z-[105] hidden backdrop-blur-[1px]">
+</div>
+
+<script>
+    // Store data globally
+    window.currentModalData = {
+        allMachines: [],
+        stages: []
+    };
+    const timelineManagedCloseEditDrawer = window.closeEditDrawer;
+    const timelineManagedSaveTaskChanges = window.saveTaskChanges;
+    const timelineManagedUnscheduleTask = window.unscheduleTask;
+
+    window.updateDrawerMaterialReadiness = window.updateDrawerMaterialReadiness || function (status) {
+        const wo = window.currentDrawerWO || {};
+        const woId = wo.parent_id || wo.id || document.getElementById('drawerTaskId')?.value;
+        const noteInput = document.getElementById('drawerMaterialShortageNote');
+        const availableInput = document.getElementById('drawerMaterialAvailablePercent');
+        const deliveryInput = document.getElementById('drawerMaterialDeliveryDate');
+        const shortageNote = String(noteInput?.value || '').trim();
+        const availablePercent = Number.parseFloat(availableInput?.value || '');
+        if (!woId) return;
+        if (status === 'partial' && (!Number.isFinite(availablePercent) || availablePercent <= 0 || availablePercent >= 100)) {
+            if (availableInput) {
+                availableInput.focus();
+            }
+            if (window.appNotify) window.appNotify('Enter the available percent between 1 and 99 before marking partially OK.', 'warning');
+            return;
+        }
+        const payload = { status, shortage_note: shortageNote, expected_delivery_date: deliveryInput?.value || '' };
+        if (status === 'partial') payload.available_percent = availablePercent;
+        const csrfToken = (window.getCsrfToken && window.getCsrfToken()) || (typeof getCookie === 'function' ? getCookie('csrftoken') : '');
+        fetch(`/manufacturing/api/work-order/${woId}/material-readiness/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(payload)
+        })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok || !data.success) throw new Error(data.error || 'Unable to update material readiness.');
+                window.currentDrawerWO = window.currentDrawerWO || {};
+                window.currentDrawerWO.material_readiness = data.material_readiness;
+                window.currentDrawerWO.material_readiness_status = data.material_readiness.status;
+                window.currentDrawerWO.material_shortage_note = data.material_readiness.shortage_note;
+                window.currentDrawerWO.material_available_qty = data.material_readiness.available_qty;
+                window.currentDrawerWO.material_available_percent = data.material_readiness.available_percent;
+                window.currentDrawerWO.material_expected_delivery_date = data.material_readiness.expected_delivery_date;
+                if (window.syncMaterialReadinessToPlannerCaches) {
+                    window.syncMaterialReadinessToPlannerCaches(data.work_order_id || woId, data.material_readiness);
+                }
+                if (window.renderDrawerMaterialReadiness) window.renderDrawerMaterialReadiness(window.currentDrawerWO);
+                else {
+                    const label = document.getElementById('drawerMaterialStatusLabel');
+                    const summary = document.getElementById('drawerMaterialSummary');
+                    if (label) label.textContent = data.material_readiness.status_label || status;
+                    if (summary) summary.textContent = data.material_readiness.shortage_note || 'Material readiness updated.';
+                }
+                if (window.appNotify) {
+                    window.appNotify(
+                        data.material_readiness.status === 'ready'
+                            ? 'Material ready. Refreshing planner queue...'
+                            : 'Material readiness updated.',
+                        'success'
+                    );
+                }
+                if (window.refreshPlannerQueuesAfterMaterialReadinessUpdate) {
+                    window.refreshPlannerQueuesAfterMaterialReadinessUpdate(data.material_readiness);
+                }
+            })
+            .catch(error => {
+                if (window.appNotify) window.appNotify(error.message || 'Unable to update material readiness.', 'error');
+            });
+    };
+
+    window.formatDrawerMachineLabel = function (machine, options = {}) {
+        const explicitDisplay = String(machine?.display_name || '').trim();
+        if (explicitDisplay) {
+            const status = String(machine?.status || '').trim();
+            if (options.includeStatus && status && status !== 'active' && status !== 'operational') {
+                return `${explicitDisplay} (${status})`;
+            }
+            return explicitDisplay;
+        }
+        const code = String(machine?.code || '').trim();
+        const name = String(machine?.name || '').trim();
+        const status = String(machine?.status || '').trim();
+        const primary = code && name && code !== name
+            ? `${code} - ${name}`
+            : (code || name || `Machine #${machine?.id || ''}`.trim());
+        if (options.includeStatus && status && status !== 'active' && status !== 'operational') {
+            return `${primary} (${status})`;
+        }
+        return primary;
+    };
+
+    window.updateDrawerCycleState = window.updateDrawerCycleState || function (cycleState, fallbackStatus = '') {
+        const container = document.getElementById('drawerCycleState');
+        if (!container) return;
+
+        const labelEl = document.getElementById('drawerCycleLabel');
+        const ownerEl = document.getElementById('drawerCycleOwner');
+        const iconEl = document.getElementById('drawerCycleIcon');
+        const label = String(
+            cycleState?.next_action
+            || cycleState?.label
+            || (fallbackStatus ? `Status: ${fallbackStatus}` : 'Cycle state unavailable')
+        ).trim();
+        const blocked = !!cycleState?.blocked;
+        const owner = String(cycleState?.owner_role || '').trim();
+        const blocker = String(cycleState?.blocker_reason || '').trim();
+
+        container.classList.remove(
+            'hidden',
+            'border-rose-200',
+            'bg-rose-50',
+            'text-rose-700',
+            'border-slate-200',
+            'bg-white',
+            'text-slate-700'
+        );
+        container.classList.add(
+            blocked ? 'border-rose-200' : 'border-slate-200',
+            blocked ? 'bg-rose-50' : 'bg-white',
+            blocked ? 'text-rose-700' : 'text-slate-700'
+        );
+
+        if (labelEl) labelEl.textContent = label;
+        if (ownerEl) {
+            ownerEl.textContent = [
+                owner ? `Owner: ${owner}` : '',
+                blocker ? `Blocked: ${blocker}` : '',
+            ].filter(Boolean).join(' | ');
+        }
+        if (iconEl) {
+            iconEl.className = blocked
+                ? 'ph ph-warning-circle mt-0.5 text-base'
+                : 'ph ph-arrow-circle-right mt-0.5 text-base';
+        }
+    };
+
+    window.isDrawerPlannerClosed = window.isDrawerPlannerClosed || function (wo = window.currentDrawerWO) {
+        const cycleState = wo?.cycle_state || {};
+        const step = String(cycleState.step || '').toLowerCase();
+        const label = String(cycleState.label || '').toLowerCase();
+        return !!wo?.closed_by_planner || step === 'planner_closed' || label === 'planner closed';
+    };
+
+    window.updateDrawerIdentity = window.updateDrawerIdentity || function (wo = window.currentDrawerWO) {
+        const titleEl = document.getElementById('drawerTitle');
+        const subtitleEl = document.getElementById('drawerSubtitle');
+        const routeCodeEl = document.getElementById('drawerRouteWorkOrderCode');
+        const routeProductEl = document.getElementById('drawerRouteProductName');
+        const displayId = String(wo?.display_work_order_id || wo?.parent_id || wo?.id || '').trim();
+        const productName = String(wo?.product_name || wo?.product || 'Work Order').trim();
+        const title = displayId ? `WO #${displayId} - ${productName}` : productName;
+        if (titleEl) titleEl.textContent = title;
+        if (routeCodeEl) routeCodeEl.textContent = displayId ? `WO #${displayId}` : 'WO';
+        if (routeProductEl) routeProductEl.textContent = productName;
+        if (subtitleEl) {
+            const customer = String(wo?.customer?.name || wo?.customer || wo?.customer_name || '').trim();
+            subtitleEl.textContent = customer ? `Customer: ${customer}` : 'No customer assigned';
+        }
+    };
+
+    window.applyDrawerClosedState = window.applyDrawerClosedState || function (wo = window.currentDrawerWO) {
+        const closed = window.isDrawerPlannerClosed(wo);
+        const cancelButton = document.getElementById('drawerCancelButton');
+        const saveButton = document.getElementById('drawerSaveButton');
+        const unscheduleButton = document.getElementById('drawerUnscheduleButton');
+        const splitBtn = document.getElementById('drawerSplitBtn_New');
+        const releaseBtn = document.getElementById('drawerReleaseBtn_New');
+        const splitHint = document.getElementById('drawerSplitHint');
+        const releaseHint = document.getElementById('drawerReleaseHint');
+        const routeCard = document.getElementById('drawerRoutePlannerCard');
+
+        [
+            'drawerQuantity',
+            'drawerPriority',
+            'drawerStatus',
+            'drawerStartDate',
+            'drawerStage',
+            'drawerMachine',
+            'drawerRouteSearch',
+            'drawerRouteFlowSeries',
+            'drawerRouteFlowParallel',
+        ].forEach((id) => {
+            const element = document.getElementById(id);
+            if (!element) return;
+            element.disabled = closed;
+            element.classList.toggle('opacity-60', closed);
+            element.classList.toggle('cursor-not-allowed', closed);
+        });
+
+        if (routeCard) {
+            routeCard.classList.toggle('opacity-75', closed);
+            routeCard.querySelectorAll('input, select, button').forEach((element) => {
+                element.disabled = closed;
+                element.classList.toggle('opacity-60', closed);
+                element.classList.toggle('cursor-not-allowed', closed);
+            });
+        }
+
+        if (unscheduleButton) unscheduleButton.classList.toggle('hidden', closed);
+        if (splitBtn) splitBtn.classList.toggle('hidden', closed);
+        if (releaseBtn) releaseBtn.classList.toggle('hidden', closed);
+        if (splitHint) splitHint.classList.toggle('hidden', closed);
+        if (releaseHint) releaseHint.classList.toggle('hidden', closed);
+        if (saveButton) {
+            saveButton.disabled = closed;
+            saveButton.textContent = closed ? 'Already Closed' : 'Save Changes';
+            saveButton.classList.toggle('opacity-70', closed);
+            saveButton.classList.toggle('cursor-not-allowed', closed);
+        }
+        if (cancelButton) {
+            cancelButton.textContent = closed ? 'Close' : 'Cancel';
+        }
+    };
+
+    if (!window.openWorkOrderModal) window.openWorkOrderModal = async function (woId) {
+        console.log("Opening WO", woId);
+        try {
+            const response = await fetch(`/manufacturing/api/workorder/${woId}/json/`);
+            const data = await response.json();
+
+            if (data.success) {
+                const wo = data.work_order;
+                const machines = data.suggested_machines || [];
+                const typeNeeded = data.machine_type_needed;
+
+                // Store for dynamic filtering
+                window.currentModalData.allMachines = data.all_machines || machines;
+                window.currentModalData.stages = data.stages || [];
+
+                // GLOBAL VARS FOR TIMELINE.JS (Split/Release)
+                window.currentDrawerWO = wo;
+                console.log("DEBUG: Globals set for WO", wo.id);
+                window.currentDrawerRemainingQty = wo.remaining_qty;
+                window.currentDrawerReleaseAvailable = wo.available_release_qty;
+
+                // Determine Next Stage
+                window.currentDrawerNextStage = null;
+                if (window.currentModalData.stages.length > 0 && wo.current_stage_id) {
+                    const idx = window.currentModalData.stages.findIndex(s => s.id == wo.current_stage_id);
+                    if (idx >= 0 && idx < window.currentModalData.stages.length - 1) {
+                        window.currentDrawerNextStage = window.currentModalData.stages[idx + 1];
+                    }
+                } else if (window.currentModalData.stages.length > 0 && !wo.current_stage_id) {
+                    // If no current stage, maybe first stage is next?
+                    window.currentDrawerNextStage = window.currentModalData.stages[0];
+                }
+
+                window.updateDrawerIdentity(wo);
+
+                // Populate Fields
+                const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+                const setHtml = (id, val) => { const el = document.getElementById(id); if (el) el.innerHTML = val; };
+
+                setVal('drawerQuantity', wo.quantity);
+                setVal('drawerPriority', wo.priority);
+                setVal('drawerStatus', wo.status);
+                window.updateDrawerCycleState(wo.cycle_state, wo.status);
+                window.applyDrawerClosedState(wo);
+                setHtml('drawerCustomerDisplay', wo.customer || 'No Customer');
+                window.updateDrawerBomVersionCard && window.updateDrawerBomVersionCard(wo);
+                window.updateDrawerBomAttachmentCard && window.updateDrawerBomAttachmentCard(wo);
+                setVal('drawerTaskId', wo.id);
+                const qtyInput = document.getElementById('drawerQuantity');
+                const minimumEditableQty = Number.parseInt(wo.minimum_editable_quantity || 0, 10) || 0;
+                if (qtyInput) {
+                    qtyInput.min = String(Math.max(minimumEditableQty, 0));
+                    qtyInput.dataset.minimumEditableQuantity = String(Math.max(minimumEditableQty, 0));
+                }
+                const qtyBreakdown = document.getElementById('drawerQtyBreakdown');
+                if (qtyBreakdown) {
+                    setHtml('drawerBaseQty', wo.base_quantity ?? wo.quantity ?? 0);
+                    setHtml('drawerCompQty', wo.scrap_compensation_qty ?? 0);
+                    setHtml('drawerFinishedQty', wo.reported_qty ?? 0);
+                    setHtml('drawerMinQty', minimumEditableQty);
+                    qtyBreakdown.classList.remove('hidden');
+                    const qtyFloorMsg = document.getElementById('drawerQtyFloorMsg');
+                    if (qtyFloorMsg) {
+                        qtyFloorMsg.classList.toggle('hidden', minimumEditableQty <= 0);
+                    }
+                }
+                // Date formatting for datetime-local (YYYY-MM-DDTHH:MM)
+                if (wo.start_date) {
+                    const d = new Date(wo.start_date);
+                    // Adjust to local ISO string roughly or use library.
+                    // Simple hack:
+                    const localIso = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    setVal('drawerStartDate', localIso);
+                } else {
+                    setVal('drawerStartDate', '');
+                }
+
+                // --- Populate Stages (Old Hidden) & New Route Board ---
+                const stageSelect = document.getElementById('drawerStage');
+                const stageContainer = document.getElementById('drawerStageContainer');
+                const categorySelect = document.getElementById('drawerCategory');
+
+                if (stageSelect) {
+                    stageSelect.innerHTML = '<option value="">-- Select Stage --</option>';
+
+                    stageSelect.onchange = function () {
+                        window.applyMachineFilters(this.value);
+                    };
+
+                    if (window.currentModalData.stages.length > 0) {
+                        window.currentModalData.stages.forEach(stage => {
+                            const opt = document.createElement('option');
+                            opt.value = stage.id;
+                            opt.textContent = `${stage.order}. ${stage.name}`;
+                            stageSelect.appendChild(opt);
+                        });
+
+                        if (stageContainer) stageContainer.classList.remove('hidden');
+                        stageSelect.value = wo.current_stage_id || "";
+                    } else {
+                        if (stageContainer) stageContainer.classList.add('hidden');
+                    }
+                }
+
+                // Populate Route Board
+                const routeStageList = document.getElementById('drawerRouteStageList');
+                if (routeStageList) {
+                    routeStageList.innerHTML = '';
+                    if (window.currentModalData.stages && window.currentModalData.stages.length > 0) {
+                        window.currentModalData.stages.forEach((stage, idx) => {
+                            let validMachines = Array.isArray(stage.candidate_machines) && stage.candidate_machines.length > 0
+                                ? stage.candidate_machines
+                                : window.currentModalData.allMachines;
+                            if ((!Array.isArray(stage.candidate_machines) || stage.candidate_machines.length === 0) && stage.machine_type) {
+                                validMachines = validMachines.filter(m => m.type === stage.machine_type || m.category === stage.machine_type);
+                            }
+                            
+                            let selectHtml = `<select class="w-full px-3 py-2 mt-1 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 route-machine-select" data-stage-id="${stage.id}">
+                                <option value="">-- Auto Assign or Select Machine --</option>`;
+                            validMachines.forEach(m => {
+                                let selected = (wo.current_stage_id == stage.id && wo.machine_id == m.id) ? 'selected' : '';
+                                const machineLabel = window.formatDrawerMachineLabel(m, { includeStatus: true });
+                                selectHtml += `<option value="${m.id}" ${selected}>${machineLabel}</option>`;
+                            });
+                            selectHtml += `</select>`;
+
+                            const row = document.createElement('div');
+                            row.className = "flex flex-col gap-1 p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition";
+                            row.innerHTML = `
+                                <div class="flex items-center justify-between">
+                                    <div class="text-sm font-bold text-slate-800">${stage.order}. ${stage.name}</div>
+                                    <div class="text-[10px] uppercase font-bold text-slate-400">${stage.machine_type || 'Any'}</div>
+                                </div>
+                                <div>
+                                    ${selectHtml}
+                                </div>
+                            `;
+                            routeStageList.appendChild(row);
+                        });
+                    } else {
+                        routeStageList.innerHTML = '<div class="text-sm text-slate-500 p-4 text-center">No stages defined in BOM.</div>';
+                    }
+                }
+
+                // --- Populate Categories ---
+                if (categorySelect) {
+                    categorySelect.onchange = function () {
+                        window.applyMachineFilters(stageSelect ? stageSelect.value : null);
+                    };
+                }
+
+                // --- Populate Machines (Initially filtered by current stage/category if exists) ---
+                window.applyMachineFilters(stageSelect ? stageSelect.value : null, wo.machine_id);
+
+
+                // Hints Logic (Split / Release)
+                // SPLIT: If quantity > 0 and assigned? Actually logic is usually if partial work done.
+                // Simplified: Always show split if quantity > 1
+                const splitDiv = document.getElementById('drawerSplitHint');
+                const splitBtn = document.getElementById('drawerSplitBtn');
+                const remQtySpan = document.getElementById('drawerRemainingQty');
+                if (wo.quantity > 1) {
+                    if (splitDiv) splitDiv.classList.remove('hidden');
+                    if (splitBtn) splitBtn.classList.remove('hidden');
+                    if (remQtySpan) remQtySpan.innerText = wo.quantity; // Or calculated logic
+                } else {
+                    if (splitDiv) splitDiv.classList.add('hidden');
+                    if (splitBtn) splitBtn.classList.add('hidden');
+                }
+
+                // RELEASE: If approved quantity > 0
+                // Assuming logic is handled by modal opening or we have fields.
+                // For now, simple check:
+                const relDiv = document.getElementById('drawerReleaseHint');
+                const relBtn = document.getElementById('drawerReleaseBtn');
+                if (wo.available_release_qty && wo.available_release_qty > 0) {
+                    if (relDiv) relDiv.classList.remove('hidden');
+                    if (relBtn) relBtn.classList.remove('hidden');
+                    // set spans...
+                } else {
+                    if (relDiv) relDiv.classList.add('hidden');
+                    if (relBtn) relBtn.classList.add('hidden');
+                }
+
+                window.applyDrawerClosedState(wo);
+
+                openEditDrawer();
+
+            } else if (window.appNotify) {
+                window.appNotify("Could not load order details.", 'error');
+            }
+        } catch (e) {
+            console.error("Error loading WO details", e);
+            if (window.appNotify) window.appNotify("Error loading details.", 'error');
+        }
+    };
+
+    window.filterMachinesByStage = function (stageId, selectedMachineId = null) {
+        return window.applyMachineFilters(stageId, selectedMachineId);
+    }
+
+    window.populateCategorySelect = function (machines, preferredCategory = '', selectedMachineId = null) {
+        const select = document.getElementById('drawerCategory');
+        if (!select) return;
+
+        const categories = new Set();
+        machines.forEach(m => {
+            if (m.category) categories.add(m.category);
+        });
+        const sorted = Array.from(categories).sort();
+        select.innerHTML = '';
+        if (sorted.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = 'No categories';
+            opt.disabled = true;
+            opt.selected = true;
+            select.appendChild(opt);
+            return;
+        }
+        sorted.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            select.appendChild(opt);
+        });
+
+        // Prefer an explicit category, then selected machine's category
+        let candidate = preferredCategory || '';
+        if (!candidate && selectedMachineId) {
+            const selected = machines.find(m => String(m.id) === String(selectedMachineId));
+            if (selected && selected.category) candidate = selected.category;
+        }
+        if (candidate && categories.has(candidate)) {
+            select.value = candidate;
+        } else {
+            select.value = '';
+        }
+    }
+
+    window.applyMachineFilters = function (stageId, selectedMachineId = null) {
+        const machineSelect = document.getElementById('drawerMachine');
+        if (!machineSelect) return;
+
+        // Find stage requirements
+        const stage = window.currentModalData.stages.find(s => s.id == stageId);
+        let validMachines = Array.isArray(stage?.candidate_machines) && stage.candidate_machines.length > 0
+            ? stage.candidate_machines
+            : window.currentModalData.allMachines;
+        const categorySelect = document.getElementById('drawerCategory');
+
+        if (stage && stage.machine_type && (!Array.isArray(stage.candidate_machines) || stage.candidate_machines.length === 0)) {
+            // Filter
+            validMachines = window.currentModalData.allMachines.filter(m => m.type === stage.machine_type || m.category === stage.machine_type);
+            console.log(`Filtering for stage ${stage.name} (Type: ${stage.machine_type}) -> ${validMachines.length} machines`);
+        }
+
+        // Keep current selection if possible, otherwise default to stage main category
+        const existingCategory = categorySelect ? categorySelect.value : '';
+        const preferredCategory = existingCategory || (stage ? stage.machine_type : '');
+        window.populateCategorySelect(validMachines, preferredCategory, selectedMachineId);
+
+        const finalCategory = categorySelect ? categorySelect.value : '';
+        const filteredMachines = finalCategory ? validMachines.filter(m => m.category === finalCategory) : validMachines;
+        window.populateMachineSelect(filteredMachines, selectedMachineId);
+    }
+
+    window.populateMachineSelect = function (machines, selectedId) {
+        const select = document.getElementById('drawerMachine');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">-- Select Machine --</option>';
+        machines.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = window.formatDrawerMachineLabel(m, { includeStatus: true });
+            if (m.status !== 'active') opt.classList.add('text-red-500');
+            select.appendChild(opt);
+        });
+
+        if (selectedId) select.value = selectedId;
+    }
+
+
+    window.openEditDrawer = function () {
+        const d = document.getElementById('editTaskDrawer');
+        const o = document.getElementById('drawerOverlay');
+        if (d) d.classList.remove('translate-x-full');
+        if (o) o.classList.remove('hidden');
+        if (document.body) document.body.classList.add('work-order-drawer-open');
+    };
+
+    window.closeEditDrawer = function () {
+        if (typeof timelineManagedCloseEditDrawer === 'function') {
+            return timelineManagedCloseEditDrawer();
+        }
+        const d = document.getElementById('editTaskDrawer');
+        const o = document.getElementById('drawerOverlay');
+        if (d) d.classList.add('translate-x-full');
+        if (o) o.classList.add('hidden');
+        if (document.body) {
+            document.body.classList.remove('work-order-drawer-open');
+            document.body.classList.remove('route-planner-open');
+        }
+    };
+
+    // Save Logic
+    window.saveTaskChanges = function () {
+        if (window.isDrawerPlannerClosed(window.currentDrawerWO)) {
+            if (window.appNotify) window.appNotify("This work order is planner closed and cannot be edited.", 'warning');
+            window.applyDrawerClosedState(window.currentDrawerWO);
+            return;
+        }
+        if (typeof timelineManagedSaveTaskChanges === 'function') {
+            return timelineManagedSaveTaskChanges();
+        }
+        const id = document.getElementById('drawerTaskId').value;
+        if (!id) return;
+        const quantityInput = document.getElementById('drawerQuantity');
+        const requestedQuantity = Number.parseInt(quantityInput?.value || '', 10);
+        const minimumEditableQty = Number.parseInt(quantityInput?.dataset.minimumEditableQuantity || quantityInput?.min || '0', 10) || 0;
+
+        if (!Number.isFinite(requestedQuantity) || requestedQuantity <= 0) {
+            if (window.appNotify) window.appNotify("Quantity must be greater than zero.", 'error');
+            return;
+        }
+        if (requestedQuantity < minimumEditableQty) {
+            if (window.appNotify) window.appNotify(`Quantity cannot be below already reported output (${minimumEditableQty}).`, 'error');
+            return;
+        }
+
+        // Snapshot state for Undo before saving changes
+        if (window.pushUndoStateById) window.pushUndoStateById(id);
+
+        // Gather route assignments
+        const routeSelects = document.querySelectorAll('.route-machine-select');
+        const route_assignments = [];
+        routeSelects.forEach(sel => {
+            if (sel.value) {
+                route_assignments.push({
+                    stage_id: sel.getAttribute('data-stage-id'),
+                    machine_id: sel.value,
+                    selection_mode: 'manual'
+                });
+            }
+        });
+
+        // Determine Flow Mode
+        let flowMode = 'series';
+        const flowParallel = document.getElementById('drawerRouteFlowParallel');
+        if (flowParallel && flowParallel.checked) {
+            flowMode = 'parallel';
+        }
+
+        // Basic payload for WorkOrderUpdateView (/update/)
+        const updatePayload = {
+            quantity: document.getElementById('drawerQuantity').value,
+            priority: document.getElementById('drawerPriority').value,
+            start_date: document.getElementById('drawerStartDate').value,
+            status: document.getElementById('drawerStatus').value,
+            machine_id: route_assignments.length > 0 ? route_assignments[0].machine_id : null,
+            stage_id: route_assignments.length > 0 ? route_assignments[0].stage_id : null,
+        };
+
+        const csrfToken = getCookie('csrftoken') || (window.getCsrfToken && window.getCsrfToken());
+
+        // Call update first for basic fields
+        fetch(`/manufacturing/api/workorder/${id}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(updatePayload)
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                // Now check if we need to call schedule-work-order
+                const startDate = document.getElementById('drawerStartDate').value;
+                if (startDate && route_assignments.length > 0) {
+                    const schedulePayload = {
+                        start_date: startDate,
+                        quantity: document.getElementById('drawerQuantity').value,
+                        priority: document.getElementById('drawerPriority').value,
+                        status: document.getElementById('drawerStatus').value,
+                        route_assignments: route_assignments,
+                        operation_flow_mode: flowMode
+                    };
+                    fetch(`/manufacturing/api/schedule-work-order/${id}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify(schedulePayload)
+                    })
+                    .then(r => r.json())
+                    .then(scheduleData => {
+                        if (scheduleData.success) {
+                            closeEditDrawer();
+                            if (window.initGanttChart) window.initGanttChart(true);
+                            else if (window.reloadPlannerWorkspacePreservingState) window.reloadPlannerWorkspacePreservingState();
+                            else location.reload();
+                        } else {
+                            if (window.appNotify) window.appNotify("Error scheduling: " + (scheduleData.error || "Unknown"), 'error');
+                        }
+                    });
+                } else {
+                    closeEditDrawer();
+                    if (window.initGanttChart) window.initGanttChart(true);
+                    else if (window.reloadPlannerWorkspacePreservingState) window.reloadPlannerWorkspacePreservingState();
+                    else location.reload();
+                }
+            } else {
+                if (window.appNotify) window.appNotify("Error saving: " + (data.error || "Unknown"), 'error');
+            }
+        }).catch(err => {
+            console.error(err);
+            if (window.appNotify) window.appNotify("Network error occurred.", 'error');
+        });
+    };
+
+    // Unschedule Logic
+    window.unscheduleTask = async function () {
+        if (window.isDrawerPlannerClosed(window.currentDrawerWO)) {
+            if (window.appNotify) window.appNotify("This work order is planner closed and cannot be unscheduled.", 'warning');
+            window.applyDrawerClosedState(window.currentDrawerWO);
+            return;
+        }
+        if (typeof timelineManagedUnscheduleTask === 'function') {
+            return timelineManagedUnscheduleTask();
+        }
+        const id = document.getElementById('drawerTaskId').value;
+        const confirmed = typeof window.appConfirm === 'function'
+            ? await window.appConfirm("Are you sure you want to remove this order from the schedule?", {
+                title: 'Unschedule Work Order',
+                confirmText: 'Unschedule',
+                kind: 'warning'
+            })
+            : window.confirm("Are you sure you want to remove this order from the schedule?");
+        if (!confirmed) return;
+
+        // Use the alias URL or direct path
+        fetch(`/manufacturing/api/workorder/${id}/unschedule/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                closeEditDrawer();
+                if (window.initGanttChart) window.initGanttChart(true);
+                else if (window.reloadPlannerWorkspacePreservingState) window.reloadPlannerWorkspacePreservingState();
+                else location.reload();
+                if (window.appNotify) window.appNotify("Work order removed from schedule.", 'success');
+            } else {
+                if (window.appNotify) window.appNotify("Error: " + (data.error || "Unknown Error"), 'error');
+            }
+        });
+    };
+
+    window.updateDrawerBomVersionCard = function (wo) {
+        const targets = [
+            {
+                card: document.getElementById('drawerBomVersionCard'),
+                text: document.getElementById('drawerBomVersionText'),
+                hint: document.getElementById('drawerBomVersionHint'),
+                button: document.getElementById('drawerApplyLatestBomBtn'),
+                actions: document.getElementById('drawerBomChangeActions'),
+            },
+            {
+                card: document.getElementById('drawerRouteBomVersionCard'),
+                text: document.getElementById('drawerRouteBomVersionText'),
+                hint: document.getElementById('drawerRouteBomVersionHint'),
+                button: document.getElementById('drawerRouteApplyLatestBomBtn'),
+                actions: document.getElementById('drawerRouteBomChangeActions'),
+            },
+        ].filter(target => target.card && target.text && target.hint && target.button);
+        if (!targets.length) return;
+
+        const currentVersion = wo?.bom_version || 'Not captured';
+        const bomChange = wo?.bom_change || {};
+        const hasActionRequired = Boolean(wo?.bom_change_action_required || bomChange.action_required);
+        const latestBomId = bomChange.latest_bom_id || wo?.latest_bom_id;
+        const latestVersion = bomChange.latest_bom_version || wo?.latest_bom_version || '';
+        const hasNewerBom = Boolean(latestBomId);
+        targets.forEach(({ card, text, hint, button, actions }) => {
+            card.classList.toggle('hidden', !wo?.bom_id);
+            if (actions) {
+                actions.classList.add('hidden');
+                actions.innerHTML = '';
+            }
+            text.textContent = latestVersion
+                ? `WO uses ${currentVersion}; latest active BOM is ${latestVersion}.`
+                : `WO uses ${currentVersion}.`;
+
+            if (hasActionRequired && bomChange.has_started && actions) {
+                hint.textContent = `Production has already started. Reported qty ${Number(bomChange.reported_qty || 0)} must be handled before continuing.`;
+                button.classList.add('hidden');
+                button.disabled = true;
+                actions.classList.remove('hidden');
+                actions.innerHTML = `
+                    <button type="button" data-bom-decision="archive_new" class="rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] text-white hover:bg-slate-800">Archive + New WO</button>
+                    <button type="button" data-bom-decision="scrap_apply" class="rounded-lg bg-rose-600 px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] text-white hover:bg-rose-700">Scrap Done + Apply</button>
+                    <button type="button" data-bom-decision="continue_old" class="rounded-lg border border-amber-300 bg-white px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] text-amber-800 hover:bg-amber-100">Continue Old BOM</button>
+                `;
+                actions.querySelectorAll('[data-bom-decision]').forEach((actionButton) => {
+                    actionButton.addEventListener('click', () => {
+                        window.decideBomChangeForDrawerWO && window.decideBomChangeForDrawerWO(actionButton.dataset.bomDecision);
+                    });
+                });
+            } else if (hasNewerBom && wo?.can_apply_latest_bom) {
+                hint.textContent = 'This WO is still eligible. Applying will refresh its BOM snapshot and reset material readiness.';
+                button.classList.remove('hidden');
+                button.disabled = false;
+                button.classList.remove('opacity-60', 'cursor-not-allowed');
+            } else if (hasNewerBom) {
+                hint.textContent = wo?.apply_latest_bom_blocker || 'This WO cannot apply the latest BOM.';
+                button.classList.remove('hidden');
+                button.disabled = true;
+                button.classList.add('opacity-60', 'cursor-not-allowed');
+            } else {
+                hint.textContent = 'No newer active BOM version is available.';
+                button.classList.add('hidden');
+                button.disabled = true;
+            }
+        });
+    };
+
+    window.updateDrawerBomAttachmentCard = function (wo) {
+        const card = document.getElementById('drawerBomAttachmentCard');
+        const name = document.getElementById('drawerBomAttachmentName');
+        const open = document.getElementById('drawerBomAttachmentOpen');
+        if (!card || !name || !open) return;
+
+        const attachment = wo?.bom_attachment || null;
+        card.classList.toggle('hidden', !attachment);
+        if (!attachment) {
+            open.removeAttribute('href');
+            name.textContent = 'Attachment';
+            return;
+        }
+        name.textContent = attachment.name || 'BOM attachment';
+        open.href = attachment.download_url || attachment.url || '#';
+    };
+
+    window.applyLatestBomToDrawerWO = async function () {
+        const wo = window.currentDrawerWO;
+        if (!wo?.id) return;
+        if (!wo.can_apply_latest_bom) {
+            if (window.appNotify) window.appNotify(wo.apply_latest_bom_blocker || 'This WO cannot apply the latest BOM.', 'warning');
+            return;
+        }
+
+        const confirmed = typeof window.appConfirm === 'function'
+            ? await window.appConfirm(`Apply BOM ${wo.latest_bom_version} to WO-${wo.display_work_order_id || wo.id}? Existing production history will not be rewritten.`, {
+                title: 'Apply Latest BOM',
+                confirmText: 'Apply BOM',
+                kind: 'warning'
+            })
+            : window.confirm(`Apply BOM ${wo.latest_bom_version} to this work order?`);
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/manufacturing/api/work-order/${wo.id}/apply-latest-bom/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') || (window.getCsrfToken && window.getCsrfToken()) }
+            });
+            const data = await response.json();
+            if (!data.success) {
+                if (window.appNotify) window.appNotify(data.error || 'Could not apply latest BOM.', 'error');
+                return;
+            }
+            if (window.appNotify) window.appNotify(data.message || 'Latest BOM applied.', 'success');
+            await window.openWorkOrderModal(wo.id);
+            if (window.initGanttChart) window.initGanttChart(true);
+            else if (window.reloadPlannerWorkspacePreservingState) window.reloadPlannerWorkspacePreservingState();
+        } catch (err) {
+            console.error(err);
+            if (window.appNotify) window.appNotify('Network error while applying latest BOM.', 'error');
+        }
+    };
+
+    window.decideBomChangeForDrawerWO = async function (decision) {
+        const wo = window.currentDrawerWO;
+        if (!wo?.id || !decision) return;
+        const labels = {
+            archive_new: 'Archive this WO and create a new WO with the latest BOM?',
+            scrap_apply: 'Scrap reported finished quantity and apply the latest BOM to this WO?',
+            continue_old: 'Continue this WO with the old BOM version?',
+        };
+        const confirmed = typeof window.appConfirm === 'function'
+            ? await window.appConfirm(labels[decision] || 'Apply BOM change decision?', {
+                title: 'BOM Change Decision',
+                confirmText: 'Confirm',
+                kind: decision === 'continue_old' ? 'info' : 'warning'
+            })
+            : window.confirm(labels[decision] || 'Apply BOM change decision?');
+        if (!confirmed) return;
+
+        const note = decision === 'continue_old' && typeof window.prompt === 'function'
+            ? (window.prompt('Reason for continuing with the old BOM:', '') || '')
+            : '';
+        try {
+            const response = await fetch(`/manufacturing/api/work-order/${wo.id}/bom-change-decision/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken') || (window.getCsrfToken && window.getCsrfToken())
+                },
+                body: JSON.stringify({ decision, note })
+            });
+            const data = await response.json();
+            if (!data.success) {
+                if (window.appNotify) window.appNotify(data.error || 'Could not apply BOM change decision.', 'error');
+                return;
+            }
+            if (window.appNotify) window.appNotify(data.message || 'BOM change decision saved.', 'success');
+            await window.openWorkOrderModal(data.replacement_wo_id || wo.id);
+            if (window.initGanttChart) window.initGanttChart(true);
+            else if (window.reloadPlannerWorkspacePreservingState) window.reloadPlannerWorkspacePreservingState();
+        } catch (err) {
+            console.error(err);
+            if (window.appNotify) window.appNotify('Network error while applying BOM change decision.', 'error');
+        }
+    };
+
+    (function installBomVersionDrawerHook() {
+        function refreshBomCardSoon() {
+            [0, 100, 350].forEach((delay) => {
+                window.setTimeout(() => {
+                    if (window.updateDrawerBomVersionCard && window.currentDrawerWO) {
+                        window.updateDrawerBomVersionCard(window.currentDrawerWO);
+                    }
+                }, delay);
+            });
+        }
+
+        function install() {
+            const originalOpen = window.openWorkOrderModal;
+            if (!originalOpen || originalOpen.__bomVersionHooked) return false;
+            const wrappedOpen = async function (...args) {
+                const result = originalOpen.apply(this, args);
+                try {
+                    await Promise.resolve(result);
+                } finally {
+                    refreshBomCardSoon();
+                }
+                return result;
+            };
+            wrappedOpen.__bomVersionHooked = true;
+            wrappedOpen.__originalOpenWorkOrderModal = originalOpen;
+            window.openWorkOrderModal = wrappedOpen;
+            if (window.__timelineOpenWorkOrderModal === originalOpen) {
+                window.__timelineOpenWorkOrderModal = wrappedOpen;
+            }
+            return true;
+        }
+
+        window.addEventListener('load', () => {
+            if (install()) return;
+            let attempts = 0;
+            const timer = window.setInterval(() => {
+                attempts += 1;
+                if (install() || attempts >= 20) {
+                    window.clearInterval(timer);
+                }
+            }, 100);
+        });
+    })();
+
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>

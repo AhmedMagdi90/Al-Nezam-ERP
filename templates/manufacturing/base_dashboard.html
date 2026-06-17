@@ -1,0 +1,1555 @@
+{% load static i18n tenant_i18n %}
+<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}
+{% get_current_language_bidi as LANGUAGE_BIDI %}
+<html lang="{{ LANGUAGE_CODE }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr' }}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}Nezam{% endblock %}</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- TAILWIND CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 800: '#1e293b', 900: '#0f172a' }
+                    },
+                    letterSpacing: {
+                        tightest: '-0.05em',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script type="text/javascript"
+        src="https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js"></script>
+    <link href="https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js?v=2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', 'Cairo', sans-serif;
+            background-color: #f8fafc;
+            /* Slate-50 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+
+        html[dir="rtl"] body {
+            font-family: 'Cairo', 'Inter', sans-serif;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible,
+        [role="button"]:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18), 0 0 0 6px rgba(37, 99, 235, 0.12);
+            border-color: rgba(37, 99, 235, 0.45);
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        .glass-panel-premium {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.05),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+        }
+
+        .dream-glow-blue {
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.2), 0 0 80px rgba(59, 130, 246, 0.1);
+        }
+
+        .dream-glow-emerald {
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.2), 0 0 80px rgba(16, 185, 129, 0.1);
+        }
+
+        .dream-glow-amber {
+            box-shadow: 0 0 40px rgba(245, 158, 11, 0.2), 0 0 80px rgba(245, 158, 11, 0.1);
+        }
+
+        .glass-panel-dark {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            /* Slate-300 */
+            border-radius: 4px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+            /* Slate-400 */
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* Vis.js Overrides for App Shell */
+        .vis-item {
+            border-color: transparent;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+
+        .vis-item.vis-selected {
+            box-shadow: 0 0 0 2px #3b82f6;
+            /* Blue-500 ring */
+            border-color: #3b82f6;
+        }
+
+        .vis-time-axis .vis-text {
+            color: #64748b;
+            /* Slate-500 */
+            font-weight: 500;
+        }
+
+        /* Animations */
+        .hover-lift {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Modern Micro-interactions */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .animate-slide-in-right {
+            animation: slideInRight 0.4s ease-out;
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        /* Enhanced Hover Effects */
+        .hover-scale {
+            transition: transform 0.2s ease;
+        }
+
+        .hover-scale:hover {
+            transform: scale(1.05);
+        }
+
+        .hover-glow {
+            transition: box-shadow 0.2s ease;
+        }
+
+        .hover-glow:hover {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Loading States */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* Ripple Effect */
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ripple::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .ripple:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* Smooth Transitions */
+        * {
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        /* Focus States */
+        .focus-ring:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Page Transitions */
+        .page-transition {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .page-transition-enter {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .page-transition-enter-active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        #app-top-nav {
+            min-width: 0;
+        }
+
+        #app-top-nav .app-top-nav-shell,
+        #app-top-nav .app-top-nav-brand,
+        #app-top-nav .app-top-nav-brand-meta,
+        #app-top-nav .app-top-nav-sections,
+        #app-top-nav .app-top-nav-section-strip,
+        #app-top-nav .app-top-nav-actions {
+            min-width: 0;
+        }
+
+        #app-top-nav .app-top-nav-section-strip {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        #app-top-nav .app-top-nav-section-strip::-webkit-scrollbar {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            #app-top-nav {
+                height: auto;
+            }
+
+            #app-top-nav .app-top-nav-shell {
+                flex-wrap: wrap;
+                align-items: center;
+                row-gap: 0.75rem;
+            }
+
+            #app-top-nav .app-top-nav-brand {
+                flex: 1 1 auto;
+            }
+
+            #app-top-nav .app-top-nav-sections {
+                order: 3;
+                flex: 1 1 100%;
+            }
+
+            #app-top-nav .app-top-nav-section-strip {
+                justify-content: flex-start;
+                padding-bottom: 0.125rem;
+            }
+
+            #app-top-nav .app-top-nav-actions {
+                margin-left: auto;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #app-top-nav .app-top-nav-shell {
+                gap: 0.625rem;
+                padding: 0.7rem 0.75rem;
+            }
+
+            #app-top-nav .app-top-nav-brand {
+                gap: 0.65rem;
+            }
+
+            #app-top-nav .app-top-nav-brand-logo {
+                width: 2.35rem;
+                height: 2.35rem;
+            }
+
+            #app-top-nav .app-top-nav-brand-meta .app-top-nav-suite {
+                display: none;
+            }
+
+            #app-top-nav .app-top-nav-brand-meta .app-top-nav-company {
+                font-size: 0.82rem;
+                line-height: 1rem;
+            }
+
+            #app-top-nav .app-top-nav-sections {
+                order: 2;
+            }
+
+            #app-top-nav .app-top-nav-section-strip {
+                gap: 0.4rem;
+                padding-inline: 0;
+                background: transparent;
+                border: 0;
+            }
+
+            #app-top-nav .app-top-nav-link {
+                padding: 0.6rem 0.8rem;
+                font-size: 0.78rem;
+                line-height: 1rem;
+                gap: 0.4rem;
+                border-radius: 0.95rem;
+                flex-shrink: 0;
+                white-space: nowrap;
+            }
+
+            #app-top-nav .app-top-nav-actions {
+                order: 4;
+                width: 100%;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+
+            #app-top-nav .app-top-nav-actions .app-top-nav-action {
+                padding: 0.7rem 0.8rem;
+                border-radius: 0.95rem;
+                font-size: 0.78rem;
+                line-height: 1rem;
+            }
+
+            #app-top-nav .app-top-nav-action-label {
+                display: none;
+            }
+        }
+
+        .hide-top-nav #app-top-nav {
+            display: none !important;
+        }
+
+        .system-tour-active {
+            position: relative;
+            z-index: 10020 !important;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.22), 0 18px 44px -26px rgba(37, 99, 235, 0.95) !important;
+            outline: 2px solid rgba(37, 99, 235, 0.85);
+            outline-offset: 4px;
+        }
+
+        .system-tour-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: rgba(15, 23, 42, 0.36);
+            backdrop-filter: blur(1px);
+        }
+
+        .system-tour-card {
+            position: fixed;
+            z-index: 10030;
+            width: min(24rem, calc(100vw - 2rem));
+            border: 1px solid rgba(37, 99, 235, 0.18);
+            border-radius: 1.35rem;
+            background: rgba(255, 255, 255, 0.98);
+            box-shadow: 0 28px 70px -42px rgba(15, 23, 42, 0.8);
+            padding: 1rem;
+        }
+
+        .system-tour-card[data-placement="center"] {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
+</head>
+
+<body class="bg-white h-screen overflow-hidden flex flex-col text-slate-800 {% if 'shop-floor' in request.path %}hide-top-nav{% endif %}"
+    x-data="appShell()" x-init="initShell()">
+
+    {% block top_nav %}
+    <header id="app-top-nav" class="bg-white border-b border-slate-200 flex-shrink-0 z-50">
+        <div class="app-top-nav-shell flex items-center gap-4 px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3">
+        <div class="app-top-nav-brand flex items-center gap-4">
+            {% with company=request.user.profile.company %}
+            {% if company and company.logo %}
+            <img src="{{ company.logo.url }}" alt="{{ company.name|default:'Company' }} logo"
+                class="app-top-nav-brand-logo w-10 h-10 rounded-xl object-cover shadow-lg">
+            {% else %}
+            <div
+                class="app-top-nav-brand-logo w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-fuchsia-500 flex items-center justify-center text-white font-bold shadow-lg">
+                {{ company.name|default:"Company"|slice:":1"|upper }}
+            </div>
+            {% endif %}
+            <div class="app-top-nav-brand-meta flex flex-col min-w-0">
+                <span class="app-top-nav-company text-sm font-black text-slate-800 leading-none truncate">{{ company.name|default:"Company" }}</span>
+                <span class="app-top-nav-suite text-[11px] text-slate-500 font-semibold truncate">
+                    {% if store_shell or current_role_name|default:'' == 'store' %}{% tenant_trans "Store Workspace" %}{% else %}{% tenant_trans "Manufacturing Suite" %}{% endif %}
+                </span>
+            </div>
+            {% endwith %}
+        </div>
+
+        <nav class="app-top-nav-sections flex-1 flex justify-center min-w-0">
+            <div class="app-top-nav-section-strip flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-2 py-1 overflow-x-auto max-w-full">
+                {% with role=current_role_name|default:'' %}
+                {% if store_shell or role == 'store' %}
+                <a href="{% url 'store_dashboard' %}"
+                    class="app-top-nav-link px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition whitespace-nowrap shrink-0 bg-blue-600 text-white shadow">
+                    <i class="ph ph-warehouse"></i> {% tenant_trans "Store Workspace" %}
+                </a>
+                {% else %}
+                <a href="{% with role=current_role_name|default:'' %}{% if role == 'supervisor' %}{% url 'supervisor_dashboard' %}{% elif role == 'worker' %}{% url 'record_output' %}{% elif role == 'quality' %}{% url 'quality_check' %}{% elif role == 'maintenance' %}{% url 'maintenance_dashboard' %}{% elif role == 'store' %}{% url 'store_dashboard' %}{% else %}{% url 'dashboard' %}{% endif %}{% endwith %}"
+                    data-system-tour-target="manufacturing"
+                    class="app-top-nav-link px-3 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition whitespace-nowrap shrink-0
+                    {% if '/manufacturing/' in request.path and '/factory-setup/' not in request.path and '/shift-planner/' not in request.path and '/quality-check/' not in request.path and '/maintenance/' not in request.path and '/store/' not in request.path and '/reports/' not in request.path and '/settings/' not in request.path %}bg-blue-600 text-white shadow{% else %}text-slate-600 hover:bg-white{% endif %}">
+                    <i class="ph ph-factory"></i> {% tenant_trans "Manufacturing" %}
+                </a>
+                <a href="{% url 'factory_setup' %}"
+                    data-system-tour-target="factory"
+                    class="app-top-nav-link px-3 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition whitespace-nowrap shrink-0
+                    {% if '/factory-setup/' in request.path %}bg-blue-600 text-white shadow{% else %}text-slate-600 hover:bg-white{% endif %}">
+                    <i class="ph ph-wrench"></i> {% tenant_trans "Factory Setup" %}
+                </a>
+                <a href="{% url 'quality_check' %}{% if role == 'planner' or planner_nav_mode or '/manufacturing/dashboard' in request.path or '/manufacturing/planner' in request.path %}?mode=planner{% endif %}"
+                    data-system-tour-target="quality"
+                    class="app-top-nav-link px-3 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition whitespace-nowrap shrink-0
+                    {% if '/quality-check/' in request.path %}bg-blue-600 text-white shadow{% else %}text-slate-600 hover:bg-white{% endif %}">
+                    <i class="ph ph-check-circle"></i> {% tenant_trans "Quality" %}
+                </a>
+                <a href="{% url 'maintenance_dashboard' %}{% if role == 'planner' or planner_nav_mode or '/manufacturing/dashboard' in request.path or '/manufacturing/planner' in request.path %}?mode=planner{% endif %}"
+                    data-system-tour-target="maintenance"
+                    class="app-top-nav-link px-3 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition whitespace-nowrap shrink-0
+                    {% if '/maintenance/' in request.path %}bg-blue-600 text-white shadow{% else %}text-slate-600 hover:bg-white{% endif %}">
+                    <i class="ph ph-wrench-screwdriver"></i> {% tenant_trans "Maintenance" %}
+                </a>
+                <a href="{% url 'reports_dashboard' %}"
+                    data-system-tour-target="reports"
+                    class="app-top-nav-link px-3 py-2 rounded-full text-sm font-semibold flex items-center gap-2 transition whitespace-nowrap shrink-0
+                    {% if '/reports/' in request.path %}bg-blue-600 text-white shadow{% else %}text-slate-600 hover:bg-white{% endif %}">
+                    <i class="ph ph-chart-bar"></i> {% tenant_trans "Reports Center" %}
+                </a>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </nav>
+
+        <div class="app-top-nav-actions flex items-center gap-3">
+            <div class="app-top-nav-language flex items-center">
+            {% include "manufacturing/partials/language_switcher.html" with language_switcher_id="dashboard-language-switcher" %}
+            </div>
+            {% if not store_shell and current_role_name|default:'' != 'store' %}
+                <a href="{% url 'settings_dashboard' %}"
+                    data-system-tour-target="settings"
+                    class="app-top-nav-action px-3 py-2 h-10 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-2 whitespace-nowrap">
+                    <i class="ph ph-gear"></i> <span class="app-top-nav-action-label">{% tenant_trans "Settings" %}</span>
+                </a>
+            {% endif %}
+            <a href="{% url 'logout' %}"
+                class="app-top-nav-action px-3 py-2 h-10 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 whitespace-nowrap">
+                <i class="ph ph-sign-out"></i> <span class="app-top-nav-action-label">{% tenant_trans "Sign Out" %}</span>
+            </a>
+        </div>
+        </div>
+    </header>
+    {% endblock %}
+
+    <div class="flex-1 flex overflow-hidden">
+
+    <!-- Sidebar (Persist State) -->
+    <!-- Sidebar (Persist State) -->
+    {% block sidebar %}
+    {% if not hide_sidebar|default:True %}
+    <!-- 1. SIDEBAR (Fixed Dark - Modernized) -->
+    <div x-data="sidebarState()">
+        <aside :class="collapsed ? 'w-20' : 'w-64'"
+            class="h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white flex flex-col transition-all duration-300 z-50 flex-shrink-0 shadow-2xl border-r border-slate-700/50 relative">
+            <!-- Logo Area -->
+            <div :class="collapsed ? 'justify-center px-0' : 'px-6'"
+                class="h-16 flex items-center gap-3 border-b border-slate-700/50 bg-gradient-to-r from-slate-900/95 to-slate-800/95 backdrop-blur-sm flex-shrink-0 transition-all duration-300">
+                {% with company=request.user.profile.company %}
+                {% if company and company.logo %}
+                <img src="{{ company.logo.url }}" alt="{{ company.name|default:'Company' }} logo"
+                    class="w-10 h-10 rounded-xl object-cover shadow-lg shadow-blue-500/30 transform hover:scale-105 transition-transform duration-200 flex-shrink-0">
+                {% else %}
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-blue-500/30 text-white font-bold text-lg transform hover:scale-105 transition-transform duration-200 flex-shrink-0">
+                    {{ company.name|default:"Company"|slice:":1"|upper }}
+                </div>
+                {% endif %}
+                <div class="flex flex-col min-w-0" x-show="!collapsed"
+                    x-transition:enter="transition ease-out duration-300"
+                    x-transition:enter-start="opacity-0 -translate-x-4"
+                    x-transition:enter-end="opacity-100 translate-x-0">
+                    <span class="text-lg font-bold tracking-tight text-white truncate">
+                        {{ company.name|default:"Company" }}
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium truncate">Manufacturing Suite</span>
+                </div>
+                {% endwith %}
+
+                <!-- Collapse Toggle Button -->
+                <button @click="toggle()"
+                    class="absolute -right-3 top-20 w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center shadow-lg z-[60] focus:outline-none transition-all duration-300 hover:scale-110 active:scale-95"
+                    :class="collapsed ? 'rotate-180' : ''">
+                    <i class="ph ph-caret-left text-[10px] font-bold"></i>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto py-6 space-y-2 min-h-0" :class="collapsed ? 'px-2' : 'px-3'">
+                <template x-for="mod in modules" :key="mod.id">
+                    <a :href="mod.url || '#'"
+                        @click="if(!mod.url || mod.url === '#') { $event.preventDefault(); setActiveModule(mod.id); }"
+                        class="w-full h-11 rounded-lg flex items-center transition-all duration-200 group relative overflow-hidden"
+                        :class="[
+                            activeModule.id === mod.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white',
+                            collapsed ? 'justify-center px-0' : 'px-4 gap-3'
+                        ]">
+
+                        <div class="flex items-center justify-center flex-shrink-0">
+                            <!-- Icon Wrapper -->
+                            <div class="w-6 h-6 flex items-center justify-center transition-all duration-200"
+                                :class="(activeModule.id === mod.id) ? 'text-white' : 'text-slate-400 group-hover:text-white'">
+                                <i :class="'ph ' + mod.icon + ' text-xl'"></i>
+                            </div>
+                        </div>
+
+                        <div class="flex-1" x-show="!collapsed" x-transition>
+                            <span class="font-medium text-sm" x-text="mod.label"></span>
+                        </div>
+                    </a>
+                </template>
+            </nav>
+
+            <!-- Bottom Actions -->
+            <div class="flex flex-col gap-2 w-full pb-4 border-t border-slate-700/50 pt-4 flex-shrink-0"
+                :class="collapsed ? 'px-2' : 'px-3'">
+                {% if not store_shell and current_role_name|default:'' != 'store' %}
+                <a href="{% url 'settings_dashboard' %}"
+                    class="w-full h-12 rounded-xl flex items-center transition-all duration-200 group"
+                    :class="collapsed ? 'justify-center px-0' : 'px-4 gap-3 text-slate-400 hover:bg-slate-700/50 hover:text-white'">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-600/30 group-hover:bg-slate-500/30 transition-colors"
+                        :class="collapsed ? 'text-slate-400 group-hover:text-white' : ''">
+                        <i class="ph ph-gear text-lg"></i>
+                    </div>
+                    <span class="font-medium text-sm text-slate-400" x-show="!collapsed" x-transition>Settings</span>
+                </a>
+                {% endif %}
+
+                <a href="{% url 'logout' %}"
+                    class="w-full h-12 rounded-xl flex items-center transition-all duration-200 group"
+                    :class="collapsed ? 'justify-center px-0' : 'px-4 gap-3 text-slate-400 hover:bg-red-900/30 hover:text-red-400'">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-600/30 group-hover:bg-red-800/30 transition-colors"
+                        :class="collapsed ? 'text-slate-400 group-hover:text-red-400' : ''">
+                        <i class="ph ph-sign-out text-lg"></i>
+                    </div>
+                    <span class="font-medium text-sm text-slate-400" x-show="!collapsed" x-transition>{% tenant_trans "Sign Out" %}</span>
+                </a>
+            </div>
+        </aside>
+    </div>
+    {% endif %}
+    {% endblock %}
+
+    <!-- 2. MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative" :class="{'w-full': true}">
+
+        <!-- App Header (Dynamic Tabs) -->
+        <!-- App Header (Dynamic Tabs) -->
+        <!-- App Header (Dynamic Tabs) -->
+        {% block app_header %}
+        <header
+            class="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-5 flex-shrink-0 z-40">
+            <div class="flex items-center gap-4 flex-1">
+                <h2 class="text-lg font-bold text-slate-800" x-text="activeModule.label"></h2>
+
+                <!-- Search Bar -->
+                <div class="flex-1 max-w-sm">
+                    <div class="relative">
+                        <input type="text" placeholder="{% tenant_trans "Search..." %}"
+                            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                        <div class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <i class="ph ph-magnifying-glass text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Tabs for Active Module -->
+                <div class="flex space-x-1 border-l border-gray-200 pl-4 h-7 items-center">
+                    <template x-for="tab in activeModule.tabs" :key="tab.id">
+                        <button @click="handleTabAction(tab)"
+                            class="px-2.5 py-1 text-sm font-medium rounded-md transition-colors"
+                            :class="(activeTab === tab.id && !tab.url) || (tab.url && currentPath.includes(tab.slug)) ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-600' : 'text-slate-600 hover:text-slate-900 hover:bg-gray-50 border-b-2 border-transparent'">
+                            <span x-text="tab.label"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Global Actions -->
+            <div class="flex items-center gap-3">
+                <button x-show="activeModule.id === 'manufacturing' && activeTab === 'orders'"
+                    @click="showCreateModal = true"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md transition flex items-center gap-2">
+                    <i class="ph ph-plus"></i>
+                    <span>{% tenant_trans "New Order" %}</span>
+                </button>
+                <!-- Notifications (Simplified) -->
+                <button class="p-2 text-slate-400 hover:bg-gray-100 rounded-full relative">
+                    <i class="ph ph-bell text-xl"></i>
+                </button>
+            </div>
+        </header>
+        {% endblock %}
+
+        <!-- CONTENT SCROLL AREA -->
+        <div id="main-content" class="flex-1 overflow-auto bg-white p-6 relative">
+            {% if messages %}
+            <div class="mb-6 space-y-2 max-w-4xl">
+                {% for message in messages %}
+                <div class="p-4 rounded-lg border shadow-sm flex justify-between items-center bg-white"
+                    :class="'{{ message.tags }}' === 'error' ? 'border-red-200 text-red-700' : 'border-blue-200 text-blue-700'">
+                    <div class="flex items-center gap-3">
+                        <i class="ph"
+                            :class="'{{ message.tags }}' === 'error' ? 'ph-warning-circle text-red-500' : 'ph-check-circle text-blue-500'"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="opacity-50 hover:opacity-100"><i
+                            class="ph ph-x"></i></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    </div>
+
+    <!-- 3. SETTINGS MODAL -->
+    <div x-cloak x-show="showSettings"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 backdrop-blur-sm p-3 sm:p-6"
+        x-transition.opacity>
+
+        <div class="w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col"
+            @click.away="showSettings = false" x-transition.scale.origin.top>
+
+            <div class="px-5 sm:px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div>
+                    <h3 class="text-base sm:text-lg font-black text-slate-800">System Settings</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Control modules and planner behavior</p>
+                </div>
+                <button @click="showSettings = false"
+                    class="h-9 w-9 rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-700 hover:border-slate-300">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-5 sm:p-6 space-y-6 overflow-y-auto">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-[0.16em]">Enabled Modules</h4>
+                        <span class="text-[10px] font-semibold text-slate-400">Role-aware</span>
+                    </div>
+                    <div class="space-y-3">
+                        <template x-for="mod in modules" :key="mod.id">
+                            <div
+                                class="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-white hover:bg-blue-50/30 hover:border-blue-200 transition">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center flex-shrink-0">
+                                        <i :class="mod.icon"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="font-bold text-slate-800 truncate" x-text="mod.label"></div>
+                                        <div class="text-[11px] text-slate-500">
+                                            <span x-text="mod.enabled ? 'Enabled' : 'Disabled'"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" role="switch"
+                                    :aria-checked="mod.enabled ? 'true' : 'false'"
+                                    :disabled="mod.id === 'manufacturing'"
+                                    @click="if (mod.id !== 'manufacturing') { mod.enabled = !mod.enabled; persistModules(); }"
+                                    class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                    :class="[mod.enabled ? 'bg-blue-600' : 'bg-slate-300', mod.id === 'manufacturing' ? 'opacity-60 cursor-not-allowed' : '']">
+                                    <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
+                                        :class="mod.enabled ? 'translate-x-6' : 'translate-x-1'"></span>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h4 class="text-xs font-black text-slate-400 uppercase tracking-[0.16em]">Planner Preferences</h4>
+                        <span class="text-[10px] text-slate-400 font-semibold">Planner only</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph ph-arrows-clockwise"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-800">Auto Refresh</div>
+                                    <div class="text-xs text-slate-500">Keep planner data updated</div>
+                                </div>
+                            </div>
+                            <button type="button" role="switch" :aria-checked="autoRefreshEnabled ? 'true' : 'false'"
+                                @click="autoRefreshEnabled = !autoRefreshEnabled; persistPlannerSettings(); applyAutoRefresh()"
+                                class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                :class="autoRefreshEnabled ? 'bg-blue-600' : 'bg-slate-300'">
+                                <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200"
+                                    :class="autoRefreshEnabled ? 'translate-x-6' : 'translate-x-1'"></span>
+                            </button>
+                        </div>
+
+                        <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-white">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph ph-timer"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-800">Refresh Interval</div>
+                                    <div class="text-xs text-slate-500">Choose refresh frequency</div>
+                                </div>
+                            </div>
+                            <select x-model="autoRefreshInterval"
+                                @change="persistPlannerSettings(); applyAutoRefresh()"
+                                class="w-full sm:w-auto text-sm font-semibold border border-slate-200 rounded-xl px-3 py-2.5 bg-white min-w-[130px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                :class="autoRefreshEnabled ? 'text-slate-700' : 'text-slate-400 bg-slate-50'"
+                                :disabled="!autoRefreshEnabled">
+                                <option value="15">15 sec</option>
+                                <option value="30">30 sec</option>
+                                <option value="60">1 min</option>
+                                <option value="120">2 min</option>
+                                <option value="300">5 min</option>
+                            </select>
+                        </div>
+
+                        <div class="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-3.5 rounded-xl border border-slate-200 bg-slate-50/70">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph ph-play"></i>
+                                </div>
+                                <div class="min-w-0">
+                                    <div class="font-bold text-slate-800">Manual Refresh</div>
+                                    <div class="text-xs text-slate-500">Update planner now</div>
+                                </div>
+                            </div>
+                            <button type="button" @click="refreshPlanner()"
+                                class="w-full sm:w-auto px-4 py-2.5 bg-slate-800 text-white rounded-xl font-semibold hover:bg-slate-700">
+                                Refresh Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-5 sm:px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-2">
+                <button type="button" @click="showSettings = false"
+                    class="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-semibold hover:bg-slate-100">
+                    Close
+                </button>
+                <button type="button" @click="showSettings = false"
+                    class="px-4 py-2.5 rounded-xl bg-slate-800 text-white font-semibold hover:bg-slate-700">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL Modal Container -->
+    <div id="modal-container">
+        {% include "manufacturing/modals.html" %}
+        {# Removed legacy BOM Modal in favor of V2 Page: {% include "manufacturing/modals/bom_modal.html" %} #}
+    </div>
+
+    {% if first_workspace_tour %}
+    <div class="system-tour-backdrop" data-system-tour-backdrop></div>
+    <section class="system-tour-card" data-system-tour-card data-placement="center" aria-live="polite">
+        <div class="flex items-start gap-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm">
+                <span class="text-sm font-black" data-system-tour-number>1</span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[11px] font-black uppercase tracking-[0.16em] text-blue-600" data-system-tour-progress>System tour</div>
+                <h2 class="mt-1 text-base font-black text-slate-950" data-system-tour-title>Welcome to your workspace</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600" data-system-tour-copy>Use this short tour to understand the main areas before starting production work.</p>
+                <div class="mt-4 flex flex-wrap items-center gap-2">
+                    <button type="button" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white shadow-sm hover:bg-blue-700" data-system-tour-next>Next</button>
+                    <button type="button" class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-50" data-system-tour-skip>Skip</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script>
+        window.__firstWorkspaceTour = true;
+    </script>
+    {% else %}
+    <script>
+        window.__firstWorkspaceTour = false;
+    </script>
+    {% endif %}
+
+    <script>
+        (function () {
+            if (!window.__firstWorkspaceTour) return;
+
+            const steps = [
+                {
+                    target: "manufacturing",
+                    title: "Manufacturing workspace",
+                    copy: "This is the daily control area for work orders, planning alerts, machine schedules, and production progress.",
+                },
+                {
+                    target: "factory",
+                    title: "Factory setup",
+                    copy: "Use this area to manage machines, stages, BOMs, materials, and the data that drives production routing.",
+                },
+                {
+                    target: "quality",
+                    title: "Quality",
+                    copy: "Quality checks, approvals, rejected quantities, and repair or scrap decisions are handled here.",
+                },
+                {
+                    target: "maintenance",
+                    title: "Maintenance",
+                    copy: "Machine faults, downtime, maintenance assignments, and recovery tracking live in this workspace.",
+                },
+                {
+                    target: "reports",
+                    title: "Reports center",
+                    copy: "Review production output, actual versus planned performance, material usage, and management reports.",
+                },
+                {
+                    target: "settings",
+                    title: "Settings and team",
+                    copy: "Manage company details, language, shifts, departments, and users after the initial setup is complete.",
+                },
+            ];
+
+            document.addEventListener("DOMContentLoaded", function () {
+                const card = document.querySelector("[data-system-tour-card]");
+                const backdrop = document.querySelector("[data-system-tour-backdrop]");
+                const next = document.querySelector("[data-system-tour-next]");
+                const skip = document.querySelector("[data-system-tour-skip]");
+                const number = document.querySelector("[data-system-tour-number]");
+                const progress = document.querySelector("[data-system-tour-progress]");
+                const title = document.querySelector("[data-system-tour-title]");
+                const copy = document.querySelector("[data-system-tour-copy]");
+                if (!card || !backdrop || !next || !skip || !number || !progress || !title || !copy) return;
+
+                let index = 0;
+                let activeTarget = null;
+
+                const finish = function () {
+                    if (activeTarget) activeTarget.classList.remove("system-tour-active");
+                    card.remove();
+                    backdrop.remove();
+                };
+
+                const positionCard = function (target) {
+                    if (!target) {
+                        card.dataset.placement = "center";
+                        card.style.top = "";
+                        card.style.left = "";
+                        card.style.right = "";
+                        card.style.transform = "";
+                        return;
+                    }
+
+                    const rect = target.getBoundingClientRect();
+                    const spacing = 18;
+                    const cardWidth = Math.min(384, window.innerWidth - 32);
+                    const left = Math.min(
+                        Math.max(16, rect.left + rect.width / 2 - cardWidth / 2),
+                        window.innerWidth - cardWidth - 16
+                    );
+                    const top = Math.min(
+                        Math.max(16, rect.bottom + spacing),
+                        window.innerHeight - card.offsetHeight - 16
+                    );
+                    card.dataset.placement = "anchored";
+                    card.style.left = `${left}px`;
+                    card.style.top = `${top}px`;
+                    card.style.right = "auto";
+                    card.style.transform = "none";
+                };
+
+                const render = function () {
+                    if (activeTarget) activeTarget.classList.remove("system-tour-active");
+                    const step = steps[index];
+                    const target = document.querySelector(`[data-system-tour-target="${step.target}"]`);
+                    activeTarget = target;
+                    if (target) {
+                        target.classList.add("system-tour-active");
+                        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+                    }
+                    number.textContent = String(index + 1);
+                    progress.textContent = `System tour ${index + 1} of ${steps.length}`;
+                    title.textContent = step.title;
+                    copy.textContent = step.copy;
+                    next.textContent = index === steps.length - 1 ? "Finish tour" : "Next";
+                    window.setTimeout(function () { positionCard(target); }, 160);
+                };
+
+                next.addEventListener("click", function () {
+                    if (index >= steps.length - 1) {
+                        finish();
+                        return;
+                    }
+                    index += 1;
+                    render();
+                });
+                skip.addEventListener("click", finish);
+                window.addEventListener("resize", function () {
+                    const step = steps[index];
+                    positionCard(document.querySelector(`[data-system-tour-target="${step.target}"]`));
+                });
+                render();
+            });
+        })();
+    </script>
+
+    <script>
+        // Sidebar State Management
+        function sidebarState() {
+            return {
+                collapsed: localStorage.getItem('kemet_sidebar_collapsed') === 'true',
+
+                toggle() {
+                    this.collapsed = !this.collapsed;
+                    localStorage.setItem('kemet_sidebar_collapsed', this.collapsed);
+                }
+            }
+        }
+
+        function appShell() {
+            return {
+                showSettings: false,
+                showCreateModal: false,
+                currentPath: window.location.pathname,
+                activeTab: 'orders', // Default active tab for manufacturing
+                overrideModuleId: null, // Explicit override for modules without URL changes (e.g. Setup)
+                autoRefreshEnabled: false,
+                autoRefreshInterval: 30,
+                autoRefreshTimer: null,
+
+                modules: [
+                    {
+                        id: 'manufacturing',
+                        label: 'Manufacturing',
+                        icon: 'ph-factory',
+                        enabled: true,
+                        url: '{% if current_role_name == "supervisor" %}{% url "supervisor_dashboard" %}{% elif current_role_name == "worker" %}{% url "record_output" %}{% elif current_role_name == "quality" %}{% url "quality_check" %}{% elif current_role_name == "maintenance" %}{% url "maintenance_dashboard" %}{% elif current_role_name == "store" %}{% url "store_dashboard" %}{% else %}{% url "dashboard" %}{% endif %}',
+                        tabs: [
+                            { id: 'board', label: 'Planner Board' },
+                            { id: 'orders', label: 'Work Orders' },
+                            { id: 'resources', label: 'Resources' }
+                        ]
+                    },
+
+                    {
+                        id: 'setup',
+                        label: 'Factory Setup',
+                        icon: 'ph-wrench',
+                        slug: 'factory-setup',
+                        url: '/manufacturing/factory-setup/',
+                        enabled: true
+                    },
+                    {
+                        id: 'reports',
+                        label: 'Reports Center',
+                        icon: 'ph-chart-bar',
+                        enabled: true,
+                        url: '{% url "reports_dashboard" %}',
+                        tabs: [
+                            { id: 'yield', label: 'Yield Analysis', url: '{% url "reports_dashboard" %}', slug: 'reports' },
+                            { id: 'cost', label: 'Costing', url: '{% url "reports_dashboard" %}', slug: 'reports' }
+                        ]
+                    },
+                    {
+                        id: 'quality',
+                        label: 'Quality Control',
+                        icon: 'ph-check-circle',
+                        enabled: true,
+                        url: '{% url "quality_check" %}',
+                        tabs: [
+                            { id: 'checks', label: 'Inspections', url: '{% url "quality_check" %}', slug: 'quality' }
+                        ]
+                    }
+                ],
+
+                get activeModule() {
+                    // 1. Explicit Override (Click)
+                    if (this.overrideModuleId) {
+                        return this.modules.find(m => m.id === this.overrideModuleId);
+                    }
+
+                    // 2. Auto-detect based on URL
+                    const path = this.currentPath;
+
+                    // Explicit Overrides for Main Dashboards (Fixes Inventory Highlight Issue)
+                    if (path.includes('/supervisor') || path.includes('/planner') || path.includes('/dashboard')) {
+                        return this.modules.find(m => m.id === 'manufacturing');
+                    }
+
+                    let found = this.modules.find(m => m.tabs.some(t => t.slug && path.includes(t.slug)));
+
+                    // Fallback to localStorage or default
+                    if (!found) {
+                        const savedId = localStorage.getItem('kemet_active_module');
+                        found = this.modules.find(m => m.id === savedId) || this.modules[0];
+                    }
+                    return found;
+                },
+
+                setActiveModule(id) {
+                    // Navigate to the first tab of the module
+                    const mod = this.modules.find(m => m.id === id);
+                    if (mod) {
+                        localStorage.setItem('kemet_active_module', id);
+
+                        // Force override state for immediate UI update (essential for 'setup')
+                        this.overrideModuleId = id;
+
+                        // If it's the Setup module, don't navigate, just show header tabs
+                        if (mod.id === 'setup') {
+                            return;
+                        }
+
+                        // Priority 1: Module-level URL (if set explicitly)
+                        if (mod.url && mod.url !== '#') {
+                            window.location.href = mod.url;
+                        }
+                        // Priority 2: First Tab URL
+                        else if (mod.tabs.length > 0 && mod.tabs[0].url) {
+                            window.location.href = mod.tabs[0].url;
+                        } else {
+                            // Fallback to prevent 404
+                            console.warn("Module has no URL", mod.id);
+                            window.location.href = '#';
+                        }
+                    }
+                },
+
+                handleTabAction(tab) {
+                    if (tab.action && tab.action.startsWith('open')) {
+                        // Direct Modal Opening (More reliable than clicking hidden buttons)
+                        let modalId = tab.action.replace('open', '');
+
+                        // Handle Casing Logic
+                        if (modalId === 'BOMModal') {
+                            window.location.href = "/manufacturing/bom-builder/";
+                            return;
+                        } else {
+                            // CamelCase: MachineModal -> machineModal
+                            modalId = modalId.charAt(0).toLowerCase() + modalId.slice(1);
+                        }
+
+                        const modal = document.getElementById(modalId);
+                        if (modal) {
+                            modal.classList.remove('hidden');
+                        } else {
+                            // Fallback: Try clicking the button (if logic differs/exists)
+                            const btn = document.getElementById(tab.action);
+                            if (btn) btn.click();
+                            else if (typeof window.appNotify === 'function') window.appNotify("Please go to the Manufacturing Planner to use this feature.", 'warning');
+                        }
+                    } else if (tab.url && tab.url !== '#') {
+                        window.location.href = tab.url;
+                    } else {
+                        this.activeTab = tab.id;
+                    }
+                },
+
+                // Global override for legacy BOM functions
+                openBOMModal(bomId = null) {
+                    if (bomId) {
+                        window.location.href = `/manufacturing/bom-builder/${bomId}/`;
+                    } else {
+                        window.location.href = "/manufacturing/bom-builder/";
+                    }
+                },
+
+                initShell() {
+                    // Load enabled states from localStorage
+                    const savedConfig = localStorage.getItem('kemet_modules_config');
+                    if (savedConfig) {
+                        try {
+                            const parsed = JSON.parse(savedConfig);
+                            this.modules.forEach(m => {
+                                // Only restore 'enabled' property, do NOT touch tabs or URLs
+                                if (parsed[m.id] !== undefined) m.enabled = parsed[m.id];
+                            });
+                        } catch (e) {
+                            localStorage.removeItem('kemet_modules_config'); // Reset on error
+                        }
+                    }
+
+                    this.loadPlannerSettings();
+                    this.applyAutoRefresh();
+                },
+
+                persistModules() {
+                    const config = {};
+                    this.modules.forEach(m => config[m.id] = m.enabled);
+                    localStorage.setItem('kemet_modules_config', JSON.stringify(config));
+                },
+
+                isPlannerPage() {
+                    if (document.querySelector('[data-planner-dashboard="true"]')) return true;
+                    return this.currentPath.includes('/manufacturing/dashboard')
+                        || this.currentPath.includes('/manufacturing/planner');
+                },
+
+                loadPlannerSettings() {
+                    const enabled = localStorage.getItem('kemet_planner_auto_refresh_enabled');
+                    const interval = localStorage.getItem('kemet_planner_auto_refresh_interval');
+                    this.autoRefreshEnabled = enabled === 'true';
+                    if (interval) {
+                        const parsed = parseInt(interval, 10);
+                        if (!Number.isNaN(parsed)) this.autoRefreshInterval = parsed;
+                    }
+                },
+
+                persistPlannerSettings() {
+                    localStorage.setItem('kemet_planner_auto_refresh_enabled', String(this.autoRefreshEnabled));
+                    localStorage.setItem('kemet_planner_auto_refresh_interval', String(this.autoRefreshInterval));
+                },
+
+                clearAutoRefresh() {
+                    if (this.autoRefreshTimer) {
+                        clearInterval(this.autoRefreshTimer);
+                        this.autoRefreshTimer = null;
+                    }
+                },
+
+                applyAutoRefresh() {
+                    if (!this.isPlannerPage()) return;
+                    this.clearAutoRefresh();
+                    if (!this.autoRefreshEnabled) return;
+                    const seconds = Math.max(10, parseInt(this.autoRefreshInterval || 30, 10));
+                    this.autoRefreshTimer = setInterval(() => {
+                        this.refreshPlanner();
+                    }, seconds * 1000);
+                },
+
+                refreshPlanner() {
+                    if (typeof window.initGanttChart === 'function') {
+                        window.initGanttChart(true);
+                    }
+                    window.dispatchEvent(new CustomEvent('planner-refresh-kanban'));
+                    window.dispatchEvent(new CustomEvent('planner-refresh-list'));
+                    window.dispatchEvent(new CustomEvent('planner-refresh-calendar'));
+                },
+            }
+        }
+    </script>
+    {% include "manufacturing/partials/toast.html" %}
+    <script id="django-messages-json" type="application/json">
+        [
+            {% for message in messages %}
+                {
+                    "level": "{{ message.level }}",
+                    "tags": "{{ message.tags }}",
+                    "message": "{{ message.message|escapejs }}"
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    </script>
+    <script>
+        (function () {
+            if (typeof window.appNotify !== 'function') {
+                window.appNotify = function (message, type = 'info') {
+                    const text = String(message || "{% tenant_trans "Done" %}");
+                    if (window.Toast && typeof window.Toast.show === 'function') {
+                        const toastType = type === 'warning' ? 'info' : type;
+                        window.Toast.show(text, toastType);
+                        return;
+                    }
+
+                    let host = document.getElementById('appNotifyHost');
+                    if (!host) {
+                        host = document.createElement('div');
+                        host.id = 'appNotifyHost';
+                        host.style.position = 'fixed';
+                        host.style.right = '18px';
+                        host.style.bottom = '18px';
+                        host.style.zIndex = '10060';
+                        host.style.display = 'flex';
+                        host.style.flexDirection = 'column';
+                        host.style.gap = '8px';
+                        host.style.pointerEvents = 'none';
+                        document.body.appendChild(host);
+                    }
+
+                    const notice = document.createElement('div');
+                    notice.style.pointerEvents = 'auto';
+                    notice.style.maxWidth = '420px';
+                    notice.style.padding = '10px 14px';
+                    notice.style.borderRadius = '14px';
+                    notice.style.border = '1px solid #cbd5e1';
+                    notice.style.background = '#ffffff';
+                    notice.style.color = '#0f172a';
+                    notice.style.boxShadow = '0 18px 40px rgba(15, 23, 42, 0.18)';
+                    notice.style.fontSize = '14px';
+                    notice.style.fontWeight = '700';
+                    notice.style.lineHeight = '1.35';
+
+                    if (type === 'success') {
+                        notice.style.background = '#ecfdf5';
+                        notice.style.color = '#065f46';
+                        notice.style.borderColor = '#6ee7b7';
+                    } else if (type === 'error') {
+                        notice.style.background = '#fef2f2';
+                        notice.style.color = '#991b1b';
+                        notice.style.borderColor = '#fca5a5';
+                    } else if (type === 'warning') {
+                        notice.style.background = '#fffbeb';
+                        notice.style.color = '#92400e';
+                        notice.style.borderColor = '#fcd34d';
+                    }
+
+                    notice.textContent = text;
+                    host.appendChild(notice);
+                    window.setTimeout(() => {
+                        notice.style.opacity = '0';
+                        notice.style.transform = 'translateY(4px)';
+                        notice.style.transition = 'all 140ms ease';
+                        window.setTimeout(() => notice.remove(), 180);
+                    }, 2600);
+                };
+            }
+
+            function ensureConfirmModal() {
+                let modal = document.getElementById('appConfirmModal');
+                if (modal) return modal;
+
+                modal = document.createElement('div');
+                modal.id = 'appConfirmModal';
+                modal.className = 'fixed inset-0 z-[120] hidden';
+                modal.innerHTML = `
+                    <div data-app-confirm-overlay class="absolute inset-0 bg-slate-900/45"></div>
+                    <div class="absolute inset-0 flex items-center justify-center p-4">
+                        <div class="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                            <div class="px-5 py-4 border-b border-slate-200">
+                                <h3 data-app-confirm-title class="text-base font-bold text-slate-800">{% tenant_trans "Confirm" %}</h3>
+                            </div>
+                            <div class="px-5 py-4">
+                                <p data-app-confirm-message class="text-sm text-slate-600 leading-6"></p>
+                            </div>
+                            <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+                                <button type="button" data-app-confirm-cancel class="px-4 py-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-600 hover:bg-slate-50">{% tenant_trans "Cancel" %}</button>
+                                <button type="button" data-app-confirm-ok class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">{% tenant_trans "Confirm" %}</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                return modal;
+            }
+
+            if (typeof window.appConfirm !== 'function') {
+                window.appConfirm = function (message, options = {}) {
+                    const modal = ensureConfirmModal();
+                    const title = modal.querySelector('[data-app-confirm-title]');
+                    const msg = modal.querySelector('[data-app-confirm-message]');
+                    const ok = modal.querySelector('[data-app-confirm-ok]');
+                    const cancel = modal.querySelector('[data-app-confirm-cancel]');
+                    const overlay = modal.querySelector('[data-app-confirm-overlay]');
+
+                    const kind = String(options.kind || '').toLowerCase();
+                    const confirmClass = kind === 'warning'
+                        ? 'px-4 py-2 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700'
+                        : 'px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700';
+                    ok.className = confirmClass;
+
+                    title.textContent = options.title || "{% tenant_trans "Confirm action" %}";
+                    msg.textContent = String(message || "{% tenant_trans "Are you sure?" %}");
+                    ok.textContent = options.confirmText || "{% tenant_trans "Confirm" %}";
+                    cancel.textContent = options.cancelText || "{% tenant_trans "Cancel" %}";
+
+                    modal.classList.remove('hidden');
+
+                    return new Promise((resolve) => {
+                        let done = false;
+                        const finish = (value) => {
+                            if (done) return;
+                            done = true;
+                            modal.classList.add('hidden');
+                            ok.removeEventListener('click', onOk);
+                            cancel.removeEventListener('click', onCancel);
+                            overlay.removeEventListener('click', onCancel);
+                            resolve(value);
+                        };
+                        const onOk = () => finish(true);
+                        const onCancel = () => finish(false);
+                        ok.addEventListener('click', onOk);
+                        cancel.addEventListener('click', onCancel);
+                        overlay.addEventListener('click', onCancel);
+                    });
+                };
+            }
+        })();
+    </script>
+    <script>
+        // Keep CSRF tokens fresh for long-lived planner pages and duplicated sidebars.
+        (function () {
+            function getCookie(name) {
+                const cookieValue = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith(name + '='));
+                return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : '';
+            }
+
+            window.getCsrfToken = function () {
+                const cookieToken = getCookie('csrftoken');
+                if (cookieToken) return cookieToken;
+
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+
+                return '';
+            };
+
+            if (!window.__csrfFetchPatched && window.fetch) {
+                const originalFetch = window.fetch.bind(window);
+                window.fetch = function (input, init) {
+                    const options = init ? Object.assign({}, init) : {};
+                    const method = (options.method || (input && input.method) || 'GET').toUpperCase();
+                    const isUnsafeMethod = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
+
+                    let isSameOrigin = true;
+                    try {
+                        const rawUrl = typeof input === 'string' ? input : (input && input.url) || '';
+                        isSameOrigin = new URL(rawUrl, window.location.href).origin === window.location.origin;
+                    } catch (error) {
+                        isSameOrigin = true;
+                    }
+
+                    if (isUnsafeMethod && isSameOrigin) {
+                        const csrfToken = window.getCsrfToken();
+                        if (csrfToken) {
+                            const headers = new Headers(options.headers || (input && input.headers) || undefined);
+                            if (!headers.has('X-CSRFToken')) {
+                                headers.set('X-CSRFToken', csrfToken);
+                            }
+                            options.headers = headers;
+                        }
+                        if (!options.credentials) {
+                            options.credentials = 'same-origin';
+                        }
+                    }
+
+                    return originalFetch(input, options);
+                };
+                window.__csrfFetchPatched = true;
+            }
+
+            document.addEventListener('submit', function (event) {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) return;
+                if ((form.method || 'GET').toUpperCase() !== 'POST') return;
+
+                const csrfToken = window.getCsrfToken();
+                if (!csrfToken) return;
+
+                let tokenInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+                if (!tokenInput) {
+                    tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = 'csrfmiddlewaretoken';
+                    form.appendChild(tokenInput);
+                }
+                tokenInput.value = csrfToken;
+            }, true);
+
+            document.body.addEventListener('htmx:configRequest', function (event) {
+                const csrfToken = window.getCsrfToken();
+                if (csrfToken) {
+                    event.detail.headers['X-CSRFToken'] = csrfToken;
+                }
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            function initReorderableTabs() {
+                document.querySelectorAll('[data-reorderable-tabs]').forEach((container) => {
+                    if (container.dataset.reorderableInit === '1') return;
+                    container.dataset.reorderableInit = '1';
+
+                    const storageKey = container.dataset.reorderableTabs;
+                    let dragged = null;
+
+                    const getItems = () => Array.from(container.querySelectorAll('[data-tab-key]'));
+
+                    const saveOrder = () => {
+                        const order = getItems().map((item) => item.dataset.tabKey);
+                        localStorage.setItem(storageKey, JSON.stringify(order));
+                    };
+
+                    const applySavedOrder = () => {
+                        const raw = localStorage.getItem(storageKey);
+                        if (!raw) return;
+                        try {
+                            const order = JSON.parse(raw);
+                            const itemsByKey = new Map(getItems().map((item) => [item.dataset.tabKey, item]));
+                            order.forEach((key) => {
+                                const item = itemsByKey.get(key);
+                                if (item) container.appendChild(item);
+                            });
+                            getItems().forEach((item) => {
+                                if (!order.includes(item.dataset.tabKey)) {
+                                    container.appendChild(item);
+                                }
+                            });
+                        } catch (error) {
+                            console.warn('Failed to restore tab order', error);
+                        }
+                    };
+
+                    const clearDragState = () => {
+                        getItems().forEach((item) => item.classList.remove('opacity-60', 'ring-2', 'ring-cyan-200'));
+                    };
+
+                    applySavedOrder();
+
+                    getItems().forEach((item) => {
+                        item.addEventListener('dragstart', (event) => {
+                            dragged = item;
+                            item.classList.add('opacity-60');
+                            event.dataTransfer.effectAllowed = 'move';
+                            event.dataTransfer.setData('text/plain', item.dataset.tabKey);
+                        });
+
+                        item.addEventListener('dragend', () => {
+                            dragged = null;
+                            clearDragState();
+                        });
+
+                        item.addEventListener('dragover', (event) => {
+                            if (!dragged || dragged === item) return;
+                            event.preventDefault();
+                            const rect = item.getBoundingClientRect();
+                            const before = event.clientX < rect.left + rect.width / 2;
+                            clearDragState();
+                            item.classList.add('ring-2', 'ring-cyan-200');
+                            if (before) {
+                                container.insertBefore(dragged, item);
+                            } else {
+                                container.insertBefore(dragged, item.nextSibling);
+                            }
+                        });
+
+                        item.addEventListener('drop', (event) => {
+                            if (!dragged) return;
+                            event.preventDefault();
+                            saveOrder();
+                            clearDragState();
+                        });
+                    });
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', initReorderableTabs);
+        })();
+    </script>
+</body>
+
+</html>
+

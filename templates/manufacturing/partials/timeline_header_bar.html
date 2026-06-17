@@ -1,0 +1,260 @@
+{% load tenant_i18n %}
+<div class="timeline-header-bar flex flex-col gap-3">
+    <div class="timeline-header-controls flex items-center min-w-0 flex-1 w-full">
+        <div id="timelineControlRail" class="w-full max-w-full">
+            <div class="timeline-control-group timeline-control-group--primary">
+                <div class="timeline-essential-select timeline-view-field">
+                    <label for="plannerPrimaryView" class="text-[10px] font-black text-slate-500 uppercase tracking-[0.18em]">{% tenant_trans "View" %}</label>
+                    <select id="plannerPrimaryView"
+                        onchange="window.setTimelinePrimaryView && window.setTimelinePrimaryView(this.value)"
+                        class="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none w-full">
+                        <option value="gantt">{% tenant_trans "Gantt" %}</option>
+                        <option value="kanban">{% tenant_trans "Kanban" %}</option>
+                        <option value="list">{% tenant_trans "List" %}</option>
+                        <option value="calendar">{% tenant_trans "Calendar" %}</option>
+                    </select>
+                </div>
+
+                <div id="timelineWindowNavigator" class="timeline-window-nav">
+                    <button type="button"
+                        id="timelineWindowPrevButton"
+                        class="timeline-icon-btn timeline-step-btn"
+                        onclick="window.shiftTimelineWindow && window.shiftTimelineWindow(-1)"
+                        title="Previous"
+                        aria-label="Previous">
+                        <i class="ph ph-caret-left text-sm"></i>
+                    </button>
+
+                    <div id="timelineDateField" class="timeline-essential-select timeline-date-field hidden">
+                        <label for="timelineDate">{% tenant_trans "Day" %}</label>
+                        <input
+                            type="date"
+                            id="timelineDate"
+                            class="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none w-full min-w-0">
+                    </div>
+
+                    <div id="timelineWeekField" class="timeline-essential-select timeline-week-field hidden">
+                        <label for="timelineWeekPicker">{% tenant_trans "Week" %}</label>
+                        <input
+                            type="week"
+                            id="timelineWeekPicker"
+                            class="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none w-full min-w-0">
+                    </div>
+
+                    <div id="timelineMonthField" class="timeline-essential-select timeline-month-field hidden">
+                        <label for="timelineMonthPicker">{% tenant_trans "Month" %}</label>
+                        <input
+                            type="month"
+                            id="timelineMonthPicker"
+                            class="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none w-full min-w-0">
+                    </div>
+
+                    <button type="button"
+                        id="timelineWindowNextButton"
+                        class="timeline-icon-btn timeline-step-btn"
+                        onclick="window.shiftTimelineWindow && window.shiftTimelineWindow(1)"
+                        title="Next"
+                        aria-label="Next">
+                        <i class="ph ph-caret-right text-sm"></i>
+                    </button>
+                </div>
+
+                <div class="timeline-scale-switch" role="group" aria-label="{% tenant_trans 'Timeline scale' %}">
+                    <button type="button"
+                        id="timelineScaleDayToggle"
+                        onclick="window.setGanttView && window.setGanttView('day')"
+                        class="timeline-scale-switch__button"
+                        title="{% tenant_trans 'Switch to day scale' %}"
+                        aria-label="{% tenant_trans 'Switch to day scale' %}"
+                        aria-pressed="false">
+                        <i class="ph ph-clock text-sm"></i>
+                        <span>{% tenant_trans "Day" %}</span>
+                    </button>
+                    <button type="button"
+                        id="timelineScaleWeekToggle"
+                        onclick="window.setGanttView && window.setGanttView('week')"
+                        class="timeline-scale-switch__button"
+                        title="{% tenant_trans 'Switch to week scale' %}"
+                        aria-label="{% tenant_trans 'Switch to week scale' %}"
+                        aria-pressed="false">
+                        <i class="ph ph-calendar-blank text-sm"></i>
+                        <span>{% tenant_trans "Week" %}</span>
+                    </button>
+                    <button type="button"
+                        id="timelineScaleMonthToggle"
+                        onclick="window.setGanttView && window.setGanttView('month')"
+                        class="timeline-scale-switch__button"
+                        title="{% tenant_trans 'Switch to month scale' %}"
+                        aria-label="{% tenant_trans 'Switch to month scale' %}"
+                        aria-pressed="false">
+                        <i class="ph ph-calendar text-sm"></i>
+                        <span>{% tenant_trans "Month" %}</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <div class="timeline-control-group timeline-control-group--secondary">
+                    <button type="button"
+                        id="timelineFilterToggle"
+                        onclick="window.openTimelineFilter && window.openTimelineFilter()"
+                        class="timeline-filter-btn"
+                    title="{% tenant_trans 'Open filters' %}">
+                    <i class="ph ph-funnel text-base"></i>
+                    <span>{% tenant_trans "Filter" %}</span>
+                </button>
+
+                    <button type="button"
+                        id="timelineSnapToggle"
+                        onclick="window.toggleTimelineSnapMode && window.toggleTimelineSnapMode()"
+                        class="timeline-filter-btn"
+                    title="{% tenant_trans 'Toggle snap' %}">
+                    <i class="ph ph-grid-four text-base"></i>
+                    <span>{% tenant_trans "Snap" %}</span>
+                </button>
+
+                <div class="timeline-essential-select timeline-snap-field">
+                    <label for="timelineSnapMinutes" class="sr-only">{% tenant_trans "Snap" %}</label>
+                    <select id="timelineSnapMinutes"
+                        onchange="window.setTimelineSnapMinutes && window.setTimelineSnapMinutes(this.value)"
+                        class="bg-transparent text-sm font-semibold text-slate-800 focus:outline-none w-full">
+                        <option value="auto">{% tenant_trans "Auto" %}</option>
+                        <option value="5">5m</option>
+                        <option value="15">15m</option>
+                        <option value="30">30m</option>
+                        <option value="60">60m</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="timeline-control-spacer"></div>
+            <div class="timeline-control-group timeline-control-group--utility">
+                <button type="button"
+                    x-show="!showQueueRail"
+                    x-cloak
+                    @click="toggleQueueRail()"
+                    class="timeline-icon-btn border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-700"
+                    title="{% tenant_trans 'Show Pending WOs' %}"
+                    aria-label="{% tenant_trans 'Show Pending WOs' %}">
+                    <i class="ph ph-sidebar-simple text-sm"></i>
+                </button>
+
+                <button type="button"
+                    id="timelineUndoButton"
+                    onclick="window.undoLastTimelineAction && window.undoLastTimelineAction(); return false;"
+                    class="timeline-icon-btn disabled:cursor-not-allowed disabled:opacity-40"
+                    title="Undo last planning action"
+                    aria-label="Undo last planning action"
+                    disabled>
+                    <i class="ph ph-arrow-counter-clockwise text-sm"></i>
+                </button>
+
+                <button type="button"
+                    onclick="window.initGanttChart(true)"
+                    class="timeline-icon-btn timeline-refresh-btn"
+                    title="Refresh Timeline"
+                    aria-label="Refresh timeline">
+                    <i class="ph ph-arrow-clockwise text-sm"></i>
+                </button>
+
+                <div id="timelineOptionalControls" class="timeline-icon-pack">
+                    <div id="timelineOverflowMenu" class="relative">
+                        <button type="button"
+                            id="timelineOverflowToggle"
+                            onclick="return window.toggleTimelineOverflowMenu ? window.toggleTimelineOverflowMenu(event) : false"
+                            aria-expanded="false"
+                            class="timeline-icon-btn"
+                            title="More actions"
+                            aria-label="More actions">
+                            <i class="ph ph-dots-three-outline text-lg"></i>
+                        </button>
+                        <div id="timelineOverflowPanel"
+                            class="hidden absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden">
+                            <div class="timeline-overflow-info">
+                                <div class="timeline-overflow-info__row">
+                                    <span class="timeline-meta-swatch"></span>
+                                    <span>Same route color = same WO family</span>
+                                </div>
+                                <div class="timeline-overflow-info__row timeline-overflow-info__row--subtle">
+                                    <i class="ph ph-calendar-blank text-sm"></i>
+                                    <span id="timelineVisibleRangeLabel">Timeline range</span>
+                                </div>
+                            </div>
+                            <button type="button"
+                                id="timelineEditModeToggle"
+                                onclick="window.toggleTimelineEditMode && window.toggleTimelineEditMode(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action"
+                                title="Toggle edit mode"
+                                aria-label="Toggle edit mode">
+                                <i id="timelineEditModeIcon" class="ph ph-lock-open text-lg"></i>
+                                <span>Edit Mode</span>
+                            </button>
+                            <button type="button"
+                                id="timelineMaximizeToggle"
+                                onclick="window.toggleTimelineMaximized && window.toggleTimelineMaximized(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action"
+                                title="Maximize timeline"
+                                aria-label="Maximize timeline">
+                                <i id="timelineMaximizeIcon" class="ph ph-arrows-out text-lg"></i>
+                                <span>Maximize Timeline</span>
+                            </button>
+                            <button type="button"
+                                id="timelineOverflowCompactToggle"
+                                onclick="window.toggleTimelineCompactMode && window.toggleTimelineCompactMode(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-arrows-horizontal text-base"></i>
+                                <span>Compact Mode</span>
+                            </button>
+                            <button type="button"
+                                id="timelineOverflowProgressToggle"
+                                onclick="window.toggleTimelineShowProgress && window.toggleTimelineShowProgress(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-chart-line-up text-base"></i>
+                                <span>Show Progress</span>
+                            </button>
+                            <button type="button"
+                                id="timelineOverflowAssigneeToggle"
+                                onclick="window.toggleTimelineShowAssignee && window.toggleTimelineShowAssignee(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-user text-base"></i>
+                                <span>Show Assignee</span>
+                            </button>
+                            <button type="button"
+                                id="timelineOverflowNonWorkingToggle"
+                                onclick="window.toggleTimelineShowNonWorking && window.toggleTimelineShowNonWorking(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-moon text-base"></i>
+                                <span>Show Non-working Time</span>
+                            </button>
+                            <button type="button"
+                                id="timelineOverflowResetToggle"
+                                onclick="window.resetTimelineLayout && window.resetTimelineLayout(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-arrow-counter-clockwise text-base"></i>
+                                <span>Reset Timeline Layout</span>
+                            </button>
+                            <button type="button"
+                                onclick="window.exportTimelineData && window.exportTimelineData(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-download-simple text-base"></i>
+                                <span>Export</span>
+                            </button>
+                            <button type="button"
+                                onclick="window.print(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-printer text-base"></i>
+                                <span>Print</span>
+                            </button>
+                            <button type="button"
+                                onclick="window.openTimelineAdvancedTools && window.openTimelineAdvancedTools(); window.closeTimelineOverflowMenu && window.closeTimelineOverflowMenu();"
+                                class="timeline-overflow-action">
+                                <i class="ph ph-sliders-horizontal text-base"></i>
+                                <span>Advanced Tools</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

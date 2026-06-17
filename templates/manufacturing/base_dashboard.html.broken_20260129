@@ -1,0 +1,658 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kemet ERP</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- TAILWIND CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 800: '#1e293b', 900: '#0f172a' }
+                    },
+                    letterSpacing: {
+                        tightest: '-0.05em',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Libraries -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script type="text/javascript"
+        src="https://unpkg.com/vis-timeline/standalone/umd/vis-timeline-graph2d.min.js"></script>
+    <link href="https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js?v=2"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            /* Slate-50 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        [x-cloak] {
+            display: none !important;
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        .glass-panel-premium {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.05),
+                inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+        }
+
+        .dream-glow-blue {
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.2), 0 0 80px rgba(59, 130, 246, 0.1);
+        }
+
+        .dream-glow-emerald {
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.2), 0 0 80px rgba(16, 185, 129, 0.1);
+        }
+
+        .dream-glow-amber {
+            box-shadow: 0 0 40px rgba(245, 158, 11, 0.2), 0 0 80px rgba(245, 158, 11, 0.1);
+        }
+
+        .glass-panel-dark {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(32px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            /* Slate-300 */
+            border-radius: 4px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #94a3b8;
+            /* Slate-400 */
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* Vis.js Overrides for App Shell */
+        .vis-item {
+            border-color: transparent;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+        }
+
+        .vis-item.vis-selected {
+            box-shadow: 0 0 0 2px #3b82f6;
+            /* Blue-500 ring */
+            border-color: #3b82f6;
+        }
+
+        .vis-time-axis .vis-text {
+            color: #64748b;
+            /* Slate-500 */
+            font-weight: 500;
+        }
+
+        /* Animations */
+        .hover-lift {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Modern Micro-interactions */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .animate-slide-in-right {
+            animation: slideInRight 0.4s ease-out;
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+
+        /* Enhanced Hover Effects */
+        .hover-scale {
+            transition: transform 0.2s ease;
+        }
+
+        .hover-scale:hover {
+            transform: scale(1.05);
+        }
+
+        .hover-glow {
+            transition: box-shadow 0.2s ease;
+        }
+
+        .hover-glow:hover {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Loading States */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* Ripple Effect */
+        .ripple {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ripple::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .ripple:active::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* Smooth Transitions */
+        * {
+            transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        /* Focus States */
+        .focus-ring:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Page Transitions */
+        .page-transition {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .page-transition-enter {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .page-transition-enter-active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    </style>
+</head>
+
+<body class="bg-white h-screen overflow-hidden flex text-slate-800" x-data="appShell()" x-init="initShell()">
+
+    {% block sidebar %}
+    <!-- 1. FLEXIBLE NAVIGATION HUB (Movable) -->
+    <div class="fixed z-[100] transition-all duration-500 ease-in-out" :class="{
+        'top-4 left-4': pos === 'top-left',
+        'top-4 right-4': pos === 'top-right',
+        'bottom-4 left-4': pos === 'bottom-left',
+        'bottom-4 right-4': pos === 'bottom-right'
+    }">
+        <div class="relative group">
+            <!-- Main Hub Button -->
+            <button @click="showSettings = !showSettings"
+                class="w-12 h-12 rounded-2xl bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all border border-indigo-400/30">
+                <i class="ph-fill ph-grid-four text-2xl"></i>
+            </button>
+
+            <!-- Quick Position Snappers (Shown on Hover/Alt) -->
+            <div
+                class="absolute inset-0 -z-10 bg-indigo-600/20 blur-xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity">
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden Sidebar (Legacy support or drawer mode if needed) -->
+    {% endblock %}
+
+    <!-- 2. MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative" :class="{'w-full': true}">
+
+        <!-- TOP NAVIGATION (Modern Full-Width) -->
+        {% block app_header %}
+        <header
+            class="h-14 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0 z-40 sticky top-0">
+            <div class="flex items-center gap-8 flex-1">
+                <!-- Branding -->
+                <div class="flex items-center gap-2">
+                    <div
+                        class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-lg shadow-indigo-100">
+                        K</div>
+                    <span class="text-sm font-black text-slate-900 tracking-tighter">Kemet <span
+                            class="text-indigo-600">ERP</span></span>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="flex items-center gap-1 bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
+                    <template x-for="mod in modules" :key="mod.id">
+                        <a :href="mod.url || '#'"
+                            @click="if(!mod.url || mod.url === '#') { $event.preventDefault(); setActiveModule(mod.id); }"
+                            class="px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-2"
+                            :class="activeModule.id === mod.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'">
+                            <i :class="'ph ph-' + mod.icon + (activeModule.id === mod.id ? '-fill' : '')"></i>
+                            <span x-text="mod.label"></span>
+                        </a>
+                    </template>
+                </nav>
+            </div>
+
+            <!-- Header Right: Profile & Actions -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">
+                            Supervisor</div>
+                        <div class="text-xs font-black text-slate-900 leading-none">{{
+                            request.user.first_name|default:request.user.username }}</div>
+                    </div>
+                    <div
+                        class="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 overflow-hidden ring-2 ring-white">
+                        <img src="https://ui-avatars.com/api/?name={{ request.user.username }}&background=4f46e5&color=fff"
+                            class="w-full h-full object-cover">
+                    </div>
+                </div>
+            </div>
+        </header>
+        {% endblock %}
+
+        <!-- CONTENT SCROLL AREA -->
+        <div id="main-content" class="flex-1 overflow-auto bg-white p-6 relative">
+            {% if messages %}
+            <div class="mb-6 space-y-2 max-w-4xl">
+                {% for message in messages %}
+                <div class="p-4 rounded-lg border shadow-sm flex justify-between items-center bg-white"
+                    :class="'{{ message.tags }}' === 'error' ? 'border-red-200 text-red-700' : 'border-blue-200 text-blue-700'">
+                    <div class="flex items-center gap-3">
+                        <i class="ph"
+                            :class="'{{ message.tags }}' === 'error' ? 'ph-warning-circle text-red-500' : 'ph-check-circle text-blue-500'"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="opacity-50 hover:opacity-100"><i
+                            class="ph ph-x"></i></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- 3. SETTINGS MODAL -->
+    <div x-cloak x-show="showSettings"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+        x-transition.opacity>
+
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" @click.away="showSettings = false"
+            x-transition.scale>
+
+            <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+                <h3 class="font-black text-slate-800 text-sm tracking-tight">System Settings</h3>
+                <button @click="showSettings = false" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <i class="ph-bold ph-x text-base"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-8">
+                <!-- Navigation Dock Position -->
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Navigation Dock
+                    </h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <template x-for="p in [
+                            { id: 'top-left', label: 'Top-Left', icon: 'ph-arrow-up-left' },
+                            { id: 'top-right', label: 'Top-Right', icon: 'ph-arrow-up-right' },
+                            { id: 'bottom-left', label: 'Bottom-Left', icon: 'ph-arrow-down-left' },
+                            { id: 'bottom-right', label: 'Bottom-Right', icon: 'ph-arrow-down-right' }
+                        ]" :key="p.id">
+                            <button @click="setPos(p.id); window.location.reload();"
+                                class="flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all group"
+                                :class="pos === p.id ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-slate-100 hover:border-indigo-200 text-slate-400 hover:text-slate-600'">
+                                <i :class="p.icon" class="text-2xl mb-2 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-[10px] font-black uppercase tracking-widest" x-text="p.label"></span>
+                            </button>
+                        </template>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-3 font-bold text-center uppercase tracking-tighter">Choose
+                        your preferred command hub position.</p>
+                </div>
+
+                <!-- Enabled Modules -->
+                <div>
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Enabled Modules
+                    </h4>
+                    <div class="space-y-3">
+                        <template x-for="mod in modules" :key="mod.id">
+                            <label
+                                class="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-all group">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                                        <i :class="'ph ph-' + mod.icon"></i>
+                                    </div>
+                                    <span class="text-xs font-black text-slate-700 uppercase tracking-tight"
+                                        x-text="mod.label"></span>
+                                </div>
+                                <div class="relative inline-block w-8 h-4">
+                                    <input type="checkbox" class="sr-only peer" x-model="mod.enabled"
+                                        :disabled="mod.id === 'manufacturing'" @change="persistModules()">
+                                    <div
+                                        class="w-full h-full bg-slate-200 rounded-full peer peer-checked:bg-indigo-600 transition-colors">
+                                    </div>
+                                    <div
+                                        class="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4">
+                                    </div>
+                                </div>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t flex justify-center">
+                <button @click="showSettings = false"
+                    class="px-8 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95 uppercase tracking-widest">
+                    {% trans "Save & Continue" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GLOBAL Modal Container -->
+    <div id="modal-container">
+        {% include "manufacturing/modals.html" %}
+        {# Removed legacy BOM Modal in favor of V2 Page: {% include "manufacturing/modals/bom_modal.html" %} #}
+    </div>
+
+    <script>
+        // Sidebar State Management
+        function sidebarState() {
+            return {
+                collapsed: localStorage.getItem('kemet_sidebar_collapsed') === 'true',
+
+                toggle() {
+                    this.collapsed = !this.collapsed;
+                    localStorage.setItem('kemet_sidebar_collapsed', this.collapsed);
+                }
+            }
+        }
+
+        function appShell() {
+            return {
+                showSettings: false,
+                showCreateModal: false,
+                currentPath: window.location.pathname,
+                activeTab: 'orders', // Default active tab for manufacturing
+                overrideModuleId: null, // Explicit override for modules without URL changes (e.g. Setup)
+                pos: localStorage.getItem('kemet_nav_pos') || 'top-left',
+                setPos(p) { this.pos = p; localStorage.setItem('kemet_nav_pos', p); },
+
+                modules: [
+                    {
+                        id: 'manufacturing',
+                        label: 'Manufacturing',
+                        icon: 'ph-factory',
+                        enabled: true,
+                        url: '{% url "dashboard" %}',
+                        tabs: [
+                            { id: 'board', label: 'Planner Board' },
+                            { id: 'orders', label: 'Work Orders' },
+                            { id: 'resources', label: 'Resources' }
+                        ]
+                    },
+
+                    {
+                        id: 'setup',
+                        label: 'Factory Setup',
+                        icon: 'ph-wrench',
+                        slug: 'factory-setup',
+                        url: '/manufacturing/factory-setup/',
+                        enabled: true
+                    },
+                    {
+                        id: 'reports',
+                        label: 'Reports Center',
+                        icon: 'ph-chart-bar',
+                        enabled: true,
+                        url: '{% url "reports_dashboard" %}',
+                        tabs: [
+                            { id: 'yield', label: 'Yield Analysis', url: '{% url "reports_dashboard" %}', slug: 'reports' },
+                            { id: 'cost', label: 'Costing', url: '{% url "reports_dashboard" %}', slug: 'reports' }
+                        ]
+                    },
+                    {
+                        id: 'quality',
+                        label: 'Quality Control',
+                        icon: 'ph-check-circle',
+                        enabled: true,
+                        url: '{% url "quality_check" %}',
+                        tabs: [
+                            { id: 'checks', label: 'Inspections', url: '{% url "quality_check" %}', slug: 'quality' }
+                        ]
+                    }
+                ],
+
+                get activeModule() {
+                    // 1. Explicit Override (Click)
+                    if (this.overrideModuleId) {
+                        return this.modules.find(m => m.id === this.overrideModuleId);
+                    }
+
+                    // 2. Auto-detect based on URL
+                    const path = this.currentPath;
+
+                    // Explicit Overrides for Main Dashboards (Fixes Inventory Highlight Issue)
+                    if (path.includes('/supervisor') || path.includes('/planner') || path.includes('/dashboard')) {
+                        return this.modules.find(m => m.id === 'manufacturing');
+                    }
+
+                    let found = this.modules.find(m => m.tabs.some(t => t.slug && path.includes(t.slug)));
+
+                    // Fallback to localStorage or default
+                    if (!found) {
+                        const savedId = localStorage.getItem('kemet_active_module');
+                        found = this.modules.find(m => m.id === savedId) || this.modules[0];
+                    }
+                    return found;
+                },
+
+                setActiveModule(id) {
+                    // Navigate to the first tab of the module
+                    const mod = this.modules.find(m => m.id === id);
+                    if (mod) {
+                        localStorage.setItem('kemet_active_module', id);
+
+                        // Force override state for immediate UI update (essential for 'setup')
+                        this.overrideModuleId = id;
+
+                        // If it's the Setup module, don't navigate, just show header tabs
+                        if (mod.id === 'setup') {
+                            return;
+                        }
+
+                        // Priority 1: Module-level URL (if set explicitly)
+                        if (mod.url && mod.url !== '#') {
+                            window.location.href = mod.url;
+                        }
+                        // Priority 2: First Tab URL
+                        else if (mod.tabs.length > 0 && mod.tabs[0].url) {
+                            window.location.href = mod.tabs[0].url;
+                        } else {
+                            // Fallback to prevent 404
+                            console.warn("Module has no URL", mod.id);
+                            window.location.href = '#';
+                        }
+                    }
+                },
+
+                handleTabAction(tab) {
+                    if (tab.action && tab.action.startsWith('open')) {
+                        // Direct Modal Opening (More reliable than clicking hidden buttons)
+                        let modalId = tab.action.replace('open', '');
+
+                        // Handle Casing Logic
+                        if (modalId === 'BOMModal') {
+                            window.location.href = "/manufacturing/bom-builder/";
+                            return;
+                        } else {
+                            // CamelCase: MachineModal -> machineModal
+                            modalId = modalId.charAt(0).toLowerCase() + modalId.slice(1);
+                        }
+
+                        const modal = document.getElementById(modalId);
+                        if (modal) {
+                            modal.classList.remove('hidden');
+                        } else {
+                            // Fallback: Try clicking the button (if logic differs/exists)
+                            const btn = document.getElementById(tab.action);
+                            if (btn) btn.click();
+                            else alert("Please go to the Manufacturing Planner to use this feature.");
+                        }
+                    } else if (tab.url && tab.url !== '#') {
+                        window.location.href = tab.url;
+                    } else {
+                        this.activeTab = tab.id;
+                    }
+                },
+
+                // Global override for legacy BOM functions
+                openBOMModal(bomId = null) {
+                    if (bomId) {
+                        window.location.href = `/manufacturing/bom-builder/${bomId}/`;
+                    } else {
+                        window.location.href = "/manufacturing/bom-builder/";
+                    }
+                },
+
+                initShell() {
+                    // Load enabled states from localStorage
+                    const savedConfig = localStorage.getItem('kemet_modules_config');
+                    if (savedConfig) {
+                        try {
+                            const parsed = JSON.parse(savedConfig);
+                            this.modules.forEach(m => {
+                                // Only restore 'enabled' property, do NOT touch tabs or URLs
+                                if (parsed[m.id] !== undefined) m.enabled = parsed[m.id];
+                            });
+                        } catch (e) {
+                            localStorage.removeItem('kemet_modules_config'); // Reset on error
+                        }
+                    }
+                },
+
+                persistModules() {
+                    const config = {};
+                    this.modules.forEach(m => config[m.id] = m.enabled);
+                    localStorage.setItem('kemet_modules_config', JSON.stringify(config));
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

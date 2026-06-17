@@ -1,0 +1,204 @@
+{% for m in machine_list %}
+<!-- Grid View Card -->
+<div x-show="viewMode === 'grid' && shouldShowMachine('{{ m.status }}', {{ m.active_wo|yesno:'true,false' }})"
+    class="glass-panel-premium p-6 rounded-2xl relative group hover-lift h-full flex flex-col justify-between overflow-hidden">
+
+    <!-- Decorative Status Line at top -->
+    <div
+        class="absolute top-0 left-0 right-0 h-1 {% if m.status == 'operational' %}bg-emerald-500{% elif m.status == 'maintenance' %}bg-red-500{% else %}bg-slate-300{% endif %}">
+    </div>
+
+    <!-- Header -->
+    <div class="flex justify-between items-start mb-5 pt-2">
+        <div class="flex items-center gap-3">
+            <div
+                class="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm text-lg
+                {% if m.status == 'operational' %}bg-emerald-50 text-emerald-600{% elif m.status == 'maintenance' %}bg-red-50 text-red-600{% else %}bg-slate-100 text-slate-500{% endif %}">
+                <i
+                    class="ph {% if m.status == 'operational' %}ph-lightning{% elif m.status == 'maintenance' %}ph-wrench{% else %}ph-power{% endif %}"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-lg text-slate-800 leading-tight">{{ m.name }}</h3>
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest font-mono">{{ m.code }}</div>
+            </div>
+        </div>
+
+        <!-- Pulse Status Dot -->
+        <div class="relative flex items-center justify-center w-4 h-4 mt-1">
+            <span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 {% if m.status == 'operational' %}bg-emerald-400{% elif m.status == 'maintenance' %}bg-red-400{% else %}hidden{% endif %}"></span>
+            <span
+                class="relative inline-flex rounded-full h-2.5 w-2.5 {% if m.status == 'operational' %}bg-emerald-500{% elif m.status == 'maintenance' %}bg-red-500{% else %}bg-slate-300{% endif %}"></span>
+        </div>
+    </div>
+
+    <!-- Active Job Info -->
+    {% if m.active_wo %}
+    <div class="bg-slate-50/80 rounded-xl p-4 mb-5 border border-slate-100/50 relative overflow-hidden">
+        <!-- Progress Background -->
+        <div class="absolute bottom-0 left-0 h-1 bg-slate-200 w-full">
+            <div class="h-full bg-blue-500 transition-all duration-1000 ease-out"
+                style="width: {{ m.active_wo.progress|default:0 }}%"></div>
+        </div>
+
+        <div class="flex justify-between text-xs mb-2">
+            <span
+                class="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-[10px] border border-blue-100">WO-{{
+                m.active_wo.id }}</span>
+            <button class="text-slate-400 hover:text-blue-600 transition" onclick="editWO('{{ m.active_wo.id }}')">
+                <i class="ph ph-pencil-simple"></i>
+            </button>
+        </div>
+        <div class="text-sm font-bold text-slate-800 mb-3 truncate leading-snug" title="{{ m.active_wo.product_name }}">
+            {{ m.active_wo.product_name }}
+        </div>
+
+        <div class="flex justify-between items-end text-xs text-slate-500">
+            <div class="flex items-center gap-1.5">
+                <i class="ph ph-stack text-slate-400"></i>
+                <span class="font-medium">Qty: {{ m.active_wo.quantity }}</span>
+            </div>
+            <span class="font-bold text-blue-600">{{ m.active_wo.progress }}%</span>
+        </div>
+    </div>
+
+    <!-- Worker Floating -->
+    <div class="flex items-center justify-between mt-auto pt-2 border-t border-slate-100/50">
+        <div class="flex items-center gap-2 group-hover:gap-3 transition-all cursor-pointer"
+            onclick="openAssignModal('{{ m.active_wo.id }}')">
+            <div class="relative">
+                <div
+                    class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm">
+                    {{ m.active_wo.assigned_to.username|slice:":1"|default:"?" }}
+                </div>
+                <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
+                    <i class="ph ph-user-circle text-blue-500 text-xs"></i>
+                </div>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-xs font-semibold text-slate-700">{{
+                    m.active_wo.assigned_to.username|default:"Unassigned" }}</span>
+                <span class="text-[10px] text-slate-400">Operator</span>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div
+        class="bg-slate-50/50 rounded-xl p-6 mb-4 border border-dashed border-slate-300 text-center flex-1 flex flex-col justify-center items-center group-hover:bg-slate-50 transition-colors">
+        <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-2 text-slate-400">
+            <i class="ph ph-power text-xl"></i>
+        </div>
+        <p class="text-sm font-medium text-slate-500">Machine Idle</p>
+        <button
+            class="mt-3 px-4 py-1.5 bg-white text-blue-600 text-xs font-bold rounded-full border border-blue-100 shadow-sm hover:shadow hover:bg-blue-50 transition">
+            Assign Job
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Actions Footer -->
+    <div class="flex gap-2 mt-4 pt-3 border-t border-slate-100 opacity-60 group-hover:opacity-100 transition-opacity">
+        <button
+            class="flex-1 py-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 transition-colors flex items-center justify-center gap-2">
+            <i class="ph ph-warning-circle"></i> Log Issue
+        </button>
+        {% if m.status == 'maintenance' %}
+        <button
+            class="flex-1 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-700 transition-colors"
+            onclick="setMachineStatus('{{ m.id }}', 'operational')">
+            Reactivate
+        </button>
+        {% else %}
+        <button
+            class="flex-1 py-2 rounded-lg bg-rose-50 hover:bg-rose-100 text-xs font-semibold text-rose-700 transition-colors"
+            onclick="setMachineStatus('{{ m.id }}', 'maintenance')">
+            Maintenance
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- List View Row -->
+<div x-show="viewMode === 'list' && shouldShowMachine('{{ m.status }}', {{ m.active_wo|yesno:'true,false' }})"
+    class="bg-white p-4 rounded-xl border border-slate-100 flex items-center justify-between hover:shadow-lg transition-all gap-6 group hover:border-slate-200">
+
+    <!-- Machine Info -->
+    <div class="flex items-center gap-4 w-1/4">
+        <div class="relative">
+            <div
+                class="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm text-xl
+                {% if m.status == 'operational' %}bg-emerald-50 text-emerald-600{% elif m.status == 'maintenance' %}bg-red-50 text-red-600{% else %}bg-slate-50 text-slate-400{% endif %}">
+                <i
+                    class="ph {% if m.status == 'operational' %}ph-lightning{% elif m.status == 'maintenance' %}ph-wrench{% else %}ph-power{% endif %}"></i>
+            </div>
+            <div
+                class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white
+                 {% if m.status == 'operational' %}bg-emerald-500{% elif m.status == 'maintenance' %}bg-red-500{% else %}bg-slate-300{% endif %}">
+            </div>
+        </div>
+        <div>
+            <h4 class="font-bold text-slate-800 text-base">{{ m.name }}</h4>
+            <span class="text-xs text-slate-400 font-mono tracking-wide">{{ m.code }}</span>
+        </div>
+    </div>
+
+    <!-- Activity Status -->
+    <div class="flex-1 px-4">
+        {% if m.active_wo %}
+        <div class="flex items-center gap-6">
+            <div class="flex-1">
+                <div class="flex justify-between items-center mb-1.5">
+                    <span class="text-sm font-bold text-slate-700 truncate max-w-[200px]"
+                        title="{{ m.active_wo.product_name }}">{{ m.active_wo.product_name }}</span>
+                    <span
+                        class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">WO-{{
+                        m.active_wo.id }}</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
+                    <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-700"
+                        :style="'width: {{ m.active_wo.progress|default:0 }}%'">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned Worker -->
+            <div class="flex items-center gap-3 min-w-[140px] pl-4 border-l border-slate-100">
+                <div
+                    class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-xs font-bold ring-2 ring-white shadow-sm">
+                    {{ m.active_wo.assigned_to.username|slice:":1"|default:"?" }}
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-xs font-semibold text-slate-700 truncate max-w-[80px]">{{
+                        m.active_wo.assigned_to.username|default:"Unassigned" }}</span>
+                    <span class="text-[9px] text-slate-400 uppercase tracking-wide">Operator</span>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-sm text-slate-400 italic flex items-center gap-2">
+            <i class="ph ph-coffee text-lg opacity-50"></i>
+            Machine is currently idle
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Status Badge -->
+    <div class="w-32 text-right">
+        <span
+            class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-block text-center w-full shadow-sm border
+            {% if m.status == 'operational' %}bg-emerald-50 text-emerald-700 border-emerald-100{% elif m.status == 'maintenance' %}bg-red-50 text-red-700 border-red-100{% else %}bg-slate-50 text-slate-500 border-slate-100{% endif %}">
+            {{ m.get_status_display }}
+        </span>
+    </div>
+
+    <!-- Quick Actions (Hover Only) -->
+    <div class="w-12 flex justify-end">
+        <button
+            class="w-9 h-9 rounded-xl hover:bg-slate-100 text-slate-300 hover:text-slate-600 flex items-center justify-center transition-colors border border-transparent hover:border-slate-200"
+            onclick="editWO('{{ m.active_wo.id }}')">
+            <i class="ph ph-dots-three-vertical text-xl"></i>
+        </button>
+    </div>
+</div>
+{% endfor %}

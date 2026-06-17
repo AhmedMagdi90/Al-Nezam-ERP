@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 520" role="img" aria-label="Nezam logo concept">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#f9fcff"/>
+      <stop offset="100%" stop-color="#f4f8ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="520" fill="url(#bg)"/>
+  <rect x="76" y="84" width="330" height="352" rx="84" fill="#3b82f610" stroke="#6366f130" />
+  <path d="M130 350 L170 130" stroke="#f2455a" stroke-width="44" stroke-linecap="round" fill="none"/>
+  <path d="M165 130 L278 350" stroke="#6a4cff" stroke-width="42" stroke-linecap="round" fill="none"/>
+  <path d="M278 350 L340 130" stroke="#00b7ff" stroke-width="44" stroke-linecap="round" fill="none"/>
+  <path d="M244 304 L286 348 L378 250" stroke="#10b981" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <ellipse cx="226" cy="314" rx="13" ry="18" fill="#0ea5e9" opacity=".9"/>
+  <circle cx="212" cy="302" r="6" fill="#0ea5e9" opacity=".88"/>
+  <circle cx="226" cy="294" r="6" fill="#0ea5e9" opacity=".88"/>
+  <circle cx="241" cy="296" r="6" fill="#0ea5e9" opacity=".88"/>
+  <text x="470" y="280" font-family="Segoe UI, Arial, sans-serif" font-size="182" font-weight="700" fill="#141e32">Nezam</text>
+  <text x="475" y="364" font-family="Segoe UI, Arial, sans-serif" font-size="42" fill="#546783">Manufacturing Platform</text>
+  <line x1="475" y1="390" x2="1185" y2="390" stroke="#94a3b8" stroke-opacity=".55"/>
+</svg>

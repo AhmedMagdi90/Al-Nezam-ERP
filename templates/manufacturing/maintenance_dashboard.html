@@ -1,0 +1,316 @@
+﻿{% extends "manufacturing/base_dashboard.html" %}
+{% load static tenant_i18n %}
+
+{% block title %}{% tenant_trans "Maintenance" %}{% endblock %}
+{% block subtitle %}{% tenant_trans "Maintenance workflow hub" %}{% endblock %}
+
+{% block content %}
+<div class="mb-4 rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-amber-700">
+                <i class="ph ph-wrench text-sm"></i>
+                {% tenant_trans "Maintenance Workspace" %}
+            </div>
+            <h1 class="mt-3 text-2xl font-black tracking-[-0.04em] text-slate-950">
+                {% if read_only %}
+                    {% tenant_trans "Maintenance Overview" %}
+                {% elif role_mode == 'head' %}
+                    {% tenant_trans "Maintenance Control Hub" %}
+                {% elif role_mode == 'supervisor' %}
+                    {% tenant_trans "Maintenance Supervisor Queue" %}
+                {% else %}
+                    {% tenant_trans "Technician Task Queue" %}
+                {% endif %}
+            </h1>
+            <p class="mt-2 text-sm leading-6 text-slate-600">
+                {% if read_only %}
+                    {% tenant_trans "Read-only visibility for planner users. Focus on machine health, queue pressure, and which issues can block execution." %}
+                {% elif role_mode == 'head' %}
+                    {% tenant_trans "Run maintenance in order: review new tickets, assign ownership, confirm completion, then watch SLA risk and machine health." %}
+                {% elif role_mode == 'supervisor' %}
+                    {% tenant_trans "Prioritize blocked equipment, assign technicians quickly, and only hold tickets open when more action is required." %}
+                {% else %}
+                    {% tenant_trans "Work from the selected ticket, record the resolution clearly, and submit only when the machine can be returned cleanly." %}
+                {% endif %}
+            </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:min-w-[24rem]">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{% tenant_trans "1. Review ticket" %}</div>
+                <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Start with the highest-risk machine issue" %}</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{% tenant_trans "2. Restore machine" %}</div>
+                <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Assign, repair, and document ownership" %}</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{% tenant_trans "3. Reopen execution" %}</div>
+                <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Approve cleanly so production can continue" %}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% if read_only %}
+<div class="h-[calc(100vh-140px)] overflow-y-auto pr-2 custom-scrollbar space-y-6">
+    <div class="p-6 rounded-2xl border border-slate-200 bg-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">{% tenant_trans "Maintenance Overview" %}</h1>
+                <p class="text-sm text-slate-500 mt-1">{% tenant_trans "Planner read-only view" %}</p>
+            </div>
+            <div class="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                {% tenant_trans "View Only" %}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase">{% tenant_trans "Operational" %}</div>
+            <div class="text-2xl font-black text-slate-800 mt-2">{{ status_counts.operational }}</div>
+        </div>
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase">{% tenant_trans "Maintenance" %}</div>
+            <div class="text-2xl font-black text-slate-800 mt-2">{{ status_counts.maintenance }}</div>
+        </div>
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase">{% tenant_trans "Broken/Faulty" %}</div>
+            <div class="text-2xl font-black text-slate-800 mt-2">{{ status_counts.broken }}</div>
+        </div>
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase">{% tenant_trans "Inactive" %}</div>
+            <div class="text-2xl font-black text-slate-800 mt-2">{{ status_counts.inactive }}</div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-700">{% tenant_trans "Machine Status" %}</h2>
+            <span class="text-xs text-slate-400">{% tenant_trans "Updated" %} {% now "M d, H:i" %}</span>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for machine in machines %}
+            <div class="p-4 flex items-start justify-between gap-4">
+                <div>
+                    <div class="text-sm font-bold text-slate-800">{{ machine.display_label }}</div>
+                    <div class="text-xs text-slate-500 mt-1 flex flex-wrap gap-2">
+                        <span>{% tenant_trans "Code" %}: {{ machine.code }}</span>
+                        <span>-</span>
+                        <span>{% tenant_trans "Note" %}: {{ machine.maintenance_note|default:"-" }}</span>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border
+                     {% if machine.status == 'operational' %}bg-emerald-50 text-emerald-700 border-emerald-100
+                     {% elif machine.status == 'maintenance' %}bg-amber-50 text-amber-700 border-amber-100
+                     {% elif machine.status == 'broken' or machine.status == 'faulty' or machine.status == 'breakdown' %}bg-red-50 text-red-700 border-red-100
+                     {% else %}bg-slate-50 text-slate-500 border-slate-200{% endif %}">
+                    {{ machine.get_status_display }}
+                </span>
+            </div>
+            {% empty %}
+            <div class="p-10 text-center text-slate-400">
+                <div class="text-lg font-semibold">{% tenant_trans "No machines found" %}</div>
+                <div class="text-xs mt-1">{% tenant_trans "Add machines in Factory Setup" %}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="h-[calc(100vh-140px)] flex flex-col gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800">{% tenant_trans "Maintenance Control" %}</h1>
+        </div>
+        {% if role_mode == 'head' %}
+        <form method="post" class="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="toggle_auto_close">
+            <input type="hidden" name="auto_close" value="{% if auto_close %}0{% else %}1{% endif %}">
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <div class="text-xs font-semibold text-slate-500 uppercase">{% tenant_trans "Close Mode" %}</div>
+            <button type="submit" class="px-3 py-1.5 rounded-lg text-sm font-semibold {% if auto_close %}bg-emerald-600 text-white{% else %}bg-slate-100 text-slate-700{% endif %}">
+                {% if auto_close %}{% tenant_trans "Auto Close On" %}{% else %}{% tenant_trans "Manual Only" %}{% endif %}
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+        {% for tab in tabs %}
+        <a href="?tab={{ tab.id }}{% if selected_ticket %}&ticket={{ selected_ticket.id }}{% endif %}"
+            class="px-4 py-2 rounded-full text-sm font-semibold border transition {% if active_tab == tab.id %}bg-slate-900 text-white border-slate-900{% else %}bg-white text-slate-600 border-slate-200 hover:border-slate-400{% endif %}">
+            {% if tab.id == 'history' %}{% tenant_trans "Maintenance History" %}{% else %}{% tenant_trans tab.label %}{% endif %} <span class="ml-2 text-[11px] px-2 py-0.5 rounded-full {% if active_tab == tab.id %}bg-white/20 text-white{% else %}bg-slate-100 text-slate-500{% endif %}">{{ tab.count }}</span>
+        </a>
+        {% endfor %}
+        <div class="ml-auto text-xs text-slate-400">{% tenant_trans "SLA" %} {{ sla_hours }}h</div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
+        <div class="lg:col-span-4 bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
+            <div class="px-4 py-3 border-b border-slate-100 text-sm font-semibold text-slate-700">{% tenant_trans "Queue" %}</div>
+            <div class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+                {% for ticket in active_list %}
+                <a href="?tab={{ active_tab }}&ticket={{ ticket.id }}"
+                    class="block p-4 rounded-xl border transition {% if selected_ticket and ticket.id == selected_ticket.id %}bg-slate-900 text-white border-slate-900{% else %}bg-white border-slate-100 hover:border-slate-300{% endif %}">
+                    <div class="flex items-start justify-between">
+                        <div class="text-xs font-semibold {% if selected_ticket and ticket.id == selected_ticket.id %}text-white/70{% else %}text-slate-400{% endif %}">Ticket #{{ ticket.id }}</div>
+                        <div class="text-xs font-semibold {% if ticket.sla_overdue %}text-rose-500{% else %}text-emerald-600{% endif %}">
+                            {{ ticket.sla_display }}
+                        </div>
+                    </div>
+                    <div class="text-base font-semibold mt-1">{{ ticket.machine.display_label }}</div>
+                    <div class="text-xs mt-1 {% if selected_ticket and ticket.id == selected_ticket.id %}text-white/70{% else %}text-slate-500{% endif %}">
+                        Priority: {{ ticket.priority|capfirst }}
+                    </div>
+                    <div class="text-xs mt-1 {% if selected_ticket and ticket.id == selected_ticket.id %}text-white/70{% else %}text-slate-500{% endif %}">
+                        {{ ticket.description|truncatechars:70 }}
+                    </div>
+                </a>
+                {% empty %}
+                <div class="p-6 text-center text-sm text-slate-400">No items in this tab.</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="lg:col-span-8 bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
+            {% if selected_ticket %}
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <div class="text-xs font-semibold text-slate-400">Ticket #{{ selected_ticket.id }}</div>
+                    <div class="text-xl font-bold text-slate-800">{{ selected_ticket.machine.display_label }}</div>
+                    <div class="text-sm text-slate-500">{{ selected_ticket.description }}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600">{{ selected_ticket.priority|capfirst }}</span>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-amber-50 text-amber-700">{{ selected_ticket.status|capfirst }}</span>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                {% if role_mode == 'head' %}
+                    {% if selected_ticket.status == 'open' and not selected_ticket.assigned_supervisor %}
+                    <div class="border border-slate-200 rounded-xl p-4">
+                        <div class="text-sm font-semibold text-slate-700 mb-3">Assign Supervisor</div>
+                        <form method="post" class="flex flex-wrap gap-3 items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign_supervisor">
+                            <input type="hidden" name="ticket_id" value="{{ selected_ticket.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="supervisor_id" class="border border-slate-200 rounded-lg px-3 py-2 text-sm min-w-[220px]">
+                                <option value="">Select supervisor</option>
+                                {% for sup in supervisors %}
+                                <option value="{{ sup.id }}">{{ sup.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Assign</button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <details class="border border-slate-200 rounded-xl p-4">
+                        <summary class="text-sm font-semibold text-slate-700 cursor-pointer">Override and approve</summary>
+                        <form method="post" class="mt-4 space-y-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="override_task">
+                            <input type="hidden" name="ticket_id" value="{{ selected_ticket.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <textarea name="override_notes" rows="2" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Override notes (optional)"></textarea>
+                            <div class="flex justify-end">
+                                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Approve</button>
+                            </div>
+                        </form>
+                    </details>
+                {% endif %}
+
+                {% if role_mode == 'supervisor' %}
+                    {% if selected_ticket.status == 'open' and not selected_ticket.assigned_worker or selected_ticket.status == 'assigned' and not selected_ticket.assigned_worker or selected_ticket.status == 'in_progress' and not selected_ticket.assigned_worker %}
+                    <div class="border border-slate-200 rounded-xl p-4">
+                        <div class="text-sm font-semibold text-slate-700 mb-3">Assign Technician</div>
+                        <form method="post" class="flex flex-wrap gap-3 items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign_worker">
+                            <input type="hidden" name="ticket_id" value="{{ selected_ticket.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="worker_id" class="border border-slate-200 rounded-lg px-3 py-2 text-sm min-w-[220px]">
+                                <option value="">Select technician</option>
+                                {% for worker in workers %}
+                                <option value="{{ worker.id }}">{{ worker.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Assign</button>
+                        </form>
+                    </div>
+                    {% elif selected_ticket.status == 'completed' %}
+                    <div class="border border-slate-200 rounded-xl p-4 space-y-3">
+                        <div class="text-sm font-semibold text-slate-700">Technician Report</div>
+                        <div class="text-sm text-slate-500">{{ selected_ticket.resolution_notes|default:"No notes provided" }}</div>
+                        <form method="post" class="flex flex-wrap gap-3 items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="approve_task">
+                            <input type="hidden" name="ticket_id" value="{{ selected_ticket.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Approve</button>
+                        </form>
+                        <details class="pt-2">
+                            <summary class="text-sm font-semibold text-slate-600 cursor-pointer">Override notes</summary>
+                            <form method="post" class="mt-3 space-y-3">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="override_task">
+                                <input type="hidden" name="ticket_id" value="{{ selected_ticket.id }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <textarea name="override_notes" rows="2" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Override notes (optional)"></textarea>
+                                <div class="flex justify-end">
+                                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Approve</button>
+                                </div>
+                            </form>
+                        </details>
+                    </div>
+                    {% elif selected_ticket.assigned_worker and not selected_ticket.completed_at %}
+                    <div class="border border-slate-200 rounded-xl p-4">
+                        <div class="text-sm text-slate-500">Technician is working on this ticket.</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                {% if role_mode == 'worker' %}
+                    {% if selected_ticket.status == 'assigned' and not selected_ticket.completed_at or selected_ticket.status == 'in_progress' and not selected_ticket.completed_at %}
+                    <div class="border border-slate-200 rounded-xl p-4 space-y-3">
+                        <div class="text-sm font-semibold text-slate-700">Complete Task</div>
+                        <form method="post" class="space-y-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="complete_task">
+                            <input type="hidden" name="ticket_id" value="{{ selected_ticket.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <textarea name="resolution_notes" rows="3" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Work done / resolution notes"></textarea>
+                            <div class="flex justify-end">
+                                <button type="submit" class="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Submit to Supervisor</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="border border-slate-200 rounded-xl p-4">
+                        <div class="text-sm text-slate-500">This ticket is already submitted.</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <div class="border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
+                    <div class="font-semibold text-slate-700 mb-2">Details</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>Supervisor: {{ selected_ticket.assigned_supervisor.username|default:"Unassigned" }}</div>
+                        <div>Technician: {{ selected_ticket.assigned_worker.username|default:"Unassigned" }}</div>
+                        <div>Reported: {{ selected_ticket.created_at|date:"M d, H:i" }}</div>
+                        <div>Status: {{ selected_ticket.status|capfirst }}</div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="flex-1 flex items-center justify-center text-slate-400">Select a maintenance ticket to view details.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

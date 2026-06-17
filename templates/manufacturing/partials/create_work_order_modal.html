@@ -1,0 +1,441 @@
+<!-- 🆕 CREATE ORDER MODAL (Enhanced) -->
+<div x-cloak x-show="open" x-data="createOrderLogic()" x-effect="open && checkBatchSize()"
+    @open-create-work-order.window="open = true"
+    class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-md" x-transition.opacity>
+
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[78vh] overflow-hidden flex flex-col border border-slate-200/50"
+        @click.away="open = false" x-transition.scale>
+
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b bg-gradient-to-r from-slate-50 to-blue-50 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                    <i class="ph ph-plus text-lg"></i>
+                </div>
+                Create New Work Order
+            </h2>
+            <button @click="open = false"
+                class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all flex items-center justify-center">
+                <i class="ph ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body (Form) -->
+        <div class="p-5 overflow-y-auto flex-1 custom-scrollbar">
+            <!-- Loading State -->
+            <div x-show="loading" class="absolute inset-0 bg-white/80 z-50 flex items-center justify-center">
+                <i class="ph ph-spinner animate-spin text-3xl text-blue-500"></i>
+            </div>
+
+            <!-- Batch Warning Popup -->
+            <div x-show="showBatchWarning" x-transition.opacity
+                class="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div class="bg-white rounded-2xl shadow-2xl border border-amber-200 w-full max-w-md p-6">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                            <i class="ph ph-warning text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="text-sm font-bold text-slate-800">Below Batch Size</div>
+                            <div class="text-xs text-slate-500">Approval required</div>
+                        </div>
+                    </div>
+                    <div class="text-sm text-slate-700">
+                        Quantity (<span class="font-semibold" x-text="formData.quantity"></span>) is below the batch
+                        size (<span class="font-semibold"
+                            x-text="`${bomData.base_quantity}${bomData.uom ? ' ' + bomData.uom : ''}`"></span>).
+                    </div>
+                    <div class="flex gap-3 mt-5 justify-end">
+                        <button type="button" @click="showBatchWarning = false"
+                            class="px-4 py-2 rounded-lg text-slate-600 font-semibold border border-slate-200 hover:bg-slate-50">
+                            Cancel
+                        </button>
+                        <button type="button"
+                            @click="batchWarningApproved = true; showBatchWarning = false; submitOrder()"
+                            class="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold">
+                            Approve & Proceed
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <form method="post" class="space-y-5" @submit.prevent="submitOrder">
+
+                <!-- TOP SECTION: CONTEXT -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Customer Select (Combobox) -->
+                    <div class="space-y-2" x-data="{
+                        query: '',
+                        open: false,
+                        customers: [
+                            {% for c in customers %}
+                            { id: '{{ c.id }}', name: '{{ c.name|escapejs }}' },
+                            {% endfor %}
+                        ],
+                        get filtered() {
+                            if (!this.query) return this.customers;
+                            return this.customers.filter(c => c.name.toLowerCase().includes(this.query.toLowerCase()));
+                        },
+                        select(c) {
+                            this.query = c.name;
+                            formData.customer_id = c.id;
+                            formData.customer_name = c.name;
+                            this.open = false;
+                        },
+                        createNew() {
+                            formData.customer_id = ''; 
+                            formData.customer_name = this.query;
+                            this.open = false;
+                        }
+                    }">
+                        <label class="block text-sm font-bold text-slate-700">Customer</label>
+                        <div class="relative group" @click.outside="open = false">
+                            <i
+                                class="ph ph-user absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+
+                            <!-- Search Input -->
+                            <input type="text" x-model="query" @focus="open = true"
+                                @input="open = true; formData.customer_id=''"
+                                class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium text-slate-600"
+                                placeholder="Search or Type new Customer...">
+
+                            <!-- Dropdown List -->
+                            <div x-show="open"
+                                class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto">
+                                <template x-for="c in filtered" :key="c.id">
+                                    <div @click="select(c)"
+                                        class="px-4 py-3 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 font-medium border-b border-slate-100 last:border-0">
+                                        <span x-text="c.name"></span>
+                                    </div>
+                                </template>
+
+                                <!-- No Results / Create New -->
+                                <div x-show="filtered.length === 0 && query.length > 0" @click="createNew()"
+                                    class="px-4 py-3 hover:bg-blue-50 cursor-pointer text-sm text-blue-600 font-bold flex items-center gap-2">
+                                    <i class="ph ph-plus-circle"></i> Create "<span x-text="query"></span>"
+                                </div>
+                            </div>
+
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                <i class="ph ph-caret-down"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product / BOM Select (Searchable) -->
+                    <div class="space-y-2">
+                        <label class="block text-sm font-bold text-slate-700">Product / BOM</label>
+                        <div class="relative group" @click.outside="openBomDropdown = false">
+                            <i
+                                class="ph ph-package absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+
+                            <input type="text" x-model="bomSearch" @focus="openBomDropdown = true"
+                                @input.debounce.300ms="fetchBOMList(); openBomDropdown = true"
+                                placeholder="Search Product..."
+                                class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium text-slate-600">
+
+                            <!-- Dropdown -->
+                            <div x-show="openBomDropdown" x-transition.opacity.duration.200ms
+                                class="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto">
+
+                                <template x-for="b in bomsList" :key="b.id">
+                                    <div @click="selectBOM(b)"
+                                        class="px-4 py-3 hover:bg-slate-50 cursor-pointer text-sm text-slate-700 font-medium border-b border-slate-100 last:border-0 flex justify-between items-center">
+                                        <span x-text="b.product_name"></span>
+                                        <span class="text-xs text-slate-400 font-mono" x-text="b.version"></span>
+                                    </div>
+                                </template>
+
+                                <div x-show="bomsList.length === 0" class="px-4 py-3 text-sm text-slate-400 italic">
+                                    No products found.
+                                </div>
+                            </div>
+
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                <i class="ph ph-caret-down"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MIDDLE SECTION: QUANTITY, DUE DATE & PRIORITY -->
+                <div class="glass-panel-premium p-4 rounded-2xl border border-slate-200/50 space-y-3">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Quantity Input -->
+                        <div class="space-y-2">
+                            <label class="block text-sm font-bold text-slate-700">Quantity</label>
+                            <div class="relative group">
+                                <i
+                                    class="ph ph-hash absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                                <input type="number" x-model="formData.quantity"
+                                    @input="batchWarningApproved = false; checkBatchSize()"
+                                    class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-bold text-slate-700"
+                                    placeholder="Enter quantity" min="1">
+                            </div>
+                        </div>
+
+                        <!-- Due Date Input -->
+                        <div class="space-y-2">
+                            <label class="block text-sm font-bold text-slate-700">Due Date / Deadline</label>
+                            <div class="relative group">
+                                <i
+                                    class="ph ph-calendar-check absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                                <input type="datetime-local" x-model="formData.due_date"
+                                    class="w-full pl-10 px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium text-slate-600">
+                            </div>
+                            <p class="text-xs text-slate-500">Customer deadline for order completion</p>
+                        </div>
+                        <!-- Priority Select -->
+                        <div class="space-y-2">
+                            <label class="block text-sm font-bold text-slate-700">Priority</label>
+                            <div class="relative group">
+                                <i
+                                    class="ph ph-flag absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+                                <select x-model="formData.priority"
+                                    class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium text-slate-600 appearance-none">
+                                    <option value="Low">Low</option>
+                                    <option value="Normal" selected>Normal</option>
+                                    <option value="High">High</option>
+                                    <option value="Urgent">Urgent</option>
+                                </select>
+                                <div
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                                    <i class="ph ph-caret-down"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- WARNING now handled via popup on submit -->
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="pt-6 flex justify-end items-center gap-3 border-t border-slate-100">
+                    <button type="button" @click="open = false"
+                        class="px-5 py-2.5 rounded-xl text-slate-600 font-semibold hover:bg-slate-100 transition-all border border-slate-200">
+                        Cancel
+                    </button>
+                    <button type="submit"
+                        :disabled="loading"
+                        class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 flex items-center gap-2 transition-all">
+                        <i class="ph ph-rocket-launch"></i> Create Work Order
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function workOrderModalNotify(message, type = 'info') {
+        const text = String(message || 'Updated');
+        if (typeof window.appNotify === 'function') {
+            window.appNotify(text, type);
+            return;
+        }
+        if (window.Toast && typeof window.Toast.show === 'function') {
+            const toastType = type === 'error' ? 'danger' : type;
+            window.Toast.show(text, toastType);
+            return;
+        }
+        window.alert(text);
+    }
+
+    function createOrderLogic() {
+        return {
+            open: false,
+            loading: false,
+            formData: {
+                customer_id: '',
+                customer_name: '',
+                bom_id: '',
+                quantity: '',
+                due_date: '',
+                priority: 'Normal',
+                status: 'pending'
+            },
+            bomData: {
+                base_quantity: 0,
+                uom: 'pcs',
+                stages: [],
+                all_machines: []
+            },
+            showBatchWarning: false,
+            batchWarningApproved: false,
+            splitConfig: {
+                stage_id: '',
+                allocations: {} // { machine_id: qty }
+            },
+
+            bomsList: [],
+            bomSearch: '',
+            openBomDropdown: false,
+
+            get filteredBoms() {
+                if (!this.bomSearch) return this.bomsList;
+                return this.bomsList.filter(b =>
+                    (b.product_name || 'Unknown').toLowerCase().includes(this.bomSearch.toLowerCase())
+                );
+            },
+
+            selectBOM(b) {
+                this.formData.bom_id = b.id;
+                this.bomSearch = `${b.product_name} (${b.version})`;
+                this.openBomDropdown = false;
+                this.batchWarningApproved = false;
+                this.bomData.base_quantity = Number(b.base_quantity) || 0;
+                this.bomData.uom = b.uom || 'pcs';
+                this.bomData.status = b.status || '';
+                this.checkBatchSize();
+                this.fetchBOMDetails();
+            },
+
+            async init() {
+                console.log("Initializing Work Order Modal...");
+                await this.fetchBOMList();
+            },
+
+            async fetchBOMList() {
+                try {
+                    let url = '/manufacturing/api/v1/boms/?status=active';
+                    if (this.bomSearch) {
+                        url += `&search=${encodeURIComponent(this.bomSearch)}`;
+                    }
+                    console.log("Fetching BOM list...", url);
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Handle paginated response
+                        this.bomsList = data.results || data;
+                        console.log("BOMs loaded:", this.bomsList);
+                    } else {
+                        console.error("Failed to load BOMs:", res.status);
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch BOM list", e);
+                }
+            },
+
+            getErrorCheck(machineId) {
+                return {
+                    qty: this.splitConfig.allocations[machineId] || 0
+                }
+            },
+
+            get totalAllocated() {
+                // Ensure allocations is initialized
+                if (!this.splitConfig.allocations) return 0;
+                return Object.values(this.splitConfig.allocations).reduce((a, b) => (parseInt(a) || 0) + (parseInt(b) || 0), 0);
+            },
+
+            async fetchBOMDetails() {
+                if (!this.formData.bom_id) return;
+                this.loading = true;
+                try {
+                    const res = await fetch(`/manufacturing/api/bom/${this.formData.bom_id}/json/`);
+                    const data = await res.json();
+                    if (data.success) {
+                        this.bomData = data.bom;
+                        this.checkBatchSize();
+                        // Initialize allocations for all machines to 0 to ensure reactivity
+                        this.splitConfig.allocations = {};
+                        if (this.bomData.all_machines) {
+                            this.bomData.all_machines.forEach(m => {
+                                this.splitConfig.allocations[m.id] = 0;
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch BOM", e);
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            checkBatchSize() {
+                const baseQty = Number(this.bomData.base_quantity || 0);
+                const qty = Number(this.formData.quantity || 0);
+                if (!baseQty || qty <= 0) {
+                    this.showBatchWarning = false;
+                    if (qty <= 0) {
+                        this.batchWarningApproved = false;
+                    }
+                    return;
+                }
+                if (qty >= baseQty) {
+                    this.batchWarningApproved = false;
+                    this.showBatchWarning = false;
+                    return;
+                }
+                if (!this.batchWarningApproved) {
+                    this.showBatchWarning = true;
+                } else {
+                    this.showBatchWarning = false;
+                }
+            },
+
+            async submitOrder() {
+                if (!this.formData.bom_id) {
+                    workOrderModalNotify("Please select a BOM from the list.", 'warning');
+                    return;
+                }
+                if (!this.bomData.base_quantity) {
+                    await this.fetchBOMDetails();
+                }
+                const baseQty = Number(this.bomData.base_quantity || 0);
+                const qty = Number(this.formData.quantity || 0);
+                if (baseQty && qty > 0) {
+                    if (qty < baseQty && !this.batchWarningApproved) {
+                        this.showBatchWarning = true;
+                        return;
+                    }
+                }
+                this.loading = true;
+
+                const payload = {
+                    ...this.formData,
+                    approve_below_batch: !!this.batchWarningApproved,
+                    split_config: {
+                        is_split: false,
+                        stage_id: null,
+                        splits: []
+                    }
+                };
+
+                try {
+                    const res = await fetch("{% url 'api_create_work_order' %}", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": "{{ csrf_token }}"
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        if (data.wo_id) {
+                            sessionStorage.setItem('planner-open-wo-after-reload', String(data.wo_id));
+                        }
+                        if (typeof window.reloadPlannerWorkspacePreservingState === 'function') {
+                            window.reloadPlannerWorkspacePreservingState();
+                        } else {
+                            location.reload();
+                        }
+                    } else if (data.requires_confirm) {
+                        this.bomData.base_quantity = data.base_quantity || this.bomData.base_quantity;
+                        this.showBatchWarning = true;
+                    } else {
+                        workOrderModalNotify("Error: " + data.error, 'error');
+                    }
+                } catch (e) {
+                    workOrderModalNotify("Submission failed", 'error');
+                } finally {
+                    this.loading = false;
+                }
+            }
+        }
+    }
+</script>

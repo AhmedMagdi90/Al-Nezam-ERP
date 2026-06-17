@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>BOM Builder Test</title>
+</head>
+
+<body>
+    <h1>BOM Builder Minimal Test</h1>
+
+    <h2>Context Data:</h2>
+    <pre>
+Products: {{ products.count }}
+Machines: {{ machines.count }}
+Existing Stages: {{ existing_stages|length }}
+BOM: {{ bom }}
+    </pre>
+
+    <h2>BOM Data JSON:</h2>
+    <pre>{{ bom_data_json }}</pre>
+
+    <h2>Machines List:</h2>
+    <ul>
+        {% for machine in machines %}
+        <li>{{ machine.id }}: {{ machine.name }} ({{ machine.type }})</li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="/manufacturing/bom-builder/">Back to Real BOM Builder</a></p>
+</body>
+
+</html>

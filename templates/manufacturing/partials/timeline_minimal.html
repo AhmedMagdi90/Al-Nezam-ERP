@@ -1,0 +1,28 @@
+{% load static %}
+<div class="bg-white shadow-lg rounded-xl p-6 border border-gray-100">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Minimal Test Timeline</h2>
+    
+    <div class="mb-4">
+        <button onclick="alert('Inline test works!')" class="px-4 py-2 bg-blue-500 text-white rounded">Inline Test</button>
+    </div>
+    
+    <div class="mb-4">
+        <p>Work Orders:</p>
+        {% for wo in work_orders %}
+        <div class="border p-2 mb-2">
+            <span>WO #{{ wo.id }}: {{ wo.product_name }}</span>
+            <button onclick="alert('WO ID: {{ wo.id }}')" class="ml-2 px-2 py-1 bg-green-500 text-white rounded text-xs">Edit</button>
+        </div>
+        {% empty %}
+        <p>No work orders found</p>
+        {% endfor %}
+    </div>
+    
+    <div id="debug-output">Debug output will appear here</div>
+</div>
+
+<script>
+// Test if JavaScript is working at all
+console.log('Minimal timeline script loaded');
+document.getElementById('debug-output').innerHTML = 'Script loaded at ' + new Date().toLocaleTimeString();
+</script>

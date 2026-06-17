@@ -1,0 +1,749 @@
+{% extends 'manufacturing/base_dashboard.html' %}
+{% load static i18n tenant_i18n %}
+
+{% block title %}{% tenant_trans "Reports Center" %}{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full space-y-6">
+    <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+            <div class="min-w-0">
+                <p class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">{% tenant_trans "Report Workspace" %}</p>
+                <h2 class="mt-2 text-2xl font-black text-slate-900">{% tenant_trans "Reports Center" %}</h2>
+                <p class="text-sm text-slate-700 mt-1">
+                    {% if report_section == 'bi' %}
+                        {% tenant_trans "Read manufacturing KPIs, schedule adherence, and operational volume in one BI view." %}
+                    {% elif report_section == 'audit' %}
+                        {% tenant_trans "Review work order audit activity for planner and admin accountability." %}
+                    {% else %}
+                        {% tenant_trans "Compare production time and material consumption by Work Order." %}
+                    {% endif %}
+                </p>
+
+                <div class="mt-4 flex flex-col lg:flex-row lg:items-center gap-3">
+                    <div class="inline-flex w-fit items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1 shadow-sm">
+                        <a href="{% url 'reports_dashboard' %}?section=actual"
+                           class="min-w-[190px] rounded-xl px-4 py-2.5 text-sm font-bold transition {% if report_section == 'actual' %}bg-slate-900 text-white shadow-[0_10px_20px_-16px_rgba(15,23,42,0.65)]{% else %}text-slate-600 hover:bg-white hover:text-slate-900{% endif %}">
+                            {% tenant_trans "Actual vs Planned" %}
+                        </a>
+                        <a href="{% url 'reports_dashboard' %}?section=bi"
+                           class="min-w-[140px] rounded-xl px-4 py-2.5 text-sm font-bold transition {% if report_section == 'bi' %}bg-slate-900 text-white shadow-[0_10px_20px_-16px_rgba(15,23,42,0.65)]{% else %}text-slate-600 hover:bg-white hover:text-slate-900{% endif %}">
+                            {% tenant_trans "BI Dashboard" %}
+                        </a>
+                        <a href="{% url 'reports_dashboard' %}?section=audit"
+                           class="min-w-[160px] rounded-xl px-4 py-2.5 text-sm font-bold transition {% if report_section == 'audit' %}bg-slate-900 text-white shadow-[0_10px_20px_-16px_rgba(15,23,42,0.65)]{% else %}text-slate-600 hover:bg-white hover:text-slate-900{% endif %}">
+                            {% tenant_trans "Audit Trail" %}
+                        </a>
+                    </div>
+                    <p class="text-xs font-semibold text-slate-500">
+                        {% tenant_trans "Switch views here. Export tools stay separate on the right." %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap xl:justify-end">
+                {% if report_section == 'audit' %}
+                <a href="{% url 'export_audit_csv' %}?section=audit{% if audit_from %}&audit_from={{ audit_from|date:'Y-m-d' }}{% endif %}{% if audit_to %}&audit_to={{ audit_to|date:'Y-m-d' }}{% endif %}{% if audit_user_id %}&audit_user={{ audit_user_id }}{% endif %}{% if audit_action %}&audit_action={{ audit_action }}{% endif %}{% if audit_model %}&audit_model={{ audit_model|urlencode }}{% endif %}{% if audit_search %}&audit_search={{ audit_search|urlencode }}{% endif %}{% if audit_work_order_id %}&audit_work_order={{ audit_work_order_id }}{% endif %}{% if audit_machine_id %}&audit_machine={{ audit_machine_id }}{% endif %}{% if audit_preset %}&audit_preset={{ audit_preset }}{% endif %}"
+                   class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    {% tenant_trans "Audit CSV" %}
+                </a>
+                <a href="{% url 'export_report_pdf' %}?section=audit{% if audit_from %}&audit_from={{ audit_from|date:'Y-m-d' }}{% endif %}{% if audit_to %}&audit_to={{ audit_to|date:'Y-m-d' }}{% endif %}{% if audit_user_id %}&audit_user={{ audit_user_id }}{% endif %}{% if audit_action %}&audit_action={{ audit_action }}{% endif %}{% if audit_model %}&audit_model={{ audit_model|urlencode }}{% endif %}{% if audit_search %}&audit_search={{ audit_search|urlencode }}{% endif %}{% if audit_work_order_id %}&audit_work_order={{ audit_work_order_id }}{% endif %}{% if audit_machine_id %}&audit_machine={{ audit_machine_id }}{% endif %}{% if audit_preset %}&audit_preset={{ audit_preset }}{% endif %}"
+                   class="inline-flex items-center rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_24px_-18px_rgba(217,70,239,0.5)] hover:-translate-y-0.5 transition-all">
+                    {% tenant_trans "PDF Summary" %}
+                </a>
+                {% elif report_section == 'bi' %}
+                <a href="{% url 'export_report_pdf' %}?section=bi"
+                   class="inline-flex items-center rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_24px_-18px_rgba(217,70,239,0.5)] hover:-translate-y-0.5 transition-all">
+                    {% tenant_trans "PDF Summary" %}
+                </a>
+                {% else %}
+                <a href="{% url 'export_work_order_sheet' %}?date={{ selected_date|date:'Y-m-d' }}{% if selected_product_id %}&product={{ selected_product_id }}{% endif %}{% if selected_work_order_id %}&work_order={{ selected_work_order_id }}{% endif %}"
+                   class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    {% tenant_trans "Work Order Sheet" %}
+                </a>
+                <a href="{% url 'export_production_csv' %}?date={{ selected_date|date:'Y-m-d' }}{% if selected_product_id %}&product={{ selected_product_id }}{% endif %}{% if selected_work_order_id %}&work_order={{ selected_work_order_id }}{% endif %}"
+                   class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                    {% tenant_trans "Export CSV" %}
+                </a>
+                <a href="{% url 'export_report_pdf' %}?section=actual&date={{ selected_date|date:'Y-m-d' }}{% if selected_product_id %}&product={{ selected_product_id }}{% endif %}{% if selected_work_order_id %}&work_order={{ selected_work_order_id }}{% endif %}"
+                   class="inline-flex items-center rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-4 py-2.5 text-sm font-semibold text-white shadow-[0_14px_24px_-18px_rgba(217,70,239,0.5)] hover:-translate-y-0.5 transition-all">
+                    {% tenant_trans "PDF Summary" %}
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <a href="{% url 'reports_dashboard' %}?section=actual"
+           class="rounded-2xl border p-5 transition shadow-sm {% if report_section == 'actual' %}border-cyan-200 bg-cyan-50/60{% else %}border-slate-200 bg-white hover:bg-slate-50{% endif %}">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-700">{% tenant_trans "Performance" %}</div>
+                    <div class="mt-2 text-lg font-black text-slate-900">{% tenant_trans "Actual vs Planned" %}</div>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">{% tenant_trans "Compare quantity, timing, and consumption by work order when production outcome needs explanation." %}</p>
+                </div>
+                <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700"><i class="ph ph-chart-bar text-lg"></i></span>
+            </div>
+        </a>
+
+        <a href="{% url 'reports_dashboard' %}?section=bi"
+           class="rounded-2xl border p-5 transition shadow-sm {% if report_section == 'bi' %}border-emerald-200 bg-emerald-50/60{% else %}border-slate-200 bg-white hover:bg-slate-50{% endif %}">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-700">{% tenant_trans "BI" %}</div>
+                    <div class="mt-2 text-lg font-black text-slate-900">{% tenant_trans "Dashboards" %}</div>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">{% tenant_trans "Monitor open work, schedule adherence, output, and planner closure volume." %}</p>
+                </div>
+                <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><i class="ph ph-gauge text-lg"></i></span>
+            </div>
+        </a>
+
+        <a href="{% url 'reports_dashboard' %}?section=audit"
+           class="rounded-2xl border p-5 transition shadow-sm {% if report_section == 'audit' %}border-fuchsia-200 bg-fuchsia-50/60{% else %}border-slate-200 bg-white hover:bg-slate-50{% endif %}">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.16em] text-fuchsia-700">{% tenant_trans "Traceability" %}</div>
+                    <div class="mt-2 text-lg font-black text-slate-900">{% tenant_trans "Audit Trail" %}</div>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">{% tenant_trans "Follow who changed what, when it happened, and which work order or machine was affected." %}</p>
+                </div>
+                <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-fuchsia-100 text-fuchsia-700"><i class="ph ph-fingerprint text-lg"></i></span>
+            </div>
+        </a>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{% tenant_trans "How to use this module" %}</div>
+            <div class="mt-2 text-lg font-black text-slate-900">{% tenant_trans "Pick the question before the export" %}</div>
+            <ul class="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                <li>{% tenant_trans "Use Actual vs Planned for production performance and consumption." %}</li>
+                <li>{% tenant_trans "Use Audit Trail for accountability, approvals, and operational history." %}</li>
+                <li>{% tenant_trans "Apply scope filters first, then export only the result set you need." %}</li>
+            </ul>
+        </div>
+    </div>
+
+    {% if report_section == 'bi' %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4">
+        <div class="rounded-2xl border border-cyan-200 bg-cyan-50 p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-700">{% tenant_trans "Open WOs" %}</p>
+            <p class="mt-3 text-3xl font-black text-cyan-800">{{ bi_summary.open_work_orders }}</p>
+            <p class="mt-1 text-sm font-semibold text-cyan-900/70">{% blocktrans with count=bi_summary.total_work_orders %}of {{ count }} total work orders{% endblocktrans %}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">{% tenant_trans "Schedule Adherence" %}</p>
+            <p class="mt-3 text-3xl font-black text-emerald-800">{% if bi_summary.schedule_adherence_pct is not None %}{{ bi_summary.schedule_adherence_pct }}%{% else %}--{% endif %}</p>
+            <p class="mt-1 text-sm font-semibold text-emerald-900/70">{% blocktrans with count=bi_summary.late_work_orders %}{{ count }} late work orders{% endblocktrans %}</p>
+        </div>
+        <div class="rounded-2xl border border-violet-200 bg-violet-50 p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-violet-700">{% tenant_trans "Approved Output" %}</p>
+            <p class="mt-3 text-3xl font-black text-violet-800">{{ bi_summary.approved_output_qty }}</p>
+            <p class="mt-1 text-sm font-semibold text-violet-900/70">{% tenant_trans "quantity approved by supervisors" %}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-amber-700">{% tenant_trans "Pending Approvals" %}</p>
+            <p class="mt-3 text-3xl font-black text-amber-800">{{ bi_summary.pending_approval_count }}</p>
+            <p class="mt-1 text-sm font-semibold text-amber-900/70">{% tenant_trans "logs waiting for review" %}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-200 bg-white p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">{% tenant_trans "Material Ready" %}</p>
+            <p class="mt-3 text-3xl font-black text-emerald-800">{{ bi_summary.material_ready_count }}</p>
+            <p class="mt-1 text-sm font-semibold text-emerald-900/70">{% tenant_trans "WOs cleared for materials" %}</p>
+        </div>
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-rose-700">{% tenant_trans "Material Shortage" %}</p>
+            <p class="mt-3 text-3xl font-black text-rose-800">{{ bi_summary.material_shortage_count }}</p>
+            <p class="mt-1 text-sm font-semibold text-rose-900/70">{% tenant_trans "WOs blocked by shortage" %}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-[1fr_1fr] gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">{% tenant_trans "BI Dashboard" %}</p>
+                    <h3 class="mt-2 text-xl font-black text-slate-950">{% tenant_trans "Manufacturing Status Mix" %}</h3>
+                </div>
+                <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-slate-600">
+                    {% tenant_trans "Admin / Planner" %}
+                </span>
+            </div>
+            <div class="mt-5 space-y-3">
+                {% for row in bi_summary.status_rows %}
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <span class="text-sm font-black text-slate-900">{{ row.status|title }}</span>
+                        <span class="text-lg font-black text-slate-950">{{ row.count }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                    {% tenant_trans "No work orders are available for BI reporting yet." %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-600">{% tenant_trans "Decision View" %}</p>
+                    <h3 class="mt-2 text-xl font-black text-slate-950">{% tenant_trans "Top Products and Audit Volume" %}</h3>
+                </div>
+                <span class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                    {% blocktrans with count=bi_summary.change_count %}{{ count }} WO changes{% endblocktrans %}
+                </span>
+            </div>
+            <div class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">{% tenant_trans "Cycle Time" %}</p>
+                    <p class="mt-2 text-2xl font-black text-slate-950">{% if bi_summary.avg_cycle_hours is not None %}{{ bi_summary.avg_cycle_hours }}h{% else %}--{% endif %}</p>
+                    <p class="mt-1 text-sm text-slate-600">{% tenant_trans "average from start to end" %}</p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">{% tenant_trans "Audit Events" %}</p>
+                    <p class="mt-2 text-2xl font-black text-slate-950">{{ bi_summary.audit_count }}</p>
+                    <p class="mt-1 text-sm text-slate-600">{% tenant_trans "manufacturing trace records" %}</p>
+                </div>
+            </div>
+            <div class="mt-5 space-y-3">
+                {% for product in bi_summary.top_products %}
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3">
+                    <span class="text-sm font-black text-slate-900">{{ product.label }}</span>
+                    <span class="text-sm font-black text-slate-600">{% blocktrans with count=product.count %}{{ count }} WOs{% endblocktrans %}</span>
+                </div>
+                {% empty %}
+                <div class="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                    {% tenant_trans "No product mix is available yet." %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="border-b border-slate-200 px-5 py-4">
+            <p class="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">{% tenant_trans "Recent Audit Signal" %}</p>
+            <h3 class="mt-1 text-lg font-black text-slate-950">{% tenant_trans "Latest Manufacturing Events" %}</h3>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for entry in bi_summary.recent_activity %}
+            <div class="px-5 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                <div>
+                    <p class="text-sm font-black text-slate-950">{{ entry.object_repr|default:entry.model_name }}</p>
+                    <p class="mt-1 text-xs font-semibold text-slate-500">{{ entry.model_name }}{% if entry.object_id %} #{{ entry.object_id }}{% endif %}</p>
+                </div>
+                <div class="text-sm text-slate-600 lg:text-right">
+                    <p class="font-bold">{{ entry.action|upper }}{% if entry.details.event %} | {{ entry.details.event|title }}{% endif %}</p>
+                    <p class="text-xs text-slate-500">{{ entry.timestamp|date:'Y-m-d H:i' }} | {% if entry.user %}{{ entry.user.username }}{% else %}{% tenant_trans "System" %}{% endif %}</p>
+                </div>
+            </div>
+            {% empty %}
+            <div class="px-5 py-12 text-center text-sm font-semibold text-slate-500">
+                {% tenant_trans "No recent manufacturing events are available." %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% elif report_section == 'audit' %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-6">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-8 gap-4">
+            <input type="hidden" name="section" value="audit">
+            <input type="hidden" name="audit_preset" value="{{ audit_preset|default:'' }}">
+            <div class="md:col-span-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{% tenant_trans "Quick Views" %}</span>
+                    {% for preset in audit_preset_options %}
+                    <a href="{% url 'reports_dashboard' %}?section=audit&audit_preset={{ preset.value }}{% if audit_from %}&audit_from={{ audit_from|date:'Y-m-d' }}{% endif %}{% if audit_to %}&audit_to={{ audit_to|date:'Y-m-d' }}{% endif %}{% if audit_user_id %}&audit_user={{ audit_user_id }}{% endif %}{% if audit_action %}&audit_action={{ audit_action }}{% endif %}{% if audit_model %}&audit_model={{ audit_model|urlencode }}{% endif %}{% if audit_search %}&audit_search={{ audit_search|urlencode }}{% endif %}{% if audit_work_order_id %}&audit_work_order={{ audit_work_order_id }}{% endif %}{% if audit_machine_id %}&audit_machine={{ audit_machine_id }}{% endif %}"
+                       class="px-3 py-1.5 rounded-full text-xs font-bold transition {% if audit_preset == preset.value %}bg-slate-900 text-white{% else %}bg-white border border-slate-200 text-slate-600 hover:bg-slate-100{% endif %}">
+                        {{ preset.label }}
+                    </a>
+                    {% endfor %}
+                    {% if audit_preset %}
+                    <a href="{% url 'reports_dashboard' %}?section=audit{% if audit_from %}&audit_from={{ audit_from|date:'Y-m-d' }}{% endif %}{% if audit_to %}&audit_to={{ audit_to|date:'Y-m-d' }}{% endif %}{% if audit_user_id %}&audit_user={{ audit_user_id }}{% endif %}{% if audit_action %}&audit_action={{ audit_action }}{% endif %}{% if audit_model %}&audit_model={{ audit_model|urlencode }}{% endif %}{% if audit_search %}&audit_search={{ audit_search|urlencode }}{% endif %}{% if audit_work_order_id %}&audit_work_order={{ audit_work_order_id }}{% endif %}{% if audit_machine_id %}&audit_machine={{ audit_machine_id }}{% endif %}"
+                       class="px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-slate-200 text-slate-600 hover:bg-slate-100">
+                        {% tenant_trans "Clear Preset" %}
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    {% if audit_scope_work_order %}
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-cyan-50 text-cyan-700 text-xs font-bold">
+                        {% tenant_trans "WO Scope" %}: WO-{{ audit_scope_work_order.id }}
+                    </span>
+                    {% endif %}
+                    {% if audit_scope_machine %}
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold">
+                        {% tenant_trans "Machine Scope" %}: {{ audit_scope_machine.display_label }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "From" %}</label>
+                <input type="date" name="audit_from" value="{{ audit_from|date:'Y-m-d' }}"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "To" %}</label>
+                <input type="date" name="audit_to" value="{{ audit_to|date:'Y-m-d' }}"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "User / Worker" %}</label>
+                <select name="audit_user"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+                    <option value="">{% tenant_trans "All Users" %}</option>
+                    {% for option in audit_user_options %}
+                    <option value="{{ option.user_id }}" {% if audit_user_id == option.user_id %}selected{% endif %}>
+                        {{ option.user__username }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "Action" %}</label>
+                <select name="audit_action"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+                    <option value="">{% tenant_trans "All Actions" %}</option>
+                    {% for option in audit_action_options %}
+                    <option value="{{ option.value }}" {% if audit_action == option.value %}selected{% endif %}>
+                        {{ option.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "Target Model" %}</label>
+                <select name="audit_model"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+                    <option value="">{% tenant_trans "All Models" %}</option>
+                    {% for option in audit_model_options %}
+                    <option value="{{ option }}" {% if audit_model == option %}selected{% endif %}>
+                        {{ option }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "Search" %}</label>
+                <input type="text" name="audit_search" value="{{ audit_search }}"
+                       placeholder="{% tenant_trans 'WO, event, model...' %}"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "Work Order" %}</label>
+                <select name="audit_work_order"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+                    <option value="">{% tenant_trans "All Work Orders" %}</option>
+                    {% for option in audit_work_order_options %}
+                    <option value="{{ option.id }}" {% if audit_work_order_id == option.id %}selected{% endif %}>
+                        {{ option.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">{% tenant_trans "Machine" %}</label>
+                <select name="audit_machine"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+                    <option value="">{% tenant_trans "All Machines" %}</option>
+                    {% for option in audit_machine_options %}
+                    <option value="{{ option.id }}" {% if audit_machine_id == option.id %}selected{% endif %}>
+                        {{ option.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="md:col-span-8 flex items-center justify-between gap-3 flex-wrap">
+                <div class="text-sm text-slate-500">
+                    {% blocktrans with count=audit_displayed_count %}Showing {{ count }} recent log entries.{% endblocktrans %}
+                    {% if audit_has_more %}
+                    <span class="font-semibold text-slate-700">{% tenant_trans "Results are capped to the latest 200 rows." %}</span>
+                    {% endif %}
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{% url 'reports_dashboard' %}?section=audit"
+                       class="px-3 py-2 rounded-xl border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50">
+                        {% tenant_trans "Reset" %}
+                    </a>
+                    <button type="submit"
+                            class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800">
+                        {% tenant_trans "Apply Filters" %}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if audit_filter_warnings %}
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+        {% for warning in audit_filter_warnings %}
+        <p class="text-sm text-amber-800">{{ warning }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if audit_rows %}
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <p class="text-xs font-black uppercase tracking-[0.25em] text-cyan-600">{% tenant_trans "Latest Match" %}</p>
+                <p class="text-lg font-black text-slate-900 mt-2">{{ audit_rows.0.target_label }}</p>
+                <p class="text-sm text-slate-500 mt-1">
+                    {{ audit_rows.0.timestamp|date:'Y-m-d H:i:s' }} | {% if audit_rows.0.user %}{{ audit_rows.0.user.username }}{% else %}{% tenant_trans "System" %}{% endif %}
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold
+                    {% if audit_rows.0.action == 'create' %}bg-emerald-50 text-emerald-700
+                    {% elif audit_rows.0.action == 'update' %}bg-blue-50 text-blue-700
+                    {% elif audit_rows.0.action == 'approve' %}bg-violet-50 text-violet-700
+                    {% elif audit_rows.0.action == 'reject' %}bg-rose-50 text-rose-700
+                    {% elif audit_rows.0.action == 'delete' %}bg-rose-50 text-rose-700
+                    {% else %}bg-slate-100 text-slate-700{% endif %}">
+                    {{ audit_rows.0.action|upper }}
+                </span>
+                {% if audit_rows.0.event_label %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                    {{ audit_rows.0.event_label }}
+                </span>
+                {% endif %}
+                <span class="inline-flex items-center px-3 py-1 rounded-full bg-cyan-50 text-cyan-700 text-xs font-bold">
+                    {{ audit_rows.0.model_name }}
+                </span>
+            </div>
+        </div>
+        {% if audit_rows.0.summary_text %}
+        <p class="mt-4 text-sm text-slate-700">{{ audit_rows.0.summary_text }}</p>
+        {% endif %}
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+            {% if audit_rows.0.details.work_order_id %}
+            <a href="{% url 'reports_dashboard' %}?section=audit&audit_work_order={{ audit_rows.0.details.work_order_id }}"
+               class="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50">
+                {% tenant_trans "Open WO Scope" %}
+            </a>
+            {% endif %}
+            {% if audit_rows.0.details.machine_id %}
+            <a href="{% url 'reports_dashboard' %}?section=audit&audit_machine={{ audit_rows.0.details.machine_id }}"
+               class="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50">
+                {% tenant_trans "Open Machine Scope" %}
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="overflow-auto max-h-[42vh]">
+            <table class="w-full min-w-[1200px] border-separate border-spacing-0">
+                <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                    <tr class="text-left text-xs uppercase tracking-wider text-slate-500">
+                        <th class="px-4 py-3 font-bold">{% tenant_trans "Time" %}</th>
+                        <th class="px-4 py-3 font-bold">{% tenant_trans "User" %}</th>
+                        <th class="px-4 py-3 font-bold">{% tenant_trans "Action" %}</th>
+                        <th class="px-4 py-3 font-bold">{% tenant_trans "Target" %}</th>
+                        <th class="px-4 py-3 font-bold">{% tenant_trans "Event" %}</th>
+                        <th class="px-4 py-3 font-bold">{% tenant_trans "Context" %}</th>
+                        <th class="px-4 py-3 font-bold">{% tenant_trans "IP" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for row in audit_rows %}
+                    <tr class="group odd:bg-white even:bg-slate-50/60 hover:bg-cyan-50/70 transition-colors align-top">
+                        <td class="px-4 py-3 text-sm font-semibold text-slate-900 whitespace-nowrap">
+                            {{ row.timestamp|date:'Y-m-d H:i:s' }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                            {% if row.user %}{{ row.user.username }}{% else %}<span class="text-slate-400">{% tenant_trans "System" %}</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm whitespace-nowrap">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full font-bold
+                                {% if row.action == 'create' %}bg-emerald-50 text-emerald-700
+                                {% elif row.action == 'update' %}bg-blue-50 text-blue-700
+                                {% elif row.action == 'approve' %}bg-violet-50 text-violet-700
+                                {% elif row.action == 'reject' %}bg-rose-50 text-rose-700
+                                {% elif row.action == 'delete' %}bg-rose-50 text-rose-700
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ row.action|upper }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-700">
+                            <p class="font-semibold text-slate-900">{{ row.target_label }}</p>
+                            <p class="text-xs text-slate-500 mt-1">{{ row.model_name }}{% if row.object_id %} #{{ row.object_id }}{% endif %}</p>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-700">
+                            {% if row.event_label %}
+                            <span class="font-semibold text-slate-900">{{ row.event_label }}</span>
+                            {% else %}
+                            <span class="text-slate-400">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-700">
+                            {% if row.summary_text %}
+                            {{ row.summary_text }}
+                            {% else %}
+                            <span class="text-slate-400">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-slate-500 whitespace-nowrap">
+                            {{ row.ip_address|default:'--' }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-4 py-12 text-center text-slate-500 text-sm">
+                            {% tenant_trans "No audit logs found for current filters." %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="grid grid-cols-1 xl:grid-cols-[1.4fr_0.85fr] gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-500">{% tenant_trans "Work Order Efficiency" %}</p>
+            <div class="mt-3 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h3 class="text-2xl font-black text-slate-950">{% tenant_trans "Actual vs Planned" %}</h3>
+                    <p class="mt-1 text-sm text-slate-600">{% tenant_trans "Live variance view for routed work orders, staged output, and material draw." %}</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-cyan-700">
+                        {% tenant_trans "Date" %}: {{ selected_date|date:'Y-m-d' }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-slate-600">
+                        {% tenant_trans "Visible WOs" %}: {{ report_summary.work_order_count }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                <p class="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">{% tenant_trans "Overall" %}</p>
+                <p class="mt-2 text-3xl font-black text-emerald-700">
+                    {% if report_summary.overall_efficiency_pct is not None %}{{ report_summary.overall_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                </p>
+            </div>
+            <div class="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3">
+                <p class="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-700">{% tenant_trans "Time" %}</p>
+                <p class="mt-2 text-3xl font-black text-cyan-700">
+                    {% if report_summary.time_efficiency_pct is not None %}{{ report_summary.time_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                </p>
+            </div>
+            <div class="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
+                <p class="text-[11px] font-black uppercase tracking-[0.22em] text-violet-700">{% tenant_trans "Material" %}</p>
+                <p class="mt-2 text-3xl font-black text-violet-700">
+                    {% if report_summary.material_efficiency_pct is not None %}{{ report_summary.material_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                </p>
+            </div>
+            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p class="text-[11px] font-black uppercase tracking-[0.22em] text-amber-700">{% tenant_trans "Output" %}</p>
+                <p class="mt-2 text-3xl font-black text-amber-700">
+                    {% if report_summary.production_efficiency_pct is not None %}{{ report_summary.production_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 p-5">
+        <form method="get" class="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_auto] gap-4 items-end">
+            <div>
+                <label class="block text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">{% tenant_trans "Date" %}</label>
+                <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}"
+                       class="w-full rounded-xl border border-slate-200 px-3 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+            </div>
+            <div>
+                <label class="block text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">{% tenant_trans "Product" %}</label>
+                <select name="product"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+                    <option value="">{% tenant_trans "All Products" %}</option>
+                    {% for product in product_options %}
+                    <option value="{{ product.id }}" {% if selected_product_id == product.id %}selected{% endif %}>
+                        {{ product.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-2">{% tenant_trans "Work Order" %}</label>
+                <select name="work_order"
+                        class="w-full rounded-xl border border-slate-200 px-3 py-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500">
+                    <option value="">{% tenant_trans "All Work Orders" %}</option>
+                    {% for wo in work_order_options %}
+                    <option value="{{ wo.id }}" {% if selected_work_order_id == wo.id %}selected{% endif %}>
+                        {{ wo.label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex items-end gap-2">
+                <button type="submit"
+                        class="w-full min-w-[180px] rounded-xl bg-slate-950 text-white px-4 py-3 font-semibold hover:bg-slate-800">
+                    {% tenant_trans "Apply Filters" %}
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{% tenant_trans "Coverage" %}</p>
+                <p class="mt-1 text-sm font-semibold text-slate-700">
+                    {% blocktrans with count=report_summary.work_order_count %}{{ count }} routed work orders are included in this snapshot.{% endblocktrans %}
+                </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{% tenant_trans "Largest Time Risk" %}</p>
+                <p class="mt-1 text-sm font-semibold text-slate-700">
+                    {% if report_summary.worst_time_row %}WO-{{ report_summary.worst_time_row.wo_id }} | {{ report_summary.worst_time_row.product_name }}{% else %}{% tenant_trans "No time overruns detected." %}{% endif %}
+                </p>
+            </div>
+            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">{% tenant_trans "Material Hotspot" %}</p>
+                <p class="mt-1 text-sm font-semibold text-slate-700">
+                    {% if report_summary.worst_material_row %}WO-{{ report_summary.worst_material_row.wo_id }} | {{ report_summary.worst_material_row.product_name }}{% else %}{% tenant_trans "No material overruns detected." %}{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {% if filter_warnings %}
+    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div class="flex flex-col gap-1">
+            {% for warning in filter_warnings %}
+            <p class="text-sm text-amber-900">{{ warning }}</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div>
+                <p class="text-[11px] font-black uppercase tracking-[0.22em] text-slate-500">{% tenant_trans "Variance Matrix" %}</p>
+                <h3 class="mt-1 text-lg font-black text-slate-950">{% tenant_trans "Work Order Efficiency Grid" %}</h3>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+                <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>{% tenant_trans "On Plan" %}
+                </span>
+                <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+                    <span class="h-2 w-2 rounded-full bg-amber-500"></span>{% tenant_trans "Watch" %}
+                </span>
+                <span class="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-rose-700">
+                    <span class="h-2 w-2 rounded-full bg-rose-500"></span>{% tenant_trans "Loss" %}
+                </span>
+            </div>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[1440px] border-separate border-spacing-0">
+                <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                    <tr class="text-left text-[11px] uppercase tracking-[0.18em] text-slate-500">
+                        <th class="px-4 py-3 font-black">{% tenant_trans "WO" %}</th>
+                        <th class="px-4 py-3 font-black">{% tenant_trans "Product" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Planned Time (hours)" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Actual Time (hours)" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Time Delta" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Time Efficiency %" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Planned Material" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Actual Material" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Material Delta" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Material Efficiency %" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Actual Output" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Overall %" %}</th>
+                        <th class="px-4 py-3 font-black text-right">{% tenant_trans "Sheet" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for row in report_rows %}
+                    <tr class="group odd:bg-white even:bg-slate-50/70 hover:bg-cyan-50/70 transition-colors">
+                        <td class="px-4 py-4 text-sm font-black text-slate-950 whitespace-nowrap">WO-{{ row.wo_id }}</td>
+                        <td class="px-4 py-4 text-sm text-slate-700">
+                            <p class="font-semibold text-slate-900">{{ row.product_name }}</p>
+                            <p class="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">{{ row.data_trust }}</p>
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right text-slate-700 whitespace-nowrap">{{ row.planned_time_hours|floatformat:2 }}</td>
+                        <td class="px-4 py-4 text-sm text-right text-slate-700 whitespace-nowrap">
+                            {% if row.actual_time_available %}{{ row.actual_time_hours|floatformat:2 }}{% else %}<span class="text-slate-400">--</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right whitespace-nowrap">
+                            {% if row.actual_time_available %}
+                            <span class="font-bold {% if row.time_within_plan %}text-emerald-600{% else %}text-rose-600{% endif %}">{{ row.time_delta_hours|floatformat:2 }}</span>
+                            {% else %}
+                            <span class="font-semibold text-slate-400">{% tenant_trans "N/A" %}</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right whitespace-nowrap">
+                            {% if row.time_efficiency_pct is not None %}
+                            <span class="inline-flex items-center rounded-full px-2.5 py-1 font-bold
+                                {% if row.time_tone == 'emerald' %}bg-emerald-50 text-emerald-700
+                                {% elif row.time_tone == 'amber' %}bg-amber-50 text-amber-700
+                                {% elif row.time_tone == 'rose' %}bg-rose-50 text-rose-700
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ row.time_efficiency_pct|floatformat:0 }}%
+                            </span>
+                            {% else %}
+                            <span class="text-slate-400">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right text-slate-700 whitespace-nowrap">{{ row.planned_material_qty|floatformat:2 }}</td>
+                        <td class="px-4 py-4 text-sm text-right text-slate-700 whitespace-nowrap">
+                            {% if row.actual_material_available %}{{ row.actual_material_qty|floatformat:2 }}{% else %}<span class="text-slate-400">--</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right whitespace-nowrap">
+                            <span class="font-bold {% if row.material_within_plan %}text-emerald-600{% else %}text-rose-600{% endif %}">
+                                {{ row.material_delta_qty|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right whitespace-nowrap">
+                            {% if row.material_efficiency_pct is not None %}
+                            <span class="inline-flex items-center rounded-full px-2.5 py-1 font-bold
+                                {% if row.material_tone == 'emerald' %}bg-emerald-50 text-emerald-700
+                                {% elif row.material_tone == 'amber' %}bg-amber-50 text-amber-700
+                                {% elif row.material_tone == 'rose' %}bg-rose-50 text-rose-700
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ row.material_efficiency_pct|floatformat:0 }}%
+                            </span>
+                            {% else %}
+                            <span class="text-slate-400">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right text-slate-700 whitespace-nowrap">
+                            {% if row.actual_output_available %}{{ row.actual_output_qty|floatformat:2 }}{% else %}<span class="text-slate-400">--</span>{% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-sm text-right whitespace-nowrap">
+                            {% if row.overall_efficiency_pct is not None %}
+                            <span class="inline-flex items-center rounded-full px-2.5 py-1 font-bold
+                                {% if row.overall_tone == 'emerald' %}bg-emerald-50 text-emerald-700
+                                {% elif row.overall_tone == 'amber' %}bg-amber-50 text-amber-700
+                                {% elif row.overall_tone == 'rose' %}bg-rose-50 text-rose-700
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ row.overall_efficiency_pct|floatformat:0 }}%
+                            </span>
+                            {% else %}
+                            <span class="text-slate-400">--</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-right whitespace-nowrap">
+                            <a href="{% url 'export_work_order_sheet' %}?date={{ selected_date|date:'Y-m-d' }}&work_order={{ row.wo_id }}{% if selected_product_id %}&product={{ selected_product_id }}{% endif %}"
+                               class="inline-flex items-center rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-700 hover:bg-slate-50">
+                                {% tenant_trans "Open" %}
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="13" class="px-4 py-12 text-center text-slate-500 text-sm">
+                            {% tenant_trans "No work orders found for current filters." %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

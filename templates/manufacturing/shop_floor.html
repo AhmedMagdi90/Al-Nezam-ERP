@@ -1,0 +1,1842 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% block top_nav %}{% endblock %}
+{% block sidebar %}{% endblock %}
+{% block app_header %}{% endblock %}
+{% load static i18n tenant_i18n %}
+{% get_current_language as CURRENT_LANGUAGE %}
+
+{% block title %}{% tenant_trans "Worker Station" %} - Nezam{% endblock %}
+
+{% block content %}
+<style>
+    #main-content {
+        padding: 0 !important;
+        background: transparent !important;
+    }
+
+    .worker-kiosk {
+        font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+        isolation: isolate;
+    }
+
+    .worker-kiosk[dir="rtl"] {
+        direction: rtl;
+    }
+
+    .worker-kiosk[dir="rtl"] .text-left {
+        text-align: right !important;
+    }
+
+    .worker-kiosk[dir="rtl"] .text-right {
+        text-align: left !important;
+    }
+
+    .worker-kiosk::before,
+    .worker-kiosk::after {
+        content: "";
+        position: fixed;
+        z-index: -1;
+        border-radius: 9999px;
+        filter: blur(90px);
+        pointer-events: none;
+        opacity: 0.34;
+    }
+
+    .worker-kiosk::before {
+        width: min(42vw, 520px);
+        height: min(42vw, 520px);
+        top: -150px;
+        left: -120px;
+        background: radial-gradient(circle at center, rgba(59, 130, 246, 0.45) 0%, rgba(59, 130, 246, 0) 70%);
+    }
+
+    .worker-kiosk::after {
+        width: min(46vw, 560px);
+        height: min(46vw, 560px);
+        bottom: -200px;
+        right: -120px;
+        background: radial-gradient(circle at center, rgba(16, 185, 129, 0.35) 0%, rgba(16, 185, 129, 0) 72%);
+    }
+
+    .worker-theme-dark {
+        background: linear-gradient(145deg, #030712 0%, #0b1120 48%, #0f172a 100%);
+    }
+
+    .worker-theme-light {
+        background: linear-gradient(165deg, #f8fafc 0%, #eef2ff 45%, #ecfeff 100%);
+    }
+
+    .worker-header {
+        backdrop-filter: blur(16px);
+        box-shadow: 0 16px 35px rgba(2, 6, 23, 0.28);
+    }
+
+    .worker-theme-light .worker-header {
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    .worker-oee-chip {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.74));
+        border-color: rgba(99, 102, 241, 0.28);
+    }
+
+    .worker-panel,
+    .worker-idle-panel,
+    .worker-info-panel,
+    .worker-queue-card,
+    .worker-modal-shell {
+        backdrop-filter: blur(14px);
+    }
+
+    .worker-panel {
+        box-shadow: 0 22px 48px rgba(2, 6, 23, 0.35);
+    }
+
+    .worker-theme-light .worker-panel {
+        box-shadow: 0 20px 44px rgba(15, 23, 42, 0.1);
+    }
+
+    .worker-progress-shell {
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .worker-action-grid button {
+        transition: transform 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease, border-color 0.22s ease;
+    }
+
+    .worker-action-grid button:hover {
+        transform: translateY(-3px);
+    }
+
+    .worker-primary-action {
+        box-shadow: 0 16px 30px rgba(37, 99, 235, 0.36);
+    }
+
+    .worker-secondary-action {
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.24);
+    }
+
+    .worker-warning-action {
+        box-shadow: 0 12px 24px rgba(234, 88, 12, 0.22);
+    }
+
+    .worker-outline-action {
+        box-shadow: 0 12px 24px rgba(30, 41, 59, 0.16);
+    }
+
+    .worker-queue-card {
+        box-shadow: 0 14px 34px rgba(2, 6, 23, 0.2);
+    }
+
+    .worker-theme-light .worker-queue-card {
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.09);
+    }
+
+    .worker-theme-dark .worker-queue-card-current {
+        border-color: rgba(99, 102, 241, 0.72) !important;
+        background: linear-gradient(135deg, rgba(49, 46, 129, 0.34), rgba(15, 23, 42, 0.96));
+        box-shadow: 0 16px 34px rgba(79, 70, 229, 0.2), inset 4px 0 0 #6366f1;
+    }
+
+    .worker-theme-light .worker-queue-card-current {
+        border-color: rgba(129, 140, 248, 0.7) !important;
+        background: linear-gradient(135deg, rgba(238, 242, 255, 0.96), rgba(255, 255, 255, 0.98));
+        box-shadow: 0 16px 32px rgba(79, 70, 229, 0.12), inset 4px 0 0 #4f46e5;
+    }
+
+    .worker-theme-dark .worker-queue-card-approval {
+        border-color: rgba(217, 70, 239, 0.68) !important;
+        background: linear-gradient(135deg, rgba(112, 26, 117, 0.24), rgba(15, 23, 42, 0.95));
+        box-shadow: 0 16px 34px rgba(217, 70, 239, 0.16), inset 4px 0 0 #d946ef;
+    }
+
+    .worker-theme-light .worker-queue-card-approval {
+        border-color: rgba(232, 121, 249, 0.72) !important;
+        background: linear-gradient(135deg, rgba(250, 245, 255, 0.98), rgba(255, 255, 255, 0.98));
+        box-shadow: 0 16px 32px rgba(217, 70, 239, 0.12), inset 4px 0 0 #c026d3;
+    }
+
+    .worker-theme-dark .worker-queue-card-ready {
+        border-color: rgba(16, 185, 129, 0.72) !important;
+        background: linear-gradient(135deg, rgba(6, 95, 70, 0.26), rgba(15, 23, 42, 0.94));
+        box-shadow: 0 16px 34px rgba(16, 185, 129, 0.18), inset 4px 0 0 #10b981;
+    }
+
+    .worker-theme-light .worker-queue-card-ready {
+        border-color: rgba(52, 211, 153, 0.7) !important;
+        background: linear-gradient(135deg, rgba(236, 253, 245, 0.98), rgba(255, 255, 255, 0.98));
+        box-shadow: 0 16px 32px rgba(16, 185, 129, 0.12), inset 4px 0 0 #10b981;
+    }
+
+    .worker-theme-dark .worker-queue-card-pending {
+        border-color: rgba(251, 191, 36, 0.46) !important;
+        background: linear-gradient(135deg, rgba(120, 53, 15, 0.18), rgba(15, 23, 42, 0.94));
+        box-shadow: 0 14px 30px rgba(245, 158, 11, 0.12), inset 4px 0 0 #f59e0b;
+    }
+
+    .worker-theme-light .worker-queue-card-pending {
+        border-color: rgba(252, 211, 77, 0.7) !important;
+        background: linear-gradient(135deg, rgba(255, 251, 235, 0.98), rgba(255, 255, 255, 0.98));
+        box-shadow: 0 14px 30px rgba(245, 158, 11, 0.1), inset 4px 0 0 #f59e0b;
+    }
+
+    .worker-status-pill {
+        color: #fff;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.18);
+    }
+
+    .worker-status-pill-current {
+        background: linear-gradient(120deg, #2563eb, #4f46e5);
+    }
+
+    .worker-status-pill-ready {
+        background: linear-gradient(120deg, #059669, #10b981);
+    }
+
+    .worker-status-pill-approval {
+        background: linear-gradient(120deg, #a21caf, #d946ef);
+    }
+
+    .worker-status-pill-pending {
+        background: linear-gradient(120deg, #d97706, #f59e0b);
+    }
+
+    .worker-start-btn {
+        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+    }
+
+    .worker-start-btn-current {
+        background: linear-gradient(120deg, #2563eb, #4f46e5);
+    }
+
+    .worker-start-btn-ready {
+        background: linear-gradient(120deg, #059669, #10b981);
+        box-shadow: 0 10px 20px rgba(16, 185, 129, 0.28);
+    }
+
+    .worker-start-btn-approval {
+        background: linear-gradient(120deg, #a21caf, #d946ef);
+        box-shadow: 0 10px 20px rgba(217, 70, 239, 0.26);
+    }
+
+    .worker-start-btn-pending {
+        background: linear-gradient(120deg, #d97706, #f59e0b);
+        box-shadow: 0 10px 20px rgba(245, 158, 11, 0.24);
+    }
+
+    .worker-queue-action-row {
+        border-top: 1px solid rgba(148, 163, 184, 0.22);
+    }
+
+    .worker-modal-shell {
+        box-shadow: 0 25px 55px rgba(2, 6, 23, 0.4);
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(100, 116, 139, 0.42);
+        border-radius: 9999px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    @media (max-width: 767px) {
+        .worker-kiosk::before,
+        .worker-kiosk::after {
+            opacity: 0.16;
+            filter: blur(70px);
+        }
+
+        .worker-header {
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+        }
+
+        .worker-job-title {
+            font-size: 1.75rem;
+            line-height: 2.05rem;
+        }
+
+        .worker-job-summary {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .worker-action-grid {
+            gap: 0.75rem;
+        }
+
+        .worker-action-grid button {
+            min-height: 4.75rem;
+        }
+
+        .worker-action-grid button:hover {
+            transform: none;
+        }
+
+        .worker-queue-filter-grid {
+            grid-template-columns: repeat(6, minmax(4.8rem, 1fr));
+            overflow-x: auto;
+            padding-bottom: 0.25rem;
+            scrollbar-width: none;
+        }
+
+        .worker-queue-filter-grid::-webkit-scrollbar {
+            display: none;
+        }
+
+        .worker-queue-filter-grid button {
+            min-height: 3.8rem;
+            padding: 0.6rem 0.7rem;
+        }
+
+        .worker-queue-filter-grid button > div:last-child {
+            display: none;
+        }
+
+        .worker-queue-card {
+            padding: 1rem;
+        }
+    }
+</style>
+<div class="worker-kiosk min-h-screen flex flex-col relative selection:bg-indigo-100 selection:text-indigo-700 transition-colors duration-300"
+    :class="theme === 'dark' ? 'worker-theme-dark text-slate-100' : 'worker-theme-light text-slate-900'"
+    x-data="shopFloorKiosk"
+    {% if CURRENT_LANGUAGE == "ar" %}dir="rtl"{% else %}dir="ltr"{% endif %}>
+
+    {% if error %}
+    <div class="mx-4 md:mx-8 mt-4 rounded-2xl border px-4 py-3 text-sm font-semibold"
+        :class="theme === 'dark' ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-700'">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div x-show="showWorkGuide" x-cloak class="fixed inset-0 z-[90] flex items-center justify-center p-4 md:p-8">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" @click="showWorkGuide = false"></div>
+        <div class="relative w-full max-w-6xl rounded-3xl border p-4 md:p-5 shadow-2xl"
+            :class="theme === 'dark' ? 'border-slate-700/80 bg-slate-950 text-slate-100' : 'border-slate-200 bg-white text-slate-900'">
+            <div class="mb-4 flex items-start justify-between gap-4">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.22em]" :class="theme === 'dark' ? 'text-cyan-300' : 'text-cyan-700'">{% tenant_trans "Operator Guide" %}</div>
+                    <h2 class="mt-1 text-xl font-black">{% tenant_trans "Shop-floor work sequence" %}</h2>
+                </div>
+                <button type="button" @click="showWorkGuide = false"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition"
+                    :class="theme === 'dark' ? 'border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white' : 'border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-900'"
+                    aria-label="{% tenant_trans 'Close' %}">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div class="rounded-3xl border px-4 py-4 backdrop-blur"
+            :class="theme === 'dark' ? 'border-slate-700/80 bg-slate-900/70 text-slate-100' : 'border-slate-200 bg-white/90 text-slate-900 shadow-sm'">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.16em]" :class="theme === 'dark' ? 'text-cyan-300' : 'text-cyan-700'">{% tenant_trans "1. Current task" %}</div>
+                    <div class="mt-2 text-sm font-bold">{% tenant_trans "Confirm the highlighted job" %}</div>
+                    <p class="mt-2 text-xs leading-5" :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">{% tenant_trans "Use the active card and status pill first. Everything else is secondary." %}</p>
+                </div>
+                <span class="flex h-10 w-10 items-center justify-center rounded-2xl"
+                    :class="theme === 'dark' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-cyan-100 text-cyan-700'"><i class="ph ph-crosshair-simple text-lg"></i></span>
+            </div>
+        </div>
+
+        <div class="rounded-3xl border px-4 py-4 backdrop-blur"
+            :class="theme === 'dark' ? 'border-slate-700/80 bg-slate-900/70 text-slate-100' : 'border-slate-200 bg-white/90 text-slate-900 shadow-sm'">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.16em]" :class="theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'">{% tenant_trans "2. Report quantity" %}</div>
+                    <div class="mt-2 text-sm font-bold">{% tenant_trans "Log output before switching" %}</div>
+                    <p class="mt-2 text-xs leading-5" :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">{% tenant_trans "Record good and scrap quantities while the job is still in front of you." %}</p>
+                </div>
+                <span class="flex h-10 w-10 items-center justify-center rounded-2xl"
+                    :class="theme === 'dark' ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-100 text-emerald-700'"><i class="ph ph-package text-lg"></i></span>
+            </div>
+        </div>
+
+        <div class="rounded-3xl border px-4 py-4 backdrop-blur"
+            :class="theme === 'dark' ? 'border-slate-700/80 bg-slate-900/70 text-slate-100' : 'border-slate-200 bg-white/90 text-slate-900 shadow-sm'">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.16em]" :class="theme === 'dark' ? 'text-fuchsia-300' : 'text-fuchsia-700'">{% tenant_trans "3. Request support" %}</div>
+                    <div class="mt-2 text-sm font-bold">{% tenant_trans "Escalate faults or approvals fast" %}</div>
+                    <p class="mt-2 text-xs leading-5" :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">{% tenant_trans "Use supervisor or quality actions only when the job cannot continue cleanly." %}</p>
+                </div>
+                <span class="flex h-10 w-10 items-center justify-center rounded-2xl"
+                    :class="theme === 'dark' ? 'bg-fuchsia-500/15 text-fuchsia-300' : 'bg-fuchsia-100 text-fuchsia-700'"><i class="ph ph-lifebuoy text-lg"></i></span>
+            </div>
+        </div>
+
+        <div class="rounded-3xl border px-4 py-4 backdrop-blur"
+            :class="theme === 'dark' ? 'border-slate-700/80 bg-slate-900/70 text-slate-100' : 'border-slate-200 bg-white/90 text-slate-900 shadow-sm'">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-[11px] font-black uppercase tracking-[0.16em]" :class="theme === 'dark' ? 'text-amber-300' : 'text-amber-700'">{% tenant_trans "4. Move next" %}</div>
+                    <div class="mt-2 text-sm font-bold">{% tenant_trans "Return to the queue after completion" %}</div>
+                    <p class="mt-2 text-xs leading-5" :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">{% tenant_trans "Pick the next ready item only after the current state is complete and visible." %}</p>
+                </div>
+                <span class="flex h-10 w-10 items-center justify-center rounded-2xl"
+                    :class="theme === 'dark' ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-100 text-amber-700'"><i class="ph ph-arrow-bend-right-down text-lg"></i></span>
+            </div>
+        </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sound Effects Preload -->
+    <audio id="snd-beep" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."
+        preload="auto"></audio>
+    <audio id="snd-success" src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."
+        preload="auto"></audio>
+
+
+    <!-- 1. HEADER - RESPONSIVE -->
+    <header
+        class="worker-header flex flex-col md:flex-row items-center justify-between px-4 md:px-8 py-4 md:h-20 z-40 shrink-0 gap-4 md:gap-0 transition-all border-b"
+        :class="theme === 'dark' ? 'bg-slate-950/90 border-slate-800' : 'bg-white/90 border-slate-200 text-slate-900'">
+
+        <!-- Logo & Station Info -->
+        <div class="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
+            <div class="flex items-center gap-4 md:gap-6">
+                <div
+                    class="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-white font-bold text-lg md:text-xl shrink-0">
+                    K
+                </div>
+                <!-- Divider -->
+                <div class="hidden md:block h-10 w-px bg-slate-700"></div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-bold tracking-tight flex items-center gap-2 md:gap-3 max-w-[13rem] sm:max-w-none"
+                        :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">
+                        <span class="truncate">
+                            {% if selected_wo %}
+                            {{ selected_wo.display_machine_label|default:"Worker Station" }}
+                            {% else %}
+                            {% tenant_trans "Worker Station" %}
+                            {% endif %}
+                        </span>
+                        <span
+                            class="w-2 md:w-2.5 h-2 md:h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+                        {% if role == 'admin' or user.is_superuser %}
+                        <span
+                            class="px-2 py-0.5 rounded bg-red-500/20 border border-red-500/50 text-[10px] text-red-200 uppercase tracking-wider">God
+                            Mode</span>
+                        {% endif %}
+                    </h1>
+                    <p class="text-[10px] md:text-xs font-medium tracking-wide"
+                        :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">
+                        {% if selected_wo %}
+                        {% with stage_obj=selected_wo.display_stage %}
+                        {% if stage_obj %}{{ stage_obj.name }}{% else %}{% tenant_trans "Manufacturing" %}{% endif %}
+                        -
+                        {% if selected_wo.status == "in_progress" %}{% tenant_trans "Active" %}{% elif selected_wo.id in ready_task_ids %}{% tenant_trans "Ready" %}{% else %}{% tenant_trans "Scheduled" %}{% endif %}
+                        {% endwith %}
+                        {% else %}
+                        {% tenant_trans "No job selected" %}
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Theme Toggle & Mobile Menu -->
+            <div class="flex items-center gap-3 md:hidden">
+                <button @click="toggleTheme()" class="p-2 border rounded-lg transition-colors"
+                    :class="theme === 'dark' ? 'text-slate-400 border-slate-700 hover:text-white hover:bg-slate-800' : 'text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-100'">
+                    <i class="ph text-xl" :class="theme === 'dark' ? 'ph-sun' : 'ph-moon'"></i>
+                </button>
+                <button @click="mobileMenuOpen = !mobileMenuOpen"
+                    class="p-2 border rounded-lg transition-colors"
+                    :class="theme === 'dark' ? 'text-slate-400 border-slate-700 hover:text-white hover:bg-slate-800' : 'text-slate-600 border-slate-200 hover:text-slate-900 hover:bg-slate-100'">
+                    <i class="ph ph-list text-xl"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Side: User & Shift Stats -->
+        <div class="flex flex-col md:flex-row items-stretch md:items-center gap-4 w-full md:w-auto"
+            :class="mobileMenuOpen ? 'flex' : 'hidden md:flex'">
+
+            <!-- Theme Toggle (Desktop) -->
+            <button @click="toggleTheme()"
+                class="hidden md:flex w-10 h-10 items-center justify-center rounded-lg border transition-colors"
+                :class="theme === 'dark' ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
+                :title="theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+                <i class="ph text-xl" :class="theme === 'dark' ? 'ph-sun' : 'ph-moon'"></i>
+            </button>
+
+            <!-- Sound Toggle -->
+            <button @click="toggleSound()"
+                class="w-10 h-10 flex items-center justify-center rounded-lg border transition-colors"
+                :class="soundEnabled
+                    ? (theme === 'dark' ? 'text-emerald-400 border-emerald-900/50 hover:bg-slate-800' : 'text-emerald-600 border-emerald-300 hover:bg-emerald-50')
+                    : (theme === 'dark' ? 'text-slate-500 border-slate-700 hover:text-white hover:bg-slate-800' : 'text-slate-500 border-slate-200 hover:text-slate-900 hover:bg-slate-100')">
+                <i class="ph text-xl" :class="soundEnabled ? 'ph-speaker-high' : 'ph-speaker-slash'"></i>
+            </button>
+
+            <!-- OEE Widget -->
+            <div
+                class="worker-oee-chip flex items-center justify-between md:justify-start gap-4 rounded-xl px-4 py-2 border">
+                <div class="text-left md:text-right">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{% tenant_trans "Shift OEE" %}</div>
+                    <div class="text-sm md:text-lg font-bold text-emerald-400">87% <span
+                            class="text-[10px] md:text-xs text-emerald-500/70">{% tenant_trans "Target" %} 85%</span></div>
+                </div>
+            </div>
+
+            <!-- User Profile -->
+            <div
+                class="flex items-center justify-between md:justify-start gap-3 md:pl-6 pt-4 md:pt-0 border-t md:border-t-0"
+                :class="theme === 'dark' ? 'md:border-l border-slate-700' : 'md:border-l border-slate-200'">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-full border-2 flex items-center justify-center"
+                        :class="theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'">
+                        <i class="ph ph-user text-xl"></i>
+                    </div>
+                    <div class="text-left md:text-right">
+                        <div class="text-sm font-bold" :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">
+                            {{ user.first_name }} {{ user.last_name }}
+                        </div>
+                        <div class="text-[10px] font-medium flex items-center gap-1.5"
+                            :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-600'">
+                            {% if certification %}
+                            <span
+                                class="px-2 py-0.5 rounded-full text-white font-bold tracking-wider uppercase text-[8px]"
+                                :class="{
+                                        'bg-blue-500': '{{ certification.skill_level }}' === 'basic',
+                                        'bg-indigo-600 border border-indigo-400/30': '{{ certification.skill_level }}' === 'intermediate',
+                                        'bg-gradient-to-r from-amber-500 to-yellow-600 shadow-[0_0_10px_rgba(245,158,11,0.5)] animate-pulse': '{{ certification.skill_level }}' === 'expert'
+                                    }">
+                                {{ certification.get_skill_level_display }}
+                            </span>
+                            <span>Operator</span>
+                            {% else %}
+                            <i class="ph ph-seal-check text-indigo-400"></i> Certified Operator
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" @click="showWorkGuide = true"
+                        class="p-2 sm:px-4 sm:py-2 rounded-xl border flex items-center gap-2 transition-all font-bold text-xs"
+                        :class="theme === 'dark' ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500 hover:text-white' : 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-600 hover:text-white'">
+                        <i class="ph ph-info text-base"></i>
+                        <span class="hidden sm:inline">{% tenant_trans "Guide" %}</span>
+                    </button>
+                    <button @click="openFaultModal()"
+                        class="p-2 sm:px-4 sm:py-2 rounded-xl border flex items-center gap-2 transition-all font-bold text-xs"
+                        :class="theme === 'dark' ? 'bg-orange-500/10 border-orange-500/30 text-orange-500 hover:bg-orange-500 hover:text-white' : 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-600 hover:text-white'">
+                        <i class="ph ph-wrench text-base"></i>
+                        <span class="hidden sm:inline">{% tenant_trans "Report Fault" %}</span>
+                    </button>
+                    <a href="{% url 'logout' %}" onclick="return handleWorkerLogoutClick(event)"
+                        class="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                        title="Logout">
+                        <i class="ph ph-sign-out text-2xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. MAIN LAYOUT -->
+    <main
+        class="flex-1 p-4 md:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 lg:h-[calc(100vh-80px)] lg:overflow-hidden relative">
+
+        <!-- LEFT: SELECTED JOB -->
+        <div class="lg:col-span-8 flex flex-col min-h-0 order-1">
+            {% if selected_wo %}
+            <div class="worker-panel flex-none rounded-2xl md:rounded-3xl overflow-visible lg:overflow-hidden flex flex-col relative group transition-colors duration-300"
+                :class="theme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200/60'">
+
+                <!-- Top Status Bar -->
+                <div class="h-1.5 w-full rounded-t-2xl md:rounded-t-3xl {% if selected_wo.completion_pending %}bg-fuchsia-500{% elif selected_wo.status == 'in_progress' %}bg-indigo-600{% elif selected_wo.id in ready_task_ids %}bg-emerald-500{% else %}bg-amber-500{% endif %}"></div>
+
+                <!-- Card Content -->
+                <div class="p-4 md:p-8 lg:p-10 flex flex-col relative z-10 custom-scrollbar">
+
+                    <!-- Job Header -->
+                    <div class="flex flex-col md:flex-row justify-between items-start mb-6 md:mb-10 gap-4">
+                        <div>
+                            <div class="flex items-center gap-3 md:gap-4 mb-2 md:mb-3">
+                                <span
+                                    class="worker-status-pill px-3 md:px-4 py-1.5 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider flex items-center gap-2 {% if selected_wo.completion_pending %}worker-status-pill-approval{% elif selected_wo.status == 'in_progress' %}worker-status-pill-current{% elif selected_wo.id in ready_task_ids %}worker-status-pill-ready{% else %}worker-status-pill-pending{% endif %}">
+                                    <span
+                                        class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full {% if selected_wo.completion_pending %}bg-fuchsia-100 animate-pulse{% elif selected_wo.status == 'in_progress' %}bg-indigo-100 animate-pulse{% elif selected_wo.id in ready_task_ids %}bg-emerald-100{% else %}bg-amber-100{% endif %}"></span>
+                                    {% if selected_wo.completion_pending %}
+                                    {% tenant_trans "Pending Approval" %}
+                                    {% elif selected_wo.status == 'in_progress' %}
+                                    {% tenant_trans "Activated" %}
+                                    {% elif selected_wo.id in ready_task_ids %}
+                                    {% tenant_trans "Ready to Start" %}
+                                    {% else %}
+                                    {% tenant_trans "Pending Later" %}
+                                    {% endif %}
+                                </span>
+                                <span class="text-sm md:text-lg font-medium tracking-tight"
+                                    :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-400'">
+                                    {{ selected_wo.display_work_order_code }}
+                                </span>
+                            </div>
+                            {% firstof selected_wo.display_product_name selected_wo.product_name as display_name %}
+                            <h2 class="worker-job-title text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight mb-2"
+                                :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">
+                                {{ display_name }}
+                            </h2>
+                            {% if selected_wo %}
+                            {% with stage_obj=selected_wo.display_stage %}
+                            <p class="worker-job-summary text-sm md:text-lg"
+                                :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">
+                                <span>{% tenant_trans "Batch" %}: {{ selected_wo.quantity }} {% tenant_trans "units" %}</span>
+                                <span>{% if stage_obj %}{% tenant_trans "Stage" %} {{ stage_obj.order|default:"-" }}{% if stage_obj.name %}: {{ stage_obj.name }}{% endif %}{% else %}{% tenant_trans "Stage" %} -{% endif %}</span>
+                                <span>{% tenant_trans "Machine" %}: {{ selected_wo.display_machine_label }}</span>
+                            </p>
+                            {% if selected_wo.status != 'in_progress' %}
+                            <p class="mt-2 text-sm font-semibold"
+                                :class="theme === 'dark' ? 'text-slate-300' : 'text-slate-600'">
+                                {% if selected_wo.id in ready_task_ids %}
+                                {% tenant_trans "This assigned job can be activated now. Planned time stays available for reporting." %}
+                                {% else %}
+                                {% tenant_trans "Scheduled for" %} {{ selected_wo.start_date|default:selected_wo.scheduled_start_date|date:"M d, H:i"|default:"later" }}.
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                            {% if selected_wo.material_readiness_status == 'shortage' %}
+                            <div class="mt-3 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                                {% tenant_trans "Material shortage" %}{% if selected_wo.material_shortage_note %}: {{ selected_wo.material_shortage_note }}{% endif %}
+                            </div>
+                            {% elif selected_wo.material_readiness_status == 'ready' %}
+                            <div class="mt-3 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-emerald-700">
+                                {% tenant_trans "Materials ready" %}
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+
+                {% if selected_wo.status == 'in_progress' and selected_wo.completion_pending %}
+                <!-- WAITING STATE -->
+                <div class="mb-8 md:mb-12 mx-4 md:mx-8 rounded-2xl md:rounded-3xl p-8 md:p-12 text-center border-2 border-dashed"
+                    :class="theme === 'dark' ? 'bg-slate-900/50 border-amber-500/30' : 'bg-amber-50 border-amber-200'">
+                    <div class="w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center mx-auto mb-6"
+                        :class="theme === 'dark' ? 'bg-amber-900/30 text-amber-500' : 'bg-amber-100 text-amber-600'">
+                        <i class="ph ph-hourglass-high text-4xl md:text-5xl animate-pulse"></i>
+                    </div>
+                    <h3 class="text-2xl md:text-3xl font-bold mb-3"
+                        :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">
+                        {% tenant_trans "Waiting for Approval" %}
+                    </h3>
+                    <p class="text-base md:text-lg max-w-md mx-auto mb-8"
+                        :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-600'">
+                        {% tenant_trans "You have requested completion for this task. Please wait for the supervisor to approve or reject the log." %}
+                    </p>
+                    <div class="flex flex-col md:flex-row gap-4 justify-center">
+                        <button onclick="location.reload()"
+                            class="px-6 py-3 rounded-xl font-bold text-sm transition-colors border-2"
+                            :class="theme === 'dark' ? 'border-slate-600 text-slate-300 hover:text-white hover:border-slate-500' : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:border-slate-400'">
+                            <i class="ph ph-arrows-clockwise mr-2"></i> {% tenant_trans "Check Status" %}
+                        </button>
+                    </div>
+                </div>
+                {% elif selected_wo.status == 'in_progress' %}
+                <!-- ACTION GRID -->
+                <div class="worker-action-grid grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 px-4 md:px-8 pb-4 md:pb-8">
+                    <!-- 1. Log Output -->
+                    <button @click="openProductionModal()"
+                        class="worker-primary-action h-20 md:h-24 bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-xl md:rounded-2xl shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-all flex items-center justify-center gap-4 group">
+                        <div class="p-2 md:p-3 bg-white/20 rounded-lg md:rounded-xl">
+                            <i class="ph ph-cube text-2xl md:text-3xl"></i>
+                        </div>
+                            <div class="text-left">
+                            <div class="text-base md:text-lg font-bold">{% tenant_trans "Log Output" %}</div>
+                            <div class="text-[10px] md:text-xs text-indigo-100 font-medium">{% tenant_trans "Submit Batch" %}</div>
+                        </div>
+                    </button>
+
+                    <!-- 2. Add Material -->
+                    <button @click="openProductionModal()"
+                        class="worker-secondary-action h-20 md:h-24 rounded-xl md:rounded-2xl shadow-lg transition-all flex items-center justify-center gap-4 group"
+                        :class="theme === 'dark' ? 'bg-slate-700 text-white hover:bg-slate-600 shadow-slate-900/50' : 'bg-slate-800 text-white hover:shadow-xl hover:-translate-y-1'">
+                        <div
+                            class="p-2 md:p-3 bg-white/10 rounded-lg md:rounded-xl text-slate-300 group-hover:text-white transition-colors">
+                            <i class="ph ph-flask text-2xl md:text-3xl"></i>
+                        </div>
+                        <div class="text-left">
+                            <div class="text-base md:text-lg font-bold">{% tenant_trans "Add Material" %}</div>
+                            <div class="text-[10px] md:text-xs text-slate-400 font-medium group-hover:text-slate-300">
+                                {% tenant_trans "Track Usage" %}</div>
+                        </div>
+                    </button>
+
+                    <!-- 3. Report Scrap (NOW ACTIVE) -->
+                    <button @click="openScrapModal()"
+                        class="worker-warning-action h-16 md:h-20 border-2 rounded-xl md:rounded-2xl transition-all flex items-center justify-center gap-3"
+                        :class="theme === 'dark' ? 'bg-orange-900/20 border-orange-500/30 text-orange-400 hover:bg-orange-900/40 hover:border-orange-500' : 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 hover:border-orange-300'">
+                        <i class="ph ph-warning-circle text-xl md:text-2xl"></i>
+                        <span class="font-bold text-sm md:text-base">{% tenant_trans "Report Scrap" %}</span>
+                    </button>
+
+                    <!-- 4. Checklist/Instructions -->
+                    <button onclick="document.getElementById('instructionsPanel').scrollIntoView({behavior: 'smooth'})"
+                        class="worker-outline-action h-16 md:h-20 border-2 rounded-xl md:rounded-2xl transition-all flex items-center justify-center gap-3"
+                        :class="theme === 'dark' ? 'bg-slate-800 border-slate-600 text-slate-300 hover:border-indigo-500 hover:text-indigo-400' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600'">
+                        <i class="ph ph-list-checks text-xl md:text-2xl"></i>
+                        <span class="font-bold text-sm md:text-base">{% tenant_trans "View Checklist" %}</span>
+                    </button>
+                </div>
+                {% else %}
+                <!-- PRE-START STATE -->
+                <div class="mx-4 md:mx-8 mb-4 md:mb-8 rounded-2xl md:rounded-3xl p-6 md:p-8 border-2 border-dashed"
+                    :class="theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'">
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <h3 class="text-xl md:text-2xl font-bold mb-2"
+                                :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">
+                                {% if selected_wo.id in ready_task_ids %}
+                                {% tenant_trans "Ready to Activate" %}
+                                {% else %}
+                                {% tenant_trans "Pending for Later" %}
+                                {% endif %}
+                            </h3>
+                            <p class="text-sm md:text-base"
+                                :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-600'">
+                                {% if selected_wo.id in ready_task_ids %}
+                                {% tenant_trans "This job can be started now. Opened state is only a preview until you activate it." %}
+                                {% else %}
+                                {% if selected_wo.dispatch_block_reason %}
+                                {{ selected_wo.dispatch_block_reason }}
+                                {% else %}
+                                {% tenant_trans "This job is assigned to you, but it should stay pending until its scheduled time." %}
+                                {% endif %}
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            {% if selected_wo.id in ready_task_ids %}
+                            <button type="button" onclick="startAndSwitchWorkOrder('{{ selected_wo.id }}')"
+                                class="worker-start-btn worker-start-btn-ready text-white px-6 py-3 rounded-xl font-bold shadow-lg text-sm md:text-base">
+                                <i class="ph ph-play mr-2"></i> {% tenant_trans "Start Job" %}
+                            </button>
+                            {% else %}
+                            <button type="button" disabled
+                                class="px-6 py-3 rounded-xl font-bold text-sm md:text-base border"
+                                :class="theme === 'dark' ? 'border-slate-700 bg-slate-800 text-slate-500' : 'border-slate-200 bg-white text-slate-400'">
+                                <i class="ph ph-lock-simple mr-2"></i> {{ selected_wo.dispatch_block_reason|default:"Blocked" }}
+                            </button>
+                            {% endif %}
+                            <button type="button" onclick="document.getElementById('instructionsPanel').scrollIntoView({behavior: 'smooth'})"
+                                class="worker-outline-action px-6 py-3 rounded-xl font-bold text-sm md:text-base border-2"
+                                :class="theme === 'dark' ? 'bg-slate-800 border-slate-600 text-slate-300 hover:border-indigo-500 hover:text-indigo-400' : 'bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:text-indigo-600'">
+                                <i class="ph ph-list-checks mr-2"></i> {% tenant_trans "View Checklist" %}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Decorative Background Blur -->
+            <div
+                class="hidden lg:block absolute -right-20 -top-20 w-96 h-96 bg-indigo-500 rounded-full blur-3xl opacity-20 pointer-events-none">
+            </div>
+            <div
+                class="hidden lg:block absolute -left-20 -bottom-20 w-96 h-96 bg-blue-500 rounded-full blur-3xl opacity-20 pointer-events-none">
+            </div>
+            {% else %}
+            <!-- Idle State Poster -->
+            <div class="worker-idle-panel flex-1 rounded-3xl shadow-sm border border-dashed flex flex-col items-center justify-center text-center p-8 md:p-12 mb-8 lg:mb-0"
+                :class="theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-300'">
+                <div class="w-32 h-32 md:w-40 md:h-40 rounded-[3rem] flex items-center justify-center mb-6 md:mb-10 shadow-inner"
+                    :class="theme === 'dark' ? 'bg-slate-700' : 'bg-slate-50'">
+                    <i class="ph ph-coffee text-5xl md:text-6xl text-slate-400"></i>
+                </div>
+                <h2 class="text-2xl md:text-4xl font-bold mb-2 md:mb-4 tracking-tight"
+                    :class="theme === 'dark' ? 'text-white' : 'text-slate-800'">{% tenant_trans "Station Ready" %}</h2>
+                <p class="text-lg md:text-xl max-w-md" :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">
+                    {% tenant_trans "Select a job from the queue to begin your shift." %}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- RIGHT: UP NEXT QUEUE -->
+        <div class="lg:col-span-4 flex flex-col lg:h-full min-h-0 order-2 lg:order-2 pb-8 lg:pb-0">
+            <div class="flex items-center justify-between mb-4 md:mb-6 px-2">
+                <h3 class="text-sm font-bold uppercase tracking-widest"
+                    :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-500'">{% tenant_trans "Assigned Jobs" %}</h3>
+                <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full"
+                    x-text="`${queueCount()} {% tenant_trans 'Jobs' %}`">{{ assigned_tasks|length }} {% tenant_trans "Jobs" %}</span>
+            </div>
+
+            <div class="worker-queue-filter-grid grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-2 mb-4">
+                <button type="button" @click="setQueueFilter('approval')" :aria-pressed="isQueueFilter('approval')"
+                    class="rounded-2xl border px-3 py-2.5 min-h-[78px] flex flex-col justify-between text-left transition-all"
+                    :class="[
+                        theme === 'dark' ? 'border-fuchsia-900/70 bg-fuchsia-950/40 text-fuchsia-200' : 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700',
+                        isQueueFilter('approval') ? 'ring-2 ring-fuchsia-400 scale-[1.01]' : 'opacity-80 hover:opacity-100'
+                    ]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full"
+                            :class="theme === 'dark' ? 'bg-fuchsia-300' : 'bg-fuchsia-500'"></span>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em]">{% tenant_trans "Approval" %}</div>
+                    </div>
+                    <div class="mt-1 text-[11px] font-semibold leading-snug">{% tenant_trans "Supervisor review" %}</div>
+                </button>
+                <button type="button" @click="setQueueFilter('active')" :aria-pressed="isQueueFilter('active')"
+                    class="rounded-2xl border px-3 py-2.5 min-h-[78px] flex flex-col justify-between text-left transition-all"
+                    :class="[
+                        theme === 'dark' ? 'border-indigo-900/70 bg-indigo-950/40 text-indigo-200' : 'border-indigo-200 bg-indigo-50 text-indigo-700',
+                        isQueueFilter('active') ? 'ring-2 ring-indigo-400 scale-[1.01]' : 'opacity-80 hover:opacity-100'
+                    ]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full"
+                            :class="theme === 'dark' ? 'bg-indigo-300' : 'bg-indigo-500'"></span>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em]">{% tenant_trans "Active" %}</div>
+                    </div>
+                    <div class="mt-1 text-[11px] font-semibold leading-snug">{% tenant_trans "Started now" %}</div>
+                </button>
+                <button type="button" @click="setQueueFilter('ready')" :aria-pressed="isQueueFilter('ready')"
+                    class="rounded-2xl border px-3 py-2.5 min-h-[78px] flex flex-col justify-between text-left transition-all"
+                    :class="[
+                        theme === 'dark' ? 'border-emerald-900/70 bg-emerald-950/40 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-700',
+                        isQueueFilter('ready') ? 'ring-2 ring-emerald-400 scale-[1.01]' : 'opacity-80 hover:opacity-100'
+                    ]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full"
+                            :class="theme === 'dark' ? 'bg-emerald-300' : 'bg-emerald-500'"></span>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em]">{% tenant_trans "Ready" %}</div>
+                    </div>
+                    <div class="mt-1 text-[11px] font-semibold leading-snug">{% tenant_trans "Can start now" %}</div>
+                </button>
+                <button type="button" @click="setQueueFilter('later')" :aria-pressed="isQueueFilter('later')"
+                    class="rounded-2xl border px-3 py-2.5 min-h-[78px] flex flex-col justify-between text-left transition-all"
+                    :class="[
+                        theme === 'dark' ? 'border-amber-900/70 bg-amber-950/40 text-amber-200' : 'border-amber-200 bg-amber-50 text-amber-700',
+                        isQueueFilter('later') ? 'ring-2 ring-amber-400 scale-[1.01]' : 'opacity-80 hover:opacity-100'
+                    ]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full"
+                            :class="theme === 'dark' ? 'bg-amber-300' : 'bg-amber-500'"></span>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em]">{% tenant_trans "Later" %}</div>
+                    </div>
+                    <div class="mt-1 text-[11px] font-semibold leading-snug">{% tenant_trans "Future slot" %}</div>
+                </button>
+                <button type="button" @click="setQueueFilter('upcoming')" :aria-pressed="isQueueFilter('upcoming')"
+                    class="rounded-2xl border px-3 py-2.5 min-h-[78px] flex flex-col justify-between text-left transition-all"
+                    :class="[
+                        theme === 'dark' ? 'border-sky-900/70 bg-sky-950/40 text-sky-200' : 'border-sky-200 bg-sky-50 text-sky-700',
+                        isQueueFilter('upcoming') ? 'ring-2 ring-sky-400 scale-[1.01]' : 'opacity-80 hover:opacity-100'
+                    ]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full"
+                            :class="theme === 'dark' ? 'bg-sky-300' : 'bg-sky-500'"></span>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em]">{% tenant_trans "Upcoming" %}</div>
+                    </div>
+                    <div class="mt-1 text-[11px] font-semibold leading-snug">{% tenant_trans "Section plan" %}</div>
+                </button>
+                <button type="button" @click="setQueueFilter('all')" :aria-pressed="isQueueFilter('all')"
+                    class="rounded-2xl border px-3 py-2.5 min-h-[78px] flex flex-col justify-between text-left transition-all"
+                    :class="[
+                        theme === 'dark' ? 'border-slate-700 bg-slate-900/50 text-slate-200' : 'border-slate-300 bg-white text-slate-700',
+                        isQueueFilter('all') ? 'ring-2 ring-slate-400 scale-[1.01]' : 'opacity-80 hover:opacity-100'
+                    ]">
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full"
+                            :class="theme === 'dark' ? 'bg-slate-300' : 'bg-slate-500'"></span>
+                        <div class="text-[10px] font-black uppercase tracking-[0.16em]">{% tenant_trans "All Jobs" %}</div>
+                    </div>
+                    <div class="mt-1 text-[11px] font-semibold leading-snug">{% tenant_trans "Show every job" %}</div>
+                </button>
+            </div>
+
+            <div class="flex-1 lg:overflow-y-auto pr-0 lg:pr-2 space-y-4 custom-scrollbar lg:pb-6">
+
+                {% if selected_wo %}
+                <div id="instructionsPanel" class="worker-info-panel p-4 md:p-6 rounded-2xl md:rounded-3xl border mb-6"
+                    :class="theme === 'dark' ? 'bg-indigo-900/20 border-indigo-800' : 'bg-indigo-50/50 border-indigo-100'">
+                    <h4
+                        class="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <i class="ph ph-info"></i> {% tenant_trans "Instructions" %}
+                    </h4>
+                    <p class="text-sm md:text-base font-medium italic leading-relaxed"
+                        :class="theme === 'dark' ? 'text-slate-300' : 'text-slate-700'">
+                        {{ selected_wo.instructions|default:"Check SOP" }}
+                    </p>
+                    {% if bom_attachment %}
+                    <div class="mt-4 rounded-2xl border p-3"
+                        :class="theme === 'dark' ? 'border-slate-700 bg-slate-950/40' : 'border-indigo-100 bg-white/80'">
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-black uppercase tracking-[0.18em]"
+                                    :class="theme === 'dark' ? 'text-cyan-300' : 'text-indigo-700'">{% tenant_trans "BOM Attachment" %}</div>
+                                <div class="truncate text-sm font-bold"
+                                    :class="theme === 'dark' ? 'text-slate-100' : 'text-slate-800'">{{ bom_attachment.name }}</div>
+                            </div>
+                            <a href="{{ bom_attachment.download_url }}" target="_blank" rel="noopener"
+                                class="inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-[0.12em]"
+                                :class="theme === 'dark' ? 'bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/25' : 'bg-indigo-600 text-white hover:bg-indigo-700'">
+                                <i class="ph ph-download-simple"></i> {% tenant_trans "Open" %}
+                            </a>
+                        </div>
+                        {% if bom_attachment.is_image %}
+                        <img src="{{ bom_attachment.url }}" alt="{{ bom_attachment.name }}"
+                            class="max-h-72 w-full rounded-xl border object-contain"
+                            :class="theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50'">
+                        {% elif bom_attachment.is_pdf %}
+                        <iframe src="{{ bom_attachment.url }}" title="{{ bom_attachment.name }}"
+                            class="h-72 w-full rounded-xl border"
+                            :class="theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-white'"></iframe>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if active_tasks %}
+                <section class="space-y-3" x-show="shouldShowQueue('active')" x-cloak>
+                    <div class="flex items-center justify-between px-1">
+                        <h4 class="text-[11px] font-bold uppercase tracking-[0.28em]"
+                            :class="theme === 'dark' ? 'text-indigo-300' : 'text-indigo-700'">{% tenant_trans "Activated" %}</h4>
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                            :class="theme === 'dark' ? 'bg-indigo-950/60 text-indigo-200' : 'bg-indigo-100 text-indigo-700'">{{ active_tasks|length }}</span>
+                    </div>
+                    {% for wo in active_tasks %}
+                    {% include "manufacturing/partials/shop_floor_queue_card.html" %}
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                {% if pending_approval_tasks %}
+                <section class="space-y-3" x-show="shouldShowQueue('approval')" x-cloak>
+                    <div class="flex items-center justify-between px-1">
+                        <h4 class="text-[11px] font-bold uppercase tracking-[0.28em]"
+                            :class="theme === 'dark' ? 'text-fuchsia-300' : 'text-fuchsia-700'">{% tenant_trans "Pending Approval" %}</h4>
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                            :class="theme === 'dark' ? 'bg-fuchsia-950/60 text-fuchsia-200' : 'bg-fuchsia-100 text-fuchsia-700'">{{ pending_approval_tasks|length }}</span>
+                    </div>
+                    {% for wo in pending_approval_tasks %}
+                    {% include "manufacturing/partials/shop_floor_queue_card.html" %}
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                {% if ready_tasks %}
+                <section class="space-y-3" x-show="shouldShowQueue('ready')" x-cloak>
+                    <div class="flex items-center justify-between px-1">
+                        <h4 class="text-[11px] font-bold uppercase tracking-[0.28em]"
+                            :class="theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'">{% tenant_trans "Ready To Start" %}</h4>
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                            :class="theme === 'dark' ? 'bg-emerald-950/60 text-emerald-200' : 'bg-emerald-100 text-emerald-700'">{{ ready_tasks|length }}</span>
+                    </div>
+                    {% for wo in ready_tasks %}
+                    {% include "manufacturing/partials/shop_floor_queue_card.html" %}
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                {% if future_pending_tasks %}
+                <section class="space-y-3" x-show="shouldShowQueue('later')" x-cloak>
+                    <div class="flex items-center justify-between px-1">
+                        <h4 class="text-[11px] font-bold uppercase tracking-[0.28em]"
+                            :class="theme === 'dark' ? 'text-amber-300' : 'text-amber-700'">{% tenant_trans "Pending Later" %}</h4>
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                            :class="theme === 'dark' ? 'bg-amber-950/60 text-amber-200' : 'bg-amber-100 text-amber-700'">{{ future_pending_tasks|length }}</span>
+                    </div>
+                    {% for wo in future_pending_tasks %}
+                    {% include "manufacturing/partials/shop_floor_queue_card.html" %}
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                {% if section_upcoming_tasks %}
+                <section class="space-y-3" x-show="queueFilter === 'upcoming'" x-cloak>
+                    <div class="flex items-center justify-between px-1">
+                        <h4 class="text-[11px] font-bold uppercase tracking-[0.28em]"
+                            :class="theme === 'dark' ? 'text-sky-300' : 'text-sky-700'">{% tenant_trans "Upcoming Work Orders" %}</h4>
+                        <span class="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                            :class="theme === 'dark' ? 'bg-sky-950/60 text-sky-200' : 'bg-sky-100 text-sky-700'">{{ section_upcoming_tasks|length }}</span>
+                    </div>
+                    {% for wo in section_upcoming_tasks %}
+                    <article class="worker-queue-card rounded-2xl border-2 p-4 shadow-sm"
+                        :class="theme === 'dark' ? 'border-sky-900/70 bg-sky-950/30 text-slate-100' : 'border-sky-200 bg-white text-slate-900'">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <span class="inline-flex rounded-md px-2 py-1 text-[10px] font-bold"
+                                    :class="theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-400'">
+                                    {{ wo.display_work_order_code }}
+                                </span>
+                                {% firstof wo.display_product_name wo.product_name as upcoming_name %}
+                                <h4 class="mt-2 truncate text-base font-black">{{ upcoming_name }}</h4>
+                            </div>
+                            <span class="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em]"
+                                :class="theme === 'dark' ? 'bg-sky-500/15 text-sky-200' : 'bg-sky-100 text-sky-700'">
+                                {% tenant_trans "Upcoming" %}
+                            </span>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                            <div class="rounded-xl px-3 py-2"
+                                :class="theme === 'dark' ? 'bg-slate-900/70 text-slate-300' : 'bg-slate-50 text-slate-700'">
+                                <div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">{% tenant_trans "Scheduled" %}</div>
+                                <div class="mt-1 font-bold">{{ wo.scheduled_start_date|default:wo.start_date|date:"M d, H:i"|default:"-" }}</div>
+                            </div>
+                            <div class="rounded-xl px-3 py-2"
+                                :class="theme === 'dark' ? 'bg-slate-900/70 text-slate-300' : 'bg-slate-50 text-slate-700'">
+                                <div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">{% tenant_trans "Machine" %}</div>
+                                <div class="mt-1 truncate font-bold">{{ wo.display_machine_label }}</div>
+                            </div>
+                            <div class="rounded-xl px-3 py-2"
+                                :class="theme === 'dark' ? 'bg-slate-900/70 text-slate-300' : 'bg-slate-50 text-slate-700'">
+                                <div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">{% tenant_trans "Section" %}</div>
+                                <div class="mt-1 truncate font-bold">{{ wo.upcoming_section_name }}</div>
+                            </div>
+                            <div class="rounded-xl px-3 py-2"
+                                :class="theme === 'dark' ? 'bg-slate-900/70 text-slate-300' : 'bg-slate-50 text-slate-700'">
+                                <div class="text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">{% tenant_trans "Worker" %}</div>
+                                <div class="mt-1 truncate font-bold">{{ wo.upcoming_worker_name }}</div>
+                            </div>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                <div x-show="queueFilter !== 'all' && queueCount() === 0" x-cloak
+                    class="text-center py-8 opacity-70 rounded-2xl border border-dashed"
+                    :class="theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-200 text-slate-600'">
+                    {% tenant_trans "No jobs in this category." %}
+                </div>
+
+                {% if not assigned_tasks %}
+                <div class="text-center py-12 opacity-50 rounded-2xl border border-dashed"
+                    :class="theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'">
+                    <p :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-600'">{% tenant_trans "No assigned jobs" %}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <!-- REPORT / SCRAP MODAL (Responsive) -->
+    <div x-data="reportModal" x-show="reportModalOpen" style="display: none;"
+        data-has-criteria="{% if acceptance_criteria %}true{% else %}false{% endif %}"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm bg-slate-900/65"
+        x-cloak x-transition.opacity @open-report-modal.window="openReport($event.detail || {})">
+
+        <div class="worker-modal-shell w-full rounded-t-3xl sm:rounded-3xl shadow-2xl sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+            :class="theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'"
+            @click.away="reportModalOpen = false" x-transition.scale>
+
+            <!-- Header -->
+            <div class="px-6 md:px-8 py-4 md:py-6 border-b flex justify-between items-center" :class="[
+                    theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50/50 border-slate-100',
+                    reportMode === 'scrap' ? (theme === 'dark' ? 'bg-orange-900/20' : 'bg-orange-50') : ''
+                 ]">
+                <div>
+                    <h3 class="text-xl md:text-2xl font-bold flex items-center gap-2"
+                        :class="reportMode === 'scrap' ? 'text-orange-500' : (theme === 'dark' ? 'text-white' : 'text-slate-900')">
+                        <i class="ph" :class="reportMode === 'scrap' ? 'ph-warning-circle' : 'ph-check-circle'"></i>
+                        <span x-text="reportMode === 'scrap' ? '{% tenant_trans "Report Scrap" %}' : '{% tenant_trans "Log Production" %}'"></span>
+                    </h3>
+                    <p class="text-xs md:text-sm op-70" :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">
+                        <span
+                            x-text="reportMode === 'scrap' ? '{% tenant_trans "Record defective parts for" %}' : '{% tenant_trans "Update output for" %}'"></span>
+                        WO #{{ selected_wo.display_work_order_id }}
+                    </p>
+                </div>
+                <button @click="reportModalOpen = false"
+                    class="w-10 h-10 rounded-full border flex items-center justify-center transition-all"
+                    :class="theme === 'dark' ? 'bg-slate-700 border-slate-600 text-slate-400 hover:text-red-400' : 'bg-white border-slate-200 text-slate-400 hover:text-red-500'">
+                    <i class="ph ph-x font-bold"></i>
+                </button>
+            </div>
+
+            <form @submit.prevent="submitLog" class="flex-1 overflow-y-auto p-6 md:p-8">
+                {% csrf_token %}
+                <input type="hidden" name="work_order" value="{{ selected_wo.id }}">
+                <input type="hidden" name="completion_requested" x-model="completeRequested">
+
+                <!-- Helper logic to pre-fill quantity from the stepper -->
+                <div class="mb-8 md:mb-10" @update-qty.window="quantity = $event.detail.qty; fetchBOM()">
+
+                    <label class="block text-xs font-bold uppercase tracking-widest mb-4"
+                        :class="reportMode === 'scrap' ? 'text-orange-400' : 'text-slate-400'">
+                        <span x-text="reportMode === 'scrap' ? '{% tenant_trans "Quantity Scrapped" %}' : '{% tenant_trans "Quantity to Submit" %}'"></span>
+                    </label>
+
+                    <div class="flex items-center gap-4 md:gap-6">
+                        <div class="relative flex-1">
+                            <input type="number" name="quantity" x-model="quantity" @input.debounce.300ms="fetchBOM"
+                                @focus="if (quantity === 0 || quantity === '0') quantity = ''"
+                                @blur="if (quantity === '' || quantity === null) quantity = ''"
+                                class="w-full text-4xl md:text-5xl font-black border-none focus:ring-0 bg-transparent p-0"
+                                :class="theme === 'dark' ? 'text-white placeholder-slate-600' : 'text-slate-900 placeholder-slate-200'"
+                                placeholder="0">
+                            <div class="h-2 w-full mt-3 rounded-full overflow-hidden"
+                                :class="theme === 'dark' ? 'bg-slate-700' : 'bg-slate-100'">
+                                <div class="h-full transition-all duration-300"
+                                    :class="reportMode === 'scrap' ? 'bg-gradient-to-r from-orange-500 to-amber-400' : 'bg-gradient-to-r from-indigo-500 to-blue-400'"
+                                    :style="`width: ${Math.min((parseInt(quantity || 0) / Math.max(parseInt(targetQty || 0), 1)) * 100, 100)}%`"></div>
+                            </div>
+                            <div class="mt-1 text-[10px] font-semibold tracking-wide text-slate-500"
+                                x-text="`${Math.min(Math.round((parseInt(quantity || 0) / Math.max(parseInt(targetQty || 0), 1)) * 100), 100)}%`">
+                            </div>
+                            <div class="mt-1 text-[11px] font-semibold text-amber-600"
+                                x-show="reportMode === 'production' && parseInt(remainingQty || 0) >= 0"
+                                x-text="`{% tenant_trans "Remaining allowed now" %}: ${parseInt(remainingQty || 0)} {% tenant_trans "units" %}`">
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs md:text-sm font-bold text-slate-500">{% tenant_trans "Total Required" %}</div>
+                            <div class="text-xl md:text-2xl font-bold"
+                                :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">{{ selected_wo.quantity }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scrap Reason (Only for Scrap) -->
+                <div x-show="reportMode === 'scrap'" class="mb-8">
+                    <label class="block text-xs font-bold uppercase tracking-widest mb-3 text-slate-400">{% tenant_trans "Reason for Scrap" %}</label>
+                    <select x-model="scrapReason" id="scrapReason"
+                        class="w-full p-4 rounded-xl text-lg font-bold focus:ring-orange-500"
+                        :class="theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-700'">
+                        <option value="Material Defect">{% tenant_trans "Material Defect" %}</option>
+                        <option value="Machine Fault">{% tenant_trans "Machine Fault" %}</option>
+                        <option value="Operator Error">{% tenant_trans "Operator Error" %}</option>
+                        <option value="Dimensional Issue">{% tenant_trans "Dimensional Issue" %}</option>
+                        <option value="Other">{% tenant_trans "Other" %}</option>
+                    </select>
+                </div>
+
+                <!-- Hidden Note Field used for Scrap data pass-through -->
+                <input type="hidden" name="note" id="hiddenNoteField">
+
+                <!-- Shift (Hidden, auto-detected) -->
+                <input type="hidden" name="shift" x-model="shift">
+
+                <!-- Materials Section (Only for Production) - BOM AWARE -->
+                <div class="mb-8" x-show="reportMode === 'production'">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="text-xs font-bold uppercase tracking-widest text-slate-400">{% tenant_trans "Materials Consumed" %}</label>
+                        <span class="text-[10px] text-slate-500 italic" x-show="materials.length > 0">{% tenant_trans "BOM quantities are prefilled; edit actual usage if different" %}</span>
+                    </div>
+                    {% if selected_wo %}
+                    {% with stage_obj=selected_wo.display_stage %}
+                    <div class="mb-3 text-[11px] leading-5"
+                        :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">
+                        {% if stage_obj %}
+                        Stage {{ stage_obj.order|default:"-" }}{% if stage_obj.name %}: {{ stage_obj.name }}.{% endif %}
+                        {% endif %}
+                        {% tenant_trans "Planned BOM quantities are prefilled as actual usage. Adjust any material that differs before submitting." %}
+                    </div>
+                    {% endwith %}
+                    {% endif %}
+
+                    <div class="rounded-2xl p-4 border"
+                        :class="theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-100'">
+
+                        <!-- Headers -->
+                        <div class="grid grid-cols-12 gap-2 text-[10px] font-bold uppercase tracking-wider mb-2"
+                            :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-400'">
+                            <div class="col-span-5">{% tenant_trans "Material" %}</div>
+                            <div class="col-span-3 text-right">{% tenant_trans "Std" %}</div>
+                            <div class="col-span-4 text-right">{% tenant_trans "Actual" %}</div>
+                        </div>
+
+                        <!-- Rows -->
+                        <template x-for="mat in materials" :key="mat.component_id || mat.product_id || mat.name">
+                            <div class="grid grid-cols-12 gap-2 items-center mb-3 text-sm">
+                                <div class="col-span-5 font-medium truncate"
+                                    :class="theme === 'dark' ? 'text-slate-300' : 'text-slate-700'" x-text="mat.name">
+                                </div>
+
+                                <div class="col-span-3 text-right"
+                                    :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-500'">
+                                    <span x-text="mat.expected_qty"></span> <span x-text="mat.unit"
+                                        class="text-[10px]"></span>
+                                </div>
+
+                                <div class="col-span-4 relative">
+                                    <input type="number" x-model.number="mat.actual_qty" step="any" placeholder="Qty"
+                                        class="w-full rounded-lg border-0 py-1.5 text-right font-bold text-sm focus:ring-2 focus:ring-indigo-500"
+                                        :class="[
+                                            theme === 'dark' ? 'bg-slate-800 text-white placeholder-slate-600' : 'bg-white text-slate-900 placeholder-slate-300',
+                                            isVarianceHigh(mat) ? '!bg-amber-100 !text-amber-900' : ''
+                                        ]">
+                                    <div x-show="isVarianceHigh(mat)"
+                                        class="absolute -top-6 right-0 bg-amber-500 text-white text-[9px] px-1.5 py-0.5 rounded font-bold shadow-sm whitespace-nowrap">
+                                        {% tenant_trans "Variance" %}
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div x-show="materials.length === 0 && !loadingBOM" class="text-center py-4 text-xs italic"
+                            :class="theme === 'dark' ? 'text-slate-600' : 'text-slate-400'">
+                            {% tenant_trans "No BOM materials were found for this task. Add extra materials below if needed." %}
+                        </div>
+
+                        <div x-show="loadingBOM"
+                            class="text-center py-4 text-xs font-bold animate-pulse text-indigo-500">
+                            {% tenant_trans "Calculating BOM Requirements..." %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-8" x-show="reportMode === 'production'">
+                    <div class="flex justify-between items-center mb-3">
+                        <label class="text-xs font-bold uppercase tracking-widest text-slate-400">Extra / Non-BOM
+                            Materials</label>
+                        <span class="text-[10px] text-slate-500 italic">Optional</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <template x-for="(extra, index) in manualMaterials" :key="extra.key">
+                            <div class="rounded-2xl p-3 border"
+                                :class="theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-100'">
+                                <div class="grid grid-cols-12 gap-3 items-start">
+                                    <div class="col-span-12 md:col-span-5 space-y-2">
+                                        <select x-model="extra.product_id"
+                                            @change="syncManualMaterialSelection(index, $event)"
+                                            class="w-full rounded-lg border-0 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                                            :class="theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'">
+                                            <option value="">Custom material</option>
+                                            {% for material in materials %}
+                                            <option value="{{ material.id }}" data-name="{{ material.name|escape }}"
+                                                data-unit="{{ material.unit|default:'pcs'|escape }}">
+                                                {{ material.name }} ({{ material.unit|default:"pcs" }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                        <input type="text" x-show="!extra.product_id" x-model.trim="extra.material_name"
+                                            placeholder="Material name"
+                                            class="w-full rounded-lg border-0 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                                            :class="theme === 'dark' ? 'bg-slate-800 text-white placeholder-slate-500' : 'bg-white text-slate-900 placeholder-slate-400'">
+                                        <div x-show="extra.product_id" class="text-[11px]"
+                                            :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'"
+                                            x-text="extra.material_name || 'Catalog material selected'"></div>
+                                    </div>
+
+                                    <div class="col-span-4 md:col-span-3">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-2"
+                                            :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-400'">Unit</label>
+                                        <input type="text" x-model.trim="extra.unit" placeholder="pcs"
+                                            class="w-full rounded-lg border-0 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                                            :class="theme === 'dark' ? 'bg-slate-800 text-white placeholder-slate-500' : 'bg-white text-slate-900 placeholder-slate-400'">
+                                    </div>
+
+                                    <div class="col-span-6 md:col-span-3">
+                                        <label class="block text-[10px] font-bold uppercase tracking-wider mb-2"
+                                            :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-400'">Qty</label>
+                                        <input type="number" x-model="extra.quantity" step="any" placeholder="0"
+                                            class="w-full rounded-lg border-0 py-2 text-sm text-right font-bold focus:ring-2 focus:ring-indigo-500"
+                                            :class="theme === 'dark' ? 'bg-slate-800 text-white placeholder-slate-500' : 'bg-white text-slate-900 placeholder-slate-400'">
+                                    </div>
+
+                                    <div class="col-span-2 md:col-span-1 flex md:justify-end pt-6">
+                                        <button type="button" @click="removeManualMaterial(index)"
+                                            class="w-10 h-10 rounded-lg border transition-colors"
+                                            :class="theme === 'dark' ? 'border-slate-700 text-slate-400 hover:text-red-400 hover:border-red-500/40' : 'border-slate-200 text-slate-500 hover:text-red-500 hover:border-red-200'">
+                                            <i class="ph ph-trash text-base"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <div x-show="manualMaterials.length === 0" class="mt-2 text-[11px]"
+                        :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-400'">
+                        Add materials not listed in the BOM, or pick an existing catalog material and log its usage.
+                    </div>
+
+                    <button type="button" @click="addManualMaterial()"
+                        class="mt-3 w-full py-2 text-xs font-bold text-indigo-500 hover:text-indigo-400 border border-dashed border-indigo-500/30 rounded-lg hover:bg-indigo-500/5 transition-all">
+                        + Add Non-BOM Material
+                    </button>
+                </div>
+
+                <!-- Complete Toggle (Only for Production) -->
+                <div class="flex items-start gap-4 p-4 border rounded-2xl cursor-pointer transition-colors"
+                    x-show="reportMode === 'production'"
+                    :class="theme === 'dark' ? 'bg-slate-700/50 border-slate-600 hover:border-indigo-500' : 'bg-slate-50 border-slate-200 hover:border-indigo-300'"
+                    @click="completeRequested = !completeRequested">
+                    <div class="mt-1 w-5 h-5 border rounded flex items-center justify-center"
+                        :class="completeRequested ? 'bg-indigo-600 border-indigo-600' : 'border-gray-400 bg-transparent'">
+                        <i x-show="completeRequested" class="ph ph-check text-white text-xs"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm md:text-base"
+                            :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">Mark Job as Complete</div>
+                        <div class="text-xs text-slate-500">Submit completion for supervisor approval.</div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-6 border-t flex flex-col-reverse sm:flex-row gap-4 pb-4 sm:pb-0"
+                    :class="theme === 'dark' ? 'border-slate-700' : 'border-slate-100'">
+                    <button type="button" @click="reportModalOpen = false"
+                        class="w-full sm:flex-1 py-4 font-bold rounded-xl transition-colors"
+                        :class="theme === 'dark' ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50'">Cancel</button>
+                    <button type="submit"
+                        class="w-full sm:flex-[2] py-4 text-white font-bold rounded-xl shadow-lg transition-all hover:-translate-y-1"
+                        :class="reportMode === 'scrap' ? 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/30' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/30'">
+                        CONFIRM & SAVE
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- MACHINE FAULT MODAL -->
+    <div x-data="faultModal" x-show="faultModalOpen" style="display: none;"
+        class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-md bg-slate-900/80"
+        x-cloak x-transition.opacity @open-fault-modal.window="open()">
+
+        <div class="worker-modal-shell w-full rounded-t-3xl sm:rounded-3xl shadow-2xl sm:max-w-lg flex flex-col overflow-hidden"
+            :class="theme === 'dark' ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'"
+            @click.away="faultModalOpen = false" x-transition.scale>
+
+            <div class="px-8 py-6 border-b flex justify-between items-center"
+                :class="theme === 'dark' ? 'bg-orange-950/20 border-slate-700' : 'bg-orange-50 border-orange-100'">
+                <div>
+                    <h3 class="text-xl font-bold flex items-center gap-2 text-orange-500">
+                        <i class="ph ph-warning-octagon"></i> Report Machine Fault
+                    </h3>
+                    <p class="text-xs mt-1" :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">
+                        Logging issue for Machine: <span class="font-bold">{{ selected_wo.display_machine_label }}</span>
+                    </p>
+                </div>
+                <button @click="faultModalOpen = false" class="text-slate-400 hover:text-red-500">
+                    <i class="ph ph-x text-2xl"></i>
+                </button>
+            </div>
+
+            <form @submit.prevent="submitFault" class="p-8">
+                <div class="mb-6">
+                    <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">Fault
+                        Description</label>
+                    <textarea x-model="description" required
+                        class="w-full h-32 rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-orange-500 transition-all border-2"
+                        :class="theme === 'dark' ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-100 text-slate-800'"
+                        placeholder="e.g., Loud grinding noise from the spindle, or hydraulic leak detected..."></textarea>
+                </div>
+
+                <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-8 flex gap-3">
+                    <i class="ph ph-info text-red-500 text-xl font-bold"></i>
+                    <p class="text-[10px] sm:text-xs text-red-400 font-medium">
+                        Reporting a fault will automatically mark this machine as <span
+                            class="font-black uppercase">Broken</span> and notify the maintenance team.
+                    </p>
+                </div>
+
+                <div class="flex gap-4">
+                    <button type="button" @click="faultModalOpen = false" class="flex-1 py-4 font-bold rounded-xl"
+                        :class="theme === 'dark' ? 'text-slate-400 hover:bg-slate-700' : 'text-slate-500 hover:bg-slate-50'">Cancel</button>
+                    <button type="submit" :disabled="submitting"
+                        class="flex-[2] py-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 transition-all disabled:opacity-50">
+                        <span x-show="!submitting">SUBMIT REPORT</span>
+                        <span x-show="submitting"><i class="ph ph-circle-notch animate-spin"></i> Submitting...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Logic -->
+    <script>
+        function shopNotify(message, type = 'info') {
+            const text = String(message || 'Updated');
+            if (typeof window.appNotify === 'function') {
+                window.appNotify(text, type);
+                return;
+            }
+            if (window.Toast && typeof window.Toast.show === 'function') {
+                const toastType = type === 'error' ? 'danger' : type;
+                window.Toast.show(text, toastType);
+                return;
+            }
+            window.alert(text);
+        }
+
+        function shopConfirm(message, options = {}) {
+            if (typeof window.appConfirm === 'function') {
+                return window.appConfirm(message, options);
+            }
+            return Promise.resolve(window.confirm(message));
+        }
+
+        // Alpine.js Component Registration
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('shopFloorKiosk', () => ({
+                mobileMenuOpen: false,
+                showWorkGuide: false,
+                theme: localStorage.getItem('kioskTheme') || 'dark', // Default to Dark for factories
+                soundEnabled: true,
+                reportMode: 'production',
+                queueFilter: localStorage.getItem('shopFloorQueueFilter') || 'all',
+                queueCounts: {
+                    all: {{ assigned_tasks|length }},
+                    approval: {{ pending_approval_tasks|length }},
+                    active: {{ active_tasks|length }},
+                    ready: {{ ready_tasks|length }},
+                    later: {{ future_pending_tasks|length }},
+                    upcoming: {{ section_upcoming_tasks|length }},
+                },
+
+                init() {
+                    this.queueFilter = this.normalizeQueueFilter(this.queueFilter);
+                    localStorage.setItem('shopFloorQueueFilter', this.queueFilter);
+                },
+
+                normalizeQueueFilter(filter) {
+                    return ['all', 'approval', 'active', 'ready', 'later', 'upcoming'].includes(filter) ? filter : 'all';
+                },
+
+                setQueueFilter(filter) {
+                    this.queueFilter = this.normalizeQueueFilter(filter);
+                    localStorage.setItem('shopFloorQueueFilter', this.queueFilter);
+                },
+
+                isQueueFilter(filter) {
+                    return this.queueFilter === this.normalizeQueueFilter(filter);
+                },
+
+                shouldShowQueue(filter) {
+                    const normalized = this.normalizeQueueFilter(filter);
+                    return this.queueFilter === 'all' || this.queueFilter === normalized;
+                },
+
+                queueCount(filter = null) {
+                    const key = this.normalizeQueueFilter(filter || this.queueFilter);
+                    return this.queueCounts[key] || 0;
+                },
+
+                toggleTheme() {
+                    this.theme = this.theme === 'light' ? 'dark' : 'light';
+                    localStorage.setItem('kioskTheme', this.theme);
+                },
+
+                toggleSound() {
+                    this.soundEnabled = !this.soundEnabled;
+                },
+
+                playBeep() {
+                    if (!this.soundEnabled) return;
+                    const audio = document.getElementById('snd-beep');
+                    if (audio) {
+                        audio.currentTime = 0;
+                        audio.play().catch(e => console.log('Audio blocked', e));
+                    }
+                },
+
+                openProductionModal() {
+                    this.$dispatch('open-report-modal', { mode: 'production' });
+                    this.playBeep();
+                },
+
+                openScrapModal() {
+                    this.$dispatch('open-report-modal', { mode: 'scrap' });
+                    this.playBeep();
+                },
+
+                openFaultModal() {
+                    this.$dispatch('open-fault-modal');
+                    this.playBeep();
+                }
+            }));
+
+            Alpine.data('faultModal', () => ({
+                faultModalOpen: false,
+                description: '',
+                submitting: false,
+
+                open() {
+                    this.faultModalOpen = true;
+                    this.description = '';
+                },
+
+                async submitFault() {
+                    this.submitting = true;
+                    try {
+                        const res = await fetch('{% url "report_fault_api" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                                work_order_id: '{{ selected_wo.id }}',
+                                description: this.description
+                            })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            shopNotify(data.message, 'success');
+                            location.reload();
+                        } else {
+                            shopNotify('Error: ' + data.error, 'error');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        shopNotify('Network failure', 'error');
+                    } finally {
+                        this.submitting = false;
+                    }
+                }
+            }));
+
+            Alpine.data('reportModal', () => ({
+                reportModalOpen: false,
+                reportMode: 'production', // 'production', 'scrap'
+                quantity: '',
+                producedQty: {{ selected_wo.produced_qty|default:0 }},
+                targetQty: {{ selected_wo.quantity|default:0 }},
+                remainingQty: {{ selected_wo.remaining_qty|default:0 }},
+                shift: 'morning',
+                note: '',
+                scrapReason: 'Material Defect',
+                materials: [], // { material_id, name, unit, expected_qty, actual_qty }
+                manualMaterials: [],
+                manualRowSeed: 0,
+                loadingBOM: false,
+                submitting: false,
+                completeRequested: false,
+                qualityConfirmed: !JSON.parse(document.querySelector('[data-has-criteria]').dataset.hasCriteria),
+                woId: '{{ selected_wo.id }}',
+
+                init() {
+                    const hour = new Date().getHours();
+                    if (hour >= 14 && hour < 22) this.shift = 'evening';
+                    else if (hour >= 22 || hour < 6) this.shift = 'night';
+                    window.__reportModalState = this;
+                },
+
+                resetFormState() {
+                    this.quantity = '';
+                    this.note = '';
+                    this.materials = [];
+                    this.manualMaterials = [];
+                    this.loadingBOM = false;
+                    this.completeRequested = false;
+                },
+
+                hasUnsavedInputs() {
+                    const qty = Number(this.quantity || 0);
+                    const noteText = (this.note || '').trim();
+                    const hasMaterialInput = (this.materials || []).some(m => {
+                        return m && m.actual_qty !== null && m.actual_qty !== '' && Number(m.actual_qty) > 0;
+                    });
+                    const hasManualMaterialInput = (this.manualMaterials || []).some(row => {
+                        return (
+                            Number(row.quantity || 0) > 0 ||
+                            String(row.material_name || '').trim().length > 0 ||
+                            String(row.product_id || '').trim().length > 0
+                        );
+                    });
+                    return this.reportModalOpen || qty > 0 || noteText.length > 0 || hasMaterialInput || hasManualMaterialInput;
+                },
+
+                openReport(detail = {}) {
+                    if ((detail.mode || '').toLowerCase() === 'scrap') {
+                        this.openScrap();
+                        return;
+                    }
+                    this.openProduction();
+                },
+
+                openProduction() {
+                    this.resetFormState();
+                    this.reportMode = 'production';
+                    this.reportModalOpen = true;
+                    this.fetchBOM();
+                },
+
+                openScrap() {
+                    this.resetFormState();
+                    this.reportMode = 'scrap';
+                    this.reportModalOpen = true;
+                },
+
+                fetchBOM() {
+                    if (this.reportMode !== 'production' || !this.woId) return;
+
+                    this.loadingBOM = true;
+                    const endpoint = new URL(`/manufacturing/api/v1/workorders/${this.woId}/bom-requirements/`, window.location.origin);
+                    const outputQty = Number(this.quantity || this.remainingQty || 0);
+                    if (outputQty > 0) {
+                        endpoint.searchParams.set('qty', outputQty);
+                    }
+                    fetch(endpoint.toString())
+                        .then(res => res.json())
+                        .then(data => {
+                            const newMaterials = (data.components || []).map(comp => {
+                                const existing = this.materials.find(m =>
+                                    (m.product_id && comp.product_id && String(m.product_id) === String(comp.product_id)) ||
+                                    String(m.component_id || '') === String(comp.component_id || '')
+                                );
+                                const plannedQty = this.calculateExpectedMaterialQty(comp, outputQty);
+                                const existingWasEdited = existing && Number(existing.actual_qty || 0) !== Number(existing.expected_qty || 0);
+                                return {
+                                    ...comp,
+                                    expected_qty: plannedQty,
+                                    actual_qty: existingWasEdited ? existing.actual_qty : plannedQty
+                                };
+                            });
+                            this.materials = newMaterials;
+                        })
+                        .catch(err => console.error("BOM Fetch Error:", err))
+                        .finally(() => this.loadingBOM = false);
+                },
+
+                calculateExpectedMaterialQty(comp, outputQty) {
+                    const apiExpected = Number(comp.expected_qty || 0);
+                    if (apiExpected > 0) return apiExpected;
+                    const componentQty = Number(comp.component_quantity || 0);
+                    const baseQty = Number(comp.base_quantity || 0);
+                    const producedQty = Number(outputQty || this.quantity || this.remainingQty || 0);
+                    if (componentQty > 0 && baseQty > 0 && producedQty > 0) {
+                        return Math.round(((componentQty / baseQty) * producedQty) * 1000) / 1000;
+                    }
+                    return 0;
+                },
+
+                isVarianceHigh(mat) {
+                    if (mat.actual_qty === null || mat.actual_qty === '' || !mat.expected_qty || Number(mat.expected_qty) <= 0) return false;
+                    const diff = Math.abs(mat.actual_qty - mat.expected_qty);
+                    return (diff / mat.expected_qty) > 0.1;
+                },
+
+                addManualMaterial() {
+                    this.manualRowSeed += 1;
+                    this.manualMaterials.push({
+                        key: `manual-${this.manualRowSeed}`,
+                        product_id: '',
+                        material_name: '',
+                        unit: 'pcs',
+                        quantity: '',
+                    });
+                },
+
+                removeManualMaterial(index) {
+                    this.manualMaterials.splice(index, 1);
+                },
+
+                syncManualMaterialSelection(index, event) {
+                    const row = this.manualMaterials[index];
+                    if (!row) return;
+                    const selectedOption = event && event.target && event.target.selectedOptions
+                        ? event.target.selectedOptions[0]
+                        : null;
+                    row.product_id = event && event.target ? (event.target.value || '') : '';
+                    if (row.product_id && selectedOption) {
+                        row.material_name = selectedOption.dataset.name || row.material_name || '';
+                        row.unit = selectedOption.dataset.unit || row.unit || 'pcs';
+                    }
+                },
+
+                buildMaterialsPayload() {
+                    const bomMaterials = (this.materials || [])
+                        .filter(m => m && (Number(m.expected_qty || 0) > 0 || (m.actual_qty !== null && m.actual_qty !== '' && Number(m.actual_qty) > 0)))
+                        .map(m => ({
+                            component_id: m.component_id || null,
+                            product_id: m.product_id || null,
+                            material_name: m.name || '',
+                            unit: m.unit || 'pcs',
+                            planned_quantity: m.expected_qty || null,
+                            quantity: (m.actual_qty === null || m.actual_qty === '') ? 0 : m.actual_qty
+                        }));
+
+                    const extraMaterials = [];
+                    for (const row of (this.manualMaterials || [])) {
+                        if (!row || !(Number(row.quantity || 0) > 0)) continue;
+                        const materialName = String(row.material_name || '').trim();
+                        if (!row.product_id && !materialName) {
+                            shopNotify('Enter a material name or select a catalog material for each extra material row.', 'warning');
+                            return null;
+                        }
+                        extraMaterials.push({
+                            product_id: row.product_id || null,
+                            material_name: materialName,
+                            unit: String(row.unit || 'pcs').trim() || 'pcs',
+                            quantity: row.quantity
+                        });
+                    }
+
+                    return bomMaterials.concat(extraMaterials);
+                },
+
+                submitLog() {
+                    this.submitting = true;
+                    let finalNote = this.note;
+
+                    // Handle Scrap Logic
+                    if (this.reportMode === 'scrap') {
+                        finalNote = `[SCRAP REPORT] Qty: ${this.quantity} | Reason: ${this.scrapReason} | ${this.note}`;
+                    }
+
+                    const submittedQty = parseInt(this.quantity || 0);
+                    if (this.reportMode === 'production') {
+                        const remainingNow = parseInt(this.remainingQty || 0);
+                        if (submittedQty <= 0) {
+                            shopNotify('Enter a valid output quantity.', 'warning');
+                            this.submitting = false;
+                            return;
+                        }
+                        if (submittedQty > remainingNow) {
+                            shopNotify(`You can submit max ${remainingNow} now. There are already reported/pending units on this WO.`, 'warning');
+                            this.submitting = false;
+                            return;
+                        }
+                    }
+                    if (this.reportMode === 'production' && submittedQty > 0) {
+                        const totalAfter = (parseInt(this.producedQty || 0) + submittedQty);
+                        if (totalAfter >= parseInt(this.targetQty || 0) && !this.completeRequested) {
+                            this.completeRequested = true;
+                            finalNote = `[AUTO COMPLETE] Quantity reached target. ${finalNote || ''}`.trim();
+                        }
+                    }
+
+                    const materialsPayload = this.buildMaterialsPayload();
+                    if (materialsPayload === null) {
+                        this.submitting = false;
+                        return;
+                    }
+
+                    // Prepare Payload
+                    const payload = {
+                        work_order_id: this.woId,
+                        quantity: this.quantity,
+                        shift: this.shift,
+                        note: finalNote,
+                        completion_requested: this.completeRequested,
+                        materials: materialsPayload
+                    };
+
+                    fetch('{% url "log_production" %}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                        body: JSON.stringify(payload)
+                    })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                if (data.logged_quantity !== undefined) {
+                                    shopNotify(`Logged quantity: ${data.logged_quantity}`, 'success');
+                                }
+                                location.reload();
+                            } else {
+                                shopNotify('Error: ' + (data.error || 'Unknown'), 'error');
+                            }
+                        })
+                        .catch(e => shopNotify('Network Error', 'error'))
+                        .finally(() => this.submitting = false);
+                }
+            }));
+        });
+
+        function handleWorkerLogoutClick(event) {
+            const modalState = window.__reportModalState;
+            if (!modalState || !modalState.hasUnsavedInputs || !modalState.hasUnsavedInputs()) {
+                return true;
+            }
+            const logoutHref = (event && event.currentTarget && event.currentTarget.href)
+                ? event.currentTarget.href
+                : "{% url 'logout' %}";
+            if (event) {
+                event.preventDefault();
+            }
+            shopConfirm("You have unsaved production/material entries. Logout anyway?", {
+                title: 'Unsaved Data',
+                confirmText: 'Logout',
+                cancelText: 'Stay'
+            }).then(ok => {
+                if (ok) {
+                    window.location.href = logoutHref;
+                }
+            });
+            return false;
+        }
+
+        // Helper for CSRF
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Simple Beep (Short Pip) - Base64 WAV
+        const beepUrl = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU...";
+
+        // Status Update API
+        function switchWorkOrder(woId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('wo', woId);
+            window.location.href = url.toString();
+        }
+
+        async function startAndSwitchWorkOrder(woId) {
+            const started = await updateJobStatus(woId, 'in_progress', false);
+            if (started) {
+                switchWorkOrder(woId);
+            }
+        }
+
+        async function updateJobStatus(woId, status, shouldReload = true) {
+            try {
+                const res = await fetch(`/manufacturing/api/work-order/${woId}/shop-update/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ status: status })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    if (shouldReload) location.reload();
+                    return true;
+                }
+                shopNotify('Error: ' + (data.message || 'Unknown error'), 'error');
+                return false;
+            } catch (e) {
+                console.error(e);
+                shopNotify('Network connection failed', 'error');
+                return false;
+            }
+        }
+    </script>
+
+    <style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #64748b;
+            border-radius: 10px;
+        }
+    </style>
+</div>
+{% endblock %}

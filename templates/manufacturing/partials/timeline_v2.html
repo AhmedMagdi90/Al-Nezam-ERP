@@ -1,0 +1,305 @@
+{% load static %}
+<div class="glass-panel-premium p-6 rounded-2xl border border-slate-200/50" data-timeline-container>
+    <!-- Header Removed for Clean Integration -->
+
+    <!-- FORCE LAYER CSS to fix Z-Index Issues -->
+    <style>
+        /* CUSTOM VIS.JS OVERRIDES */
+        .vis-time-axis .vis-grid.vis-vertical {
+            border-left: 1px dashed #e2e8f0;
+            opacity: 0.5;
+        }
+
+        .vis-item {
+            border-color: transparent !important;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .vis-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .vis-item.vis-selected {
+            box-shadow: 0 0 0 3px #3b82f6, 0 6px 12px rgba(59, 130, 246, 0.2);
+            z-index: 100 !important;
+        }
+
+        .vis-item .vis-item-content {
+            padding: 6px 10px;
+        }
+
+        /* Custom Scrollbar for Timeline */
+        #timelineScrollWrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        #timelineScrollWrapper::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        #timelineScrollWrapper::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        #timelineScrollWrapper::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+    <div class="flex items-center gap-4">
+        <!-- Search & Filter -->
+        <div class="flex items-center gap-2">
+            <div class="relative group">
+                <input type="text" id="timelineSearch" placeholder="Search Machine/WO"
+                    class="pl-9 pr-4 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-48">
+                <i
+                    class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
+            </div>
+
+            <select id="timelineFilter" onchange="filterTimeline()"
+                class="pl-3 pr-8 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-600 font-medium cursor-pointer hover:bg-white transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px] bg-no-repeat bg-[right:10px_center]">
+                <option value="all">Status Filter</option>
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="maintenance">Maintenance</option>
+            </select>
+        </div>
+
+        <!-- View Toggle -->
+        <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50">
+            <button onclick="setGanttView('24h')" data-mode="24h"
+                class="view-btn px-4 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white transition-all shadow-sm hover:shadow-md">24h
+                View</button>
+            <button onclick="setGanttView('shift')" data-mode="shift"
+                class="view-btn px-4 py-2 rounded-lg text-xs font-bold text-slate-600 hover:bg-white transition-all">8h
+                View</button>
+        </div>
+
+        <!-- Refresh Button -->
+        <button onclick="window.initGanttChart(true)"
+            class="px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm hover:shadow-md flex items-center gap-2">
+            <i class="ph ph-arrow-clockwise"></i>
+            Refresh
+        </button>
+
+        <!-- Status Legend -->
+        <div class="h-6 w-px bg-slate-200 mx-2"></div>
+        <div class="flex items-center gap-3 text-xs">
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 bg-amber-400 rounded-full shadow-sm"></span>
+                <span class="text-slate-600 font-medium">Pending</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 bg-blue-600 rounded-full shadow-sm"></span>
+                <span class="text-slate-600 font-medium">Active</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-sm"></span>
+                <span class="text-slate-600 font-medium">Complete</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="flex justify-between items-center mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100/50">
+    <div class="flex items-center gap-2 text-sm text-blue-700">
+        <i class="ph ph-info"></i>
+        <span class="font-medium">Click empty slot to schedule. Drag to move orders.</span>
+    </div>
+    <div class="text-sm text-blue-600 font-medium">
+        <i class="ph ph-clock"></i>
+        Current Time: {% now "H:i" %}
+    </div>
+</div>
+
+<!-- DATA PAYLOAD HIDDEN (Safe Script Blocks) -->
+<script id="data-machines" type="application/json">
+    {{ machines_json|safe }}
+  </script>
+<script id="data-tasks" type="application/json">
+    {{ tasks_json|safe }}
+  </script>
+
+<div class="flex gap-4">
+    <!-- Main Gantt Chart (Vis.js) -->
+    <!-- Custom CSS Grid Timeline -->
+    <div class="flex-1 overflow-hidden border rounded-lg bg-white relative flex flex-col">
+        <!-- Scroll Container -->
+        <div class="w-full overflow-x-auto overflow-y-hidden" id="timelineScrollWrapper">
+            <div id="customTimeline" class="min-w-full relative">
+                <!-- Header (Time Axis) -->
+                <div id="timelineHeader"
+                    class="sticky top-0 z-40 bg-gray-50 border-b border-gray-200 h-10 flex text-xs font-bold text-gray-500">
+                    <!-- JS will populate grid cols here -->
+                </div>
+
+                <!-- Body (Machine Rows) -->
+                <div id="timelineBody" class="relative">
+                    <!-- JS will populate rows here -->
+                    <div class="p-10 text-center text-gray-400 animate-pulse">Loading Custom Grid...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Sidebar: Pending Queue -->
+    <div
+        class="w-80 flex-shrink-0 bg-gradient-to-b from-slate-50 to-blue-50 border border-slate-200/50 rounded-2xl flex flex-col overflow-hidden shadow-lg">
+        <div
+            class="p-5 border-b border-slate-200/50 bg-white/80 backdrop-blur-sm font-bold text-slate-700 text-sm flex justify-between items-center shadow-sm z-10">
+            <span class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+                    <i class="ph ph-clipboard-text text-sm"></i>
+                </div>
+                Pending Orders
+            </span>
+            <span
+                class="text-xs bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-1 rounded-full font-bold shadow-md">{{
+                pending_wos.count }}</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-3 max-h-[600px] custom-scrollbar">
+            {% for wo in pending_wos %}
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/50 shadow-md cursor-grab active:cursor-grabbing hover:ring-2 hover:ring-blue-400/30 hover:border-blue-400 transition-all select-none group relative z-50 hover:shadow-lg hover:scale-[1.02]"
+                draggable="true"
+                ondragstart="handleSidebarDragStart(event, '{{ wo.id }}', '{{ wo.product_name }}', '{{ wo.allowed_machine_types|join:',' }}')">
+
+                <div class="flex justify-between items-start mb-3">
+                    <div class="font-bold text-slate-800 text-sm truncate flex-1 cursor-pointer hover:text-blue-600 transition-colors pr-2"
+                        title="{{ wo.product_name }}" onclick="openWorkOrderModal('{{ wo.id }}')">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="w-6 h-6 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center">
+                                <i class="ph ph-package text-xs"></i>
+                            </div>
+                            {{ wo.product_name }}
+                        </div>
+                    </div>
+                    <button onclick="openWorkOrderModal('{{ wo.id }}')"
+                        class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Schedule / Edit">
+                        <i class="ph ph-pencil-simple text-sm"></i>
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center mb-3">
+                    <span
+                        class="text-xs font-bold text-slate-500 tracking-wider bg-slate-100 px-2 py-1 rounded-md">WO-{{
+                        wo.id }}</span>
+
+                    <span
+                        class="text-xs font-semibold bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md border border-blue-100">Qty:
+                        {{ wo.quantity }}</span>
+                </div>
+
+                <div class="pt-3 border-t border-slate-100 flex items-center gap-2 overflow-hidden">
+                    <div
+                        class="w-6 h-6 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center flex-shrink-0">
+                        <i class="ph ph-gear text-xs"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="text-xs text-slate-400 truncate"
+                            title="Allowed: {{ wo.allowed_machine_types|join:', ' }}">
+                            <span class="font-medium">Compatible:</span> {{ wo.allowed_machine_types|join:", " }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center p-8 text-slate-400 text-sm flex flex-col items-center">
+                <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+                    <i class="ph ph-check-circle text-3xl text-slate-300"></i>
+                </div>
+                <div class="font-medium">No pending orders</div>
+                <div class="text-xs text-slate-400 mt-1">All work orders are scheduled</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ========================================== -->
+<!-- 🆕 EDIT TASK SLIDE-OVER (Drawer)           -->
+<!-- ========================================== -->
+<div id="editTaskDrawer"
+    class="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-[60] flex flex-col border-l border-gray-200">
+
+    <!-- Header -->
+    <div class="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+        <div>
+            <h3 class="text-lg font-bold text-gray-800" id="drawerTitle">Edit Task</h3>
+            <p class="text-xs text-gray-500" id="drawerSubtitle">WO #123</p>
+        </div>
+        <button onclick="closeEditDrawer()" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+        <input type="hidden" id="drawerTaskId">
+
+        <!-- Field: Stage (NEW) -->
+        <div id="drawerStageContainer" class="hidden">
+            <label class="block text-xs font-bold text-gray-700 mb-1">Production Stage</label>
+            <select id="drawerStage"
+                class="w-full border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 mb-4">
+                <option value="">-- Select Stage --</option>
+            </select>
+        </div>
+
+        <!-- Field: Machine -->
+        <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Assigned Machine</label>
+            <select id="drawerMachine"
+                class="w-full border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500">
+                <!-- Populated via JS -->
+            </select>
+        </div>
+
+        <!-- Field: Time -->
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">Start Time</label>
+                <input type="datetime-local" id="drawerStart" class="w-full border-gray-300 rounded-lg text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">Duration (min)</label>
+                <input type="number" id="drawerDuration" class="w-full border-gray-300 rounded-lg text-sm" min="1">
+            </div>
+        </div>
+
+        <!-- Field: Status -->
+        <div>
+            <label class="block text-xs font-bold text-gray-700 mb-1">Status</label>
+            <select id="drawerStatus" class="w-full border-gray-300 rounded-lg text-sm">
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="hold">On Hold</option>
+                <option value="completed">Completed</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="p-6 border-t bg-gray-50 flex justify-between items-center">
+        <button onclick="deleteTaskFromSchedule()"
+            class="px-4 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold transition">
+            Unschedule
+        </button>
+        <button onclick="saveTaskChanges()"
+            class="px-6 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold shadow-md transition">
+            Save Changes
+        </button>
+    </div>
+</div>
+<!-- Overlay -->
+<div id="drawerOverlay" onclick="closeEditDrawer()" class="fixed inset-0 bg-black/20 z-[55] hidden backdrop-blur-[1px]">
+</div>

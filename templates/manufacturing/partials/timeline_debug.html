@@ -1,0 +1,39 @@
+{% load static %}
+<div class="bg-white shadow-lg rounded-xl p-6 border border-gray-100">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Debug Timeline</h2>
+
+    <div class="mb-4 p-4 bg-gray-100 rounded">
+        <h3 class="font-bold mb-2">Template Variables Debug:</h3>
+        <p><strong>Work Orders Count:</strong> {{ work_orders|length }}</p>
+        <p><strong>Pending WOs Count:</strong> {{ pending_wos|length }}</p>
+        <p><strong>Machines Count:</strong> {{ machines|length }}</p>
+        <p><strong>Hours Count:</strong> {{ hours|length }}</p>
+    </div>
+
+    <div class="mb-4">
+        <button onclick="alert('Debug test works!')" class="px-4 py-2 bg-blue-500 text-white rounded">Debug
+            Test</button>
+    </div>
+
+    <div class="mb-4">
+        <p>Work Orders:</p>
+        {% for wo in work_orders %}
+        <div class="border p-2 mb-2">
+            <span>WO #{{ wo.id }}: {{ wo.product_name }}</span>
+            <button onclick="alert('WO ID: {{ wo.id }}')"
+                class="ml-2 px-2 py-1 bg-green-500 text-white rounded text-xs">Edit</button>
+        </div>
+        {% empty %}
+        <p class="text-red-500">No work orders found - work_orders is empty!</p>
+        {% endfor %}
+    </div>
+
+    <div id="debug-output">Debug output will appear here</div>
+</div>
+
+<script>
+    console.log('Debug timeline script loaded');
+    console.log('Work orders count:', '{{ work_orders|length }}');
+    console.log('Pending WOs count:', '{{ pending_wos|length }}');
+    document.getElementById('debug-output').innerHTML = 'Debug loaded at ' + new Date().toLocaleTimeString() + ' - Work Orders: {{ work_orders|length }}';
+</script>

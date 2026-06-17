@@ -1,0 +1,2447 @@
+/**
+ * Kemet ERP - Custom CSS Grid Timeline
+ * Replaces Vis.js for precise control over Layout (CSS Grid) and Layers (Z-Index).
+ */
+
+let currentViewMode = '24h'; // or '8h'
+let machinesCache = [];
+let tasksCache = [];
+
+function safeParseJSON(raw) {
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw !== 'string') return raw;
+    const text = raw.trim();
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        try {
+            const inner = JSON.parse(text);
+            if (typeof inner === 'string') {
+                return JSON.parse(inner);
+            }
+            return inner;
+        } catch (err) {
+            return null;
+        }
+    }
+}
+
+function normalizeSortToken(value) {
+    return String(value || '').toLowerCase().trim();
+}
+
+function sortMachinesForTimeline(list) {
+    if (!Array.isArray(list)) return [];
+    return list.slice().sort((a, b) => {
+        const catA = normalizeSortToken(a.category || '');
+        const catB = normalizeSortToken(b.category || '');
+        if (catA !== catB) return catA.localeCompare(catB);
+        const typeA = normalizeSortToken(a.type || '');
+        const typeB = normalizeSortToken(b.type || '');
+        if (typeA !== typeB) return typeA.localeCompare(typeB);
+        const nameA = normalizeSortToken(a.name || '');
+        const nameB = normalizeSortToken(b.name || '');
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return String(a.id || '').localeCompare(String(b.id || ''));
+    });
+}
+
+// --- Drag & Drop Handler ---
+window.currentlyDraggingAllowedTypes = [];
+
+window.handleSidebarDragStart = function (e, id, name, allowedTypesStr) {
+    if (!e.dataTransfer) return;
+
+    const allowedTypes = allowedTypesStr ? allowedTypesStr.split(',').filter(Boolean) : [];
+    window.currentlyDraggingAllowedTypes = allowedTypes; // Store globally for render checks
+
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+        id: id,
+        content: name,
+        allowedTypes: allowedTypes
+    }));
+    e.dataTransfer.dropEffect = 'copy';
+
+    // Add visual cue to invalid rows
+    highlightValidMachines(allowedTypes);
+};
+
+window.handleDragEnd = function () {
+    // Reset visual cues
+    document.querySelectorAll('.machine-row').forEach(row => {
+        row.classList.remove('opacity-40', 'grayscale');
+    });
+    window.currentlyDraggingAllowedTypes = [];
+};
+
+function highlightValidMachines(allowedTypes) {
+    if (!allowedTypes || allowedTypes.length === 0) return;
+
+    // Iterate all machine rows in DOM
+    document.querySelectorAll('.machine-row').forEach(row => {
+        const type = row.dataset.machineType || "General";
+        // If machine type is NOT in allowed list, fade it out
+        if (!allowedTypes.includes(type) && !allowedTypes.includes('General')) {
+            row.classList.add('opacity-40', 'grayscale');
+        }
+    });
+}
+
+
+// Timeline State Management
+let timelineState = {
+    viewMode: 'day',        // day | week | month
+    shiftFilter: 'all',     // all | day | middle | night
+    startDate: new Date(),  // Default to today
+    endDate: new Date(),    // Calculated
+    shiftConfig: null       // Will be loaded from DOM
+};
+
+// Load shift configuration from DOM
+function loadShiftConfig() {
+    const shiftConfigScript = document.getElementById('data-shift-config');
+    console.log('🔧 Loading shift configuration...');
+    console.log('  - Script element found:', !!shiftConfigScript);
+
+    if (shiftConfigScript) {
+        try {
+            const rawText = shiftConfigScript.textContent;
+            console.log('  - Raw JSON text:', rawText);
+
+            const config = JSON.parse(rawText);
+            console.log('  - Parsed config:', config);
+
+            if (config && Object.keys(config).length > 0) {
+                timelineState.shiftConfig = config;
+                console.log('✓ Shift configuration loaded successfully!');
+                console.log('  - Morning start:', config.morning?.start);
+                console.log('  - Morning end:', config.morning?.end);
+                console.log('  - Evening start:', config.evening?.start);
+                console.log('  - Night start:', config.night?.start);
+            } else {
+                console.warn('⚠ Shift config is empty, using defaults');
+            }
+        } catch (e) {
+            console.error('✗ Failed to parse shift configuration:', e);
+        }
+    } else {
+        console.warn('⚠ data-shift-config script tag not found in DOM');
+    }
+}
+
+// Call on page load
+document.addEventListener('DOMContentLoaded', loadShiftConfig);
+
+function getUserRole() {
+    const roleScript = document.getElementById('data-user-role');
+    if (!roleScript) return '';
+    const raw = (roleScript.textContent || '').trim();
+    if (!raw) return '';
+    try {
+        const parsed = JSON.parse(raw);
+        return String(parsed || '').toLowerCase();
+    } catch (e) {
+        return raw.replace(/"/g, '').trim().toLowerCase();
+    }
+}
+
+function shouldForceMachinesRefresh() {
+    try {
+        const stamp = localStorage.getItem('machines_updated_at');
+        if (stamp && stamp !== window.__machinesUpdatedAt) {
+            window.__machinesUpdatedAt = stamp;
+            return true;
+        }
+    } catch (e) {
+        return false;
+    }
+    return false;
+}
+
+window.initGanttChart = function (forceFetch = false) {
+    console.log("Initializing Custom Grid Timeline...", forceFetch ? "(Forced Refresh)" : "(Cached)");
+
+    const shouldForce = forceFetch || shouldForceMachinesRefresh();
+    if (shouldForce) {
+        const roleForFetch = getUserRole() || 'planner';
+        const includeUnscheduled = ['planner', 'admin'].includes(roleForFetch);
+        const timelineUrl = includeUnscheduled
+            ? '/manufacturing/api/timeline/?include_unscheduled=1'
+            : '/manufacturing/api/timeline/';
+        // Fetch fresh data from API
+        const btn = document.querySelector('button[onclick="window.initGanttChart(true)"]');
+        if (btn) {
+            const icon = btn.querySelector('i');
+            if (icon) icon.classList.add('animate-spin');
+            btn.disabled = true;
+            btn.classList.add('opacity-75');
+        }
+
+        fetch(timelineUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    machinesCache = data.machines || [];
+                    tasksCache = data.tasks || [];
+                    machinesCache = sortMachinesForTimeline(machinesCache);
+                    populateStageFilterOptions();
+
+                    const roleForUnassigned = getUserRole() || 'planner';
+                    const allowUnassigned = ['planner', 'admin'].includes(roleForUnassigned);
+                    const unassignedTasks = allowUnassigned ? tasksCache.filter(t => !t.machine_id) : [];
+                    if (unassignedTasks.length > 0) {
+                        if (!machinesCache.find(m => m.id === 'unassigned')) {
+                            machinesCache.push({
+                                id: 'unassigned',
+                                name: 'Unassigned / Pending',
+                                status: 'operational',
+                                type: 'Queue'
+                            });
+                        }
+                    }
+
+                    // Initialize State with Earliest Task
+                    initializeTimelineState();
+                    renderTimeline();
+                    if (window.renderPlannerKanban) window.renderPlannerKanban();
+                    if (window.renderPlannerList) window.renderPlannerList();
+                    if (window.renderPlannerCalendar) window.renderPlannerCalendar();
+
+                    // Update DOM scripts
+                    const mScript = document.getElementById('data-machines');
+                    const tScript = document.getElementById('data-tasks');
+                    if (mScript) mScript.textContent = JSON.stringify(machinesCache);
+                    if (tScript) tScript.textContent = JSON.stringify(tasksCache);
+                }
+            })
+            .catch(err => {
+                console.error("API Fetch/Render Error:", err);
+                alert("Timeline Error: " + err.message);
+            })
+            .finally(() => {
+                if (btn) {
+                    const icon = btn.querySelector('i');
+                    if (icon) icon.classList.remove('animate-spin');
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-75');
+                }
+            });
+    } else {
+        // 1. Load Data from Template (Initial Load)
+        try {
+            const mScript = document.getElementById('data-machines');
+            const tScript = document.getElementById('data-tasks');
+
+            if (mScript && mScript.textContent) {
+                const parsed = safeParseJSON(mScript.textContent);
+                machinesCache = Array.isArray(parsed) ? parsed : [];
+                machinesCache = sortMachinesForTimeline(machinesCache);
+            }
+            if (tScript && tScript.textContent) {
+                const parsed = safeParseJSON(tScript.textContent);
+                tasksCache = Array.isArray(parsed) ? parsed : [];
+            }
+            populateStageFilterOptions();
+
+            // 0. Load Shift Configuration
+            // 0. Load Shift Configuration
+            const sConfig = document.getElementById('data-shift-config');
+            const defaultShiftConfig = {
+                morning: { start: '06:00', end: '14:00' },
+                afternoon: { start: '14:00', end: '22:00' },
+                night: { start: '22:00', end: '06:00' }
+            };
+
+            if (sConfig && sConfig.textContent) {
+                try {
+                    const loadedConfig = JSON.parse(sConfig.textContent);
+                    // Handle empty object {} case from backend
+                    if (!loadedConfig || Object.keys(loadedConfig).length === 0) {
+                        timelineState.shiftConfig = defaultShiftConfig;
+                    } else {
+                        // Robust merge: ensure all keys exist
+                        timelineState.shiftConfig = {
+                            morning: { ...defaultShiftConfig.morning, ...(loadedConfig.morning || {}) },
+                            afternoon: { ...defaultShiftConfig.afternoon, ...(loadedConfig.afternoon || {}) },
+                            night: { ...defaultShiftConfig.night, ...(loadedConfig.night || {}) }
+                        };
+                    }
+                } catch (e) {
+                    console.error("Shift Config Parse Error:", e);
+                    timelineState.shiftConfig = defaultShiftConfig;
+                }
+            } else {
+                timelineState.shiftConfig = defaultShiftConfig;
+            }
+            console.log("Timeline Shift Config:", timelineState.shiftConfig);
+
+            // 🔍 Check for Unassigned Tasks & Add Virtual Machine Row
+            const roleForUnassigned = getUserRole() || 'planner';
+            const allowUnassigned = ['planner', 'admin'].includes(roleForUnassigned);
+            const unassignedTasks = allowUnassigned ? tasksCache.filter(t => !t.machine_id) : [];
+            if (unassignedTasks.length > 0) {
+                // Check if already exists to avoid dupes on re-init
+                if (!machinesCache.find(m => m.id === 'unassigned')) {
+                    console.log(`Stubbing 'Unassigned' Machine for ${unassignedTasks.length} orphaned tasks.`);
+                    machinesCache.push({
+                        id: 'unassigned',
+                        name: 'Unassigned / Pending',
+                        status: 'operational', // functional status
+                        type: 'Queue'
+                    });
+                }
+            }
+
+            // Initialize State with Earliest Task
+            initializeTimelineState();
+
+            // Setup Event Listeners
+            setupEventListeners();
+
+            console.log("🔍 Init Cache Data Check:");
+            if (machinesCache.length > 0) console.log("   - First Machine:", machinesCache[0]);
+            else console.log("   - Machines Cache Empty!");
+
+            if (tasksCache.length > 0) console.log("   - First Task:", tasksCache[0]);
+            else console.log("   - Tasks Cache Empty!");
+
+            renderTimeline();
+            if (window.renderPlannerKanban) window.renderPlannerKanban();
+            if (window.renderPlannerList) window.renderPlannerList();
+            if (window.renderPlannerCalendar) window.renderPlannerCalendar();
+        } catch (e) {
+            console.error("Timeline Init Error:", e);
+            alert("Timeline Init Error: " + e.message);
+        }
+    }
+};
+
+window.debugTimelineData = function () {
+    const infoEl = document.querySelector('#customTimeline').closest('.glass-panel-premium')?.querySelector('.ph-info')?.parentElement;
+    if (infoEl) {
+        infoEl.innerHTML = `<i class="ph ph-info"></i> <span class="font-medium text-emerald-600">Debug: Loaded ${tasksCache.length} tasks, ${machinesCache.length} machines. Range: ${timelineState.startDate.toLocaleDateString()}</span>`;
+    }
+    console.log(`[Debug] Tasks: ${tasksCache.length}, Machines: ${machinesCache.length}`);
+};
+
+window.exportTimelineData = function () {
+    console.log("Exporting Timeline Data...");
+    if (!tasksCache || tasksCache.length === 0) {
+        alert("No data available to export.");
+        return;
+    }
+
+    // CSV Header
+    const headers = ["Work Order ID", "Product", "Status", "Start Date", "End Date", "Assigned Machine", "Assigned Worker", "Assignment Type"];
+    const rows = tasksCache.map(t => [
+        t.id,
+        `"${(t.product || '').replace(/"/g, '""')}"`, // Escape quotes
+        t.status,
+        t.start || '',
+        t.end || '',
+        t.machine_id ? (machinesCache.find(m => m.id == t.machine_id)?.name || t.machine_id) : 'Unassigned',
+        t.assigned_worker_name || 'Unassigned',
+        t.assignment_type || 'Manual'
+    ]);
+
+    // Construct CSV String
+    const csvContent = [
+        headers.join(","),
+        ...rows.map(r => r.join(","))
+    ].join("\n");
+
+    // Create Download Link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `production_schedule_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+window.setGanttView = function (mode) {
+    console.log("Setting View Mode:", mode);
+    timelineState.viewMode = mode;
+    // Recalculate End Date based on mode
+    initializeTimelineState();
+    renderTimeline();
+    // Cache helper since we don't have full reactive store
+};
+
+window.setTimelineShift = function (shift) {
+    console.log("Setting Shift Filter:", shift);
+    timelineState.shiftFilter = shift;
+    renderTimeline();
+};
+
+function initializeTimelineState() {
+    console.log("Timeline Init: Determining Start Date...");
+
+    // 1. Absolute Default: Today
+    let bestDate = new Date();
+    bestDate.setHours(0, 0, 0, 0);
+
+    // 2. Scan for recent tasks to snap to (prefer TODAY/UPCOMING)
+    if (tasksCache && tasksCache.length > 0) {
+        const now = new Date();
+        const today = new Date(now);
+        today.setHours(0, 0, 0, 0);
+        const ninetyDaysMs = 90 * 24 * 60 * 60 * 1000;
+        const candidates = [];
+
+        tasksCache.forEach(task => {
+            const status = String(task.status || '').toLowerCase();
+            if (['completed', 'done', 'canceled', 'archived'].includes(status)) return;
+            if (!task.start) return;
+            const d = new Date(task.start);
+            const ts = d.getTime();
+
+            // Filter: Ignore Invalid, Null/Epoch, or dates before Year 2020
+            if (isNaN(ts) || ts < 1000000 || d.getFullYear() < 2020) return;
+
+            // Only snap if within 3 months of TODAY
+            if (Math.abs(now - d) < ninetyDaysMs) {
+                candidates.push(d);
+            }
+        });
+
+        if (candidates.length > 0) {
+            const upcoming = candidates.filter(d => d >= today).sort((a, b) => a - b);
+            const chosen = upcoming.length > 0
+                ? upcoming[0]
+                : candidates.sort((a, b) => b - a)[0]; // most recent past
+
+            if (chosen) {
+                console.log("   - Snapping to nearest relevant task:", chosen.toDateString());
+                bestDate = new Date(chosen);
+                bestDate.setHours(0, 0, 0, 0);
+            }
+        }
+    }
+
+    // 3. Final Safety: Absolute protection against Epoch jump
+    if (bestDate.getFullYear() < 2020) {
+        console.warn("   - Safety Check Failed (Year < 2020). Reverting to Today.");
+        bestDate = new Date();
+        bestDate.setHours(0, 0, 0, 0);
+    }
+
+    timelineState.startDate = bestDate;
+    console.log("   - Final Start Date Set:", timelineState.startDate.toDateString());
+
+    // 4. Update UI Elements
+    const datePicker = document.getElementById('timelineDate');
+    if (datePicker) {
+        const yyyy = timelineState.startDate.getFullYear();
+        const mm = String(timelineState.startDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(timelineState.startDate.getDate()).padStart(2, '0');
+        datePicker.value = `${yyyy}-${mm}-${dd}`;
+    }
+
+    calculateEndDate();
+}
+
+function calculateEndDate() {
+    const start = new Date(timelineState.startDate);
+    start.setHours(0, 0, 0, 0);
+
+    switch (timelineState.viewMode) {
+        case 'day':
+            timelineState.endDate = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+            break;
+        case 'week':
+            timelineState.endDate = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+            break;
+        case 'month':
+            timelineState.endDate = new Date(start);
+            timelineState.endDate.setDate(start.getDate() + 30);
+            break;
+    }
+}
+
+function setupEventListeners() {
+    window.changeViewMode = function (mode) {
+        timelineState.viewMode = mode;
+        calculateEndDate();
+        renderTimeline();
+    };
+
+    window.changeShift = function (shift) {
+        timelineState.shiftFilter = shift;
+        renderTimeline();
+    };
+
+    const datePicker = document.getElementById('timelineDate');
+    if (datePicker) {
+        datePicker.onchange = (e) => {
+            if (e.target.value) {
+                const [y, m, d] = e.target.value.split('-').map(Number);
+                timelineState.startDate = new Date(y, m - 1, d);
+                calculateEndDate();
+                renderTimeline();
+            }
+        };
+    }
+}
+
+// Filter State
+let filterState = {
+    status: 'open',
+    search: '',
+    stage: 'all',
+    machineActivity: 'all'
+};
+
+function getTaskStageMeta(task) {
+    if (!task) return { id: '', name: '' };
+    const stageId = task.stage_id || task.stageId || task.stage;
+    const stageName = task.stage_name || task.stageName || '';
+    return {
+        id: stageId !== undefined && stageId !== null ? String(stageId) : '',
+        name: stageName ? String(stageName) : ''
+    };
+}
+
+function populateStageFilterOptions() {
+    const select = document.getElementById('timelineStageFilter');
+    if (!select) return;
+
+    const previous = select.value || 'all';
+    const stages = new Map();
+
+    (tasksCache || []).forEach(task => {
+        const meta = getTaskStageMeta(task);
+        if (meta.id || meta.name) {
+            const key = meta.id || meta.name;
+            if (!stages.has(key)) {
+                stages.set(key, meta.name || `Stage ${key}`);
+            }
+        } else {
+            stages.set('__none__', 'Unspecified');
+        }
+    });
+
+    const entries = Array.from(stages.entries())
+        .filter(([key]) => key !== 'all')
+        .map(([key, name]) => ({ key, name }))
+        .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+    select.innerHTML = '<option value="all">All Stages</option><option value="__none__">Unspecified</option>';
+    entries.forEach(item => {
+        if (item.key === '__none__') return;
+        const opt = document.createElement('option');
+        opt.value = item.key;
+        opt.textContent = item.name || `Stage ${item.key}`;
+        select.appendChild(opt);
+    });
+
+    if (previous && Array.from(select.options).some(opt => opt.value === previous)) {
+        select.value = previous;
+    } else {
+        select.value = 'all';
+    }
+}
+
+window.filterTimeline = function () {
+    console.log("🔍 filterTimeline CALLED");
+    const statusBtn = document.getElementById('timelineFilter');
+    const localSearch = document.getElementById('timelineSearch');
+    const smartSearch = document.getElementById('timelineSmartSearch');
+    const globalSearch = document.getElementById('globalSmartSearch');
+    const stageSelect = document.getElementById('timelineStageFilter');
+    const machineSelect = document.getElementById('timelineMachineFilter');
+
+    if (statusBtn) filterState.status = statusBtn.value;
+    if (stageSelect) filterState.stage = stageSelect.value || 'all';
+    if (machineSelect) filterState.machineActivity = machineSelect.value || 'all';
+
+    let query = "";
+    if (globalSearch && globalSearch.value) query = globalSearch.value;
+    else if (smartSearch && smartSearch.value) query = smartSearch.value;
+    else if (localSearch && localSearch.value) query = localSearch.value;
+
+    filterState.search = query.toLowerCase();
+
+    console.log(`🔍 Search Query: "${filterState.search}"`);
+    console.log(`🔍 Global Search Element:`, globalSearch);
+    console.log(`🔍 Global Search Value:`, globalSearch ? globalSearch.value : "N/A");
+
+    // 1. Render Timeline
+    console.log("🔍 Re-rendering Timeline...");
+    renderTimeline();
+
+    // 2. Filter Pending Approvals
+    const approvalsList = document.getElementById('approvalsList');
+    if (approvalsList) {
+        console.log(`🔍 Filtering Approvals List (${approvalsList.children.length} items)`);
+        Array.from(approvalsList.children).forEach(el => {
+            if (el.innerText.includes("All Caught Up!")) return;
+            const text = el.innerText.toLowerCase();
+            const match = text.includes(filterState.search);
+            if (match) {
+                // console.log(`   ✅ Showing Approval: ${text.substring(0, 15)}...`);
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+    }
+
+    // 3. Filter Pending Orders
+    const pendingOrdersList = document.getElementById('pendingOrdersList');
+    if (pendingOrdersList) {
+        console.log(`🔍 Filtering Pending Orders List (${pendingOrdersList.children.length} items)`);
+        Array.from(pendingOrdersList.children).forEach(el => {
+            if (el.innerText.includes("No Pending Orders")) return;
+            const text = el.innerText.toLowerCase();
+            const match = text.includes(filterState.search);
+            if (match) {
+                // console.log(`   ✅ Showing Order: ${text.substring(0, 15)}...`);
+                // el.classList.remove('hidden'); // Was double removing? 
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+    }
+
+    // 4. Auto-Scroll to results if search is active
+    if (filterState.search.length > 2) {
+        const container = document.getElementById('timelineContainer');
+        if (container) {
+            console.log("🔍 Auto-scrolling to Timeline results...");
+            container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+};
+
+// Bind Search Input Listener
+// Bind Search Input Listener
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('timelineSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', window.filterTimeline);
+    }
+
+    const smartSearch = document.getElementById('timelineSmartSearch');
+    if (smartSearch) {
+        smartSearch.addEventListener('input', window.filterTimeline);
+    }
+
+    // Explicitly bind Global Search (Robustness fix)
+    const globalSearch = document.getElementById('globalSmartSearch');
+    if (globalSearch) {
+        globalSearch.addEventListener('input', window.filterTimeline);
+        // Also bind to 'change' and 'keyup' just in case
+        globalSearch.addEventListener('keyup', window.filterTimeline);
+    }
+
+    // Auto-Init if container exists (Fix for "No Data" issue)
+    if (document.getElementById('customTimeline') && window.initGanttChart) {
+        window.initGanttChart();
+    }
+});
+
+// setGanttView Removed (Legacy)
+
+// Global Drag Start Handler for Sidebar Items
+window.handleDragStart = function (e, id, content) {
+    if (!id || !content) return;
+    const payload = JSON.stringify({ id: id, content: content });
+    e.dataTransfer.setData('text/plain', payload);
+    e.dataTransfer.effectAllowed = 'copyMove';
+    // Optional: Add drag image or styling
+};
+
+
+function renderTimeline() {
+    const container = document.getElementById('customTimeline');
+    const header = document.getElementById('timelineHeader');
+    const body = document.getElementById('timelineBody');
+    const scrollWrapper = document.getElementById('timelineScrollWrapper');
+
+    if (!container || !header || !body) return;
+
+    // View Window Calculations
+    const viewStart = new Date(timelineState.startDate);
+    const viewEnd = new Date(timelineState.endDate);
+
+    // Grid Column Config
+    // Different for each view mode
+    let gridTemplate = '';
+    let totalColumns = 0;
+    let minWidth = '100%';
+
+    if (timelineState.viewMode === 'day') {
+        let hours = 24;
+
+        if (timelineState.shiftFilter !== 'all') {
+            const config = timelineState.shiftConfig || {
+                morning: { start: '06:00', end: '14:00' },
+                afternoon: { start: '14:00', end: '22:00' },
+                night: { start: '22:00', end: '06:00' }
+            };
+            const getHour = (timeStr) => parseInt(timeStr.split(':')[0]);
+
+            let s = 0, e = 0;
+            if (timelineState.shiftFilter === 'day') {
+                s = getHour(config.morning.start);
+                e = getHour(config.morning.end);
+            } else if (timelineState.shiftFilter === 'middle') {
+                s = getHour(config.afternoon.start);
+                e = getHour(config.afternoon.end);
+            } else if (timelineState.shiftFilter === 'night') {
+                s = getHour(config.night.start);
+                e = getHour(config.night.end);
+            }
+
+            hours = (e <= s) ? (e + 24 - s) : (e - s);
+        }
+
+        gridTemplate = `200px repeat(${hours}, 1fr)`;
+        totalColumns = hours;
+        minWidth = hours * 100 + 'px'; // 100px per hour minimum
+
+    } else if (timelineState.viewMode === 'week') {
+        gridTemplate = `200px repeat(7, 1fr)`;
+        totalColumns = 7;
+        minWidth = '1200px';
+
+    } else if (timelineState.viewMode === 'month') {
+        // Show 30 days
+        gridTemplate = `200px repeat(30, 1fr)`;
+        totalColumns = 30;
+        minWidth = '3000px'; // 100px per day
+    }
+
+    // Apply Width
+    container.style.minWidth = minWidth;
+
+    // --- Render Header ---
+    header.style.display = 'grid';
+    header.style.gridTemplateColumns = gridTemplate;
+    header.innerHTML = `<div class="p-2 border-r border-gray-200 bg-gray-50 flex items-center justify-center text-xs font-bold text-gray-400 sticky left-0 z-40 shadow-sm">Machine</div>`;
+
+    if (timelineState.viewMode === 'day') {
+        renderDayHeader(header, timelineState.shiftFilter);
+    } else if (timelineState.viewMode === 'week') {
+        renderWeekHeader(header);
+    } else {
+        renderMonthHeader(header);
+    }
+
+    // --- Render Body ---
+    renderBody(body, gridTemplate, totalColumns);
+
+    // Auto-Scroll Logic for Day View
+    if (timelineState.viewMode === 'day' && !window.hasAutoScrolled) {
+        setTimeout(() => {
+            if (timelineState.shiftFilter === 'all') {
+                const currentHour = new Date().getHours();
+                const scrollPos = currentHour * 100;
+                const centerOffset = scrollPos - (scrollWrapper.clientWidth / 2) + 200;
+                scrollWrapper.scrollTo({ left: Math.max(0, centerOffset), behavior: 'smooth' });
+            }
+            window.hasAutoScrolled = true;
+        }, 500);
+    }
+
+    if (window.debugTimelineData) window.debugTimelineData();
+}
+
+// Header Renderers
+function renderDayHeader(headerContainer, shift) {
+    console.log('🎯 renderDayHeader called with shift:', shift);
+
+    let startHour = 0;
+    let endHour = 24;
+
+    // Parse Helpers
+    const getHour = (timeStr) => parseInt(timeStr.split(':')[0]);
+    const config = timelineState.shiftConfig || {
+        morning: { start: '06:00', end: '14:00' },
+        afternoon: { start: '14:00', end: '22:00' },
+        night: { start: '22:00', end: '06:00' }
+    };
+
+    console.log('  - Using config:', config);
+
+    if (shift === 'day') {
+        startHour = getHour(config.morning.start);
+        endHour = getHour(config.morning.end);
+        console.log('  - DAY shift: start=' + startHour + ', end=' + endHour);
+    }
+    if (shift === 'middle') {
+        startHour = getHour(config.afternoon.start);
+        endHour = getHour(config.afternoon.end);
+        console.log('  - MIDDLE shift: start=' + startHour + ', end=' + endHour);
+    }
+    if (shift === 'night') {
+        startHour = getHour(config.night.start);
+        endHour = getHour(config.night.end);
+        console.log('  - NIGHT shift: start=' + startHour + ', end=' + endHour);
+    }
+
+    if (shift === 'all') {
+        console.log('  - ALL shifts (24-hour view): start=0, end=24');
+    }
+
+    // Handle overnight (e.g., 22 to 06 => 22 to 30)
+    if (endHour <= startHour && shift !== 'all') {
+        endHour += 24;
+    }
+
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    for (let h = startHour; h < endHour; h++) {
+        // Handle display for hours > 24 (next day)
+        const displayHour = h % 24;
+
+        const cell = document.createElement('div');
+        cell.className = "p-2 border-r border-gray-200 text-center relative flex flex-col justify-center bg-gray-50";
+        cell.innerHTML = `<span class="text-xs font-bold ${h === currentHour ? 'text-blue-600' : 'text-gray-500'}">${displayHour}:00</span>`;
+
+        if (h === currentHour && timelineState.startDate.toDateString() === now.toDateString()) {
+            const indicator = document.createElement('div');
+            indicator.className = "absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]";
+            cell.appendChild(indicator);
+        }
+        headerContainer.appendChild(cell);
+    }
+}
+
+function renderWeekHeader(headerContainer) {
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(timelineState.startDate);
+        d.setDate(d.getDate() + i);
+
+        const isToday = d.toDateString() === new Date().toDateString();
+
+        const cell = document.createElement('div');
+        cell.className = `p-2 border-r border-gray-200 text-center flex flex-col justify-center ${isToday ? 'bg-blue-50' : 'bg-gray-50'}`;
+
+        cell.innerHTML = `
+            <div class="text-[10px] text-gray-500 uppercase font-bold">${d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+            <div class="text-xs font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'}">${d.getDate()}</div>
+        `;
+        headerContainer.appendChild(cell);
+    }
+}
+
+function renderMonthHeader(headerContainer) {
+    for (let i = 0; i < 30; i++) {
+        const d = new Date(timelineState.startDate);
+        d.setDate(d.getDate() + i);
+
+        const isToday = d.toDateString() === new Date().toDateString();
+
+        const cell = document.createElement('div');
+        cell.className = `p-2 border-r border-gray-200 text-center flex flex-col justify-center ${isToday ? 'bg-blue-50' : 'bg-gray-50'}`;
+        cell.innerHTML = `<div class="text-xs font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'}">${d.getDate()}</div>`;
+        headerContainer.appendChild(cell);
+    }
+}
+
+function renderBody(bodyContainer, gridTemplate, totalColumns) {
+    bodyContainer.innerHTML = '';
+
+    // Pre-calculate Time Window in MS
+    let windowStartMs = timelineState.startDate.getTime();
+    let windowEndMs = timelineState.endDate.getTime();
+
+    // Adjust window for Shift modes in Day view
+    // Adjust window for Shift modes in Day view
+    if (timelineState.viewMode === 'day') {
+        const shiftStart = new Date(timelineState.startDate);
+        let durationHours = 24;
+
+        const config = timelineState.shiftConfig || {
+            morning: { start: '06:00', end: '14:00' },
+            afternoon: { start: '14:00', end: '22:00' },
+            night: { start: '22:00', end: '06:00' }
+        };
+        const getHour = (timeStr) => parseInt(timeStr.split(':')[0]);
+
+        if (timelineState.shiftFilter === 'day') {
+            shiftStart.setHours(getHour(config.morning.start));
+            let s = getHour(config.morning.start);
+            let e = getHour(config.morning.end);
+            durationHours = (e <= s) ? (e + 24 - s) : (e - s);
+        }
+        else if (timelineState.shiftFilter === 'middle') {
+            shiftStart.setHours(getHour(config.afternoon.start));
+            let s = getHour(config.afternoon.start);
+            let e = getHour(config.afternoon.end);
+            durationHours = (e <= s) ? (e + 24 - s) : (e - s);
+        }
+        else if (timelineState.shiftFilter === 'night') {
+            shiftStart.setHours(getHour(config.night.start));
+            let s = getHour(config.night.start);
+            let e = getHour(config.night.end);
+            durationHours = (e <= s) ? (e + 24 - s) : (e - s);
+        }
+        else {
+            shiftStart.setHours(0); // All
+            durationHours = 24;
+        }
+
+        windowStartMs = shiftStart.getTime();
+
+        // recalculate end based on dynamic duration
+        // let durationHours = 24; // override above
+        // if (timelineState.shiftFilter !== 'all') durationHours = 8; // OLD HARDCODED
+        windowEndMs = windowStartMs + (durationHours * 60 * 60 * 1000);
+    }
+
+    const windowDurationMs = windowEndMs - windowStartMs;
+
+    // Get user role once (outside loop for performance)
+    const userRoleScript = document.getElementById('data-user-role');
+    const userRole = userRoleScript ? JSON.parse(userRoleScript.textContent) : 'planner';
+    console.log('👤 User role detected:', userRole);
+    console.log('  - Report button will be', userRole === 'supervisor' ? 'VISIBLE' : 'HIDDEN');
+
+    const sortedMachines = sortMachinesForTimeline(machinesCache);
+    sortedMachines.forEach(machine => {
+        const row = document.createElement('div');
+        const isMaintenance = machine.status === 'maintenance' || machine.status === 'breakdown';
+        const statusFilter = filterState.status || 'open';
+        const stageFilter = filterState.stage || 'all';
+        const machineActivityFilter = filterState.machineActivity || 'all';
+
+        if (statusFilter === 'maintenance' && !isMaintenance) {
+            return;
+        }
+
+        if (machineActivityFilter === 'maintenance' && !isMaintenance) {
+            return;
+        }
+
+        // Visual Cue: Striped Background for Maintenance
+        let rowClass = "relative h-20 border-b border-gray-100 group";
+        if (isMaintenance) {
+            rowClass += " bg-red-50/30";
+            row.style.backgroundImage = "repeating-linear-gradient(45deg, rgba(239, 68, 68, 0.03), rgba(239, 68, 68, 0.03) 10px, transparent 10px, transparent 20px)";
+        } else {
+            rowClass += " hover:bg-gray-50";
+        }
+        row.className = rowClass;
+
+        row.style.display = 'grid';
+        row.style.gridTemplateColumns = gridTemplate;
+
+        // Machine Info Cell
+        const infoCell = document.createElement('div');
+        infoCell.className = `p-2 border-r border-gray-200 flex flex-col justify-center z-30 sticky left-0 shadow-sm ${isMaintenance ? 'bg-red-50' : 'bg-white'}`;
+
+        // Only show Report button for supervisors
+        const reportButtonHTML = (userRole === 'supervisor') ? `
+            <button onclick="openFaultModal('${machine.id}', '${machine.name.replace(/'/g, "\\'")}')" class="mt-1 text-[10px] text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit transition-colors" title="Report Fault">
+                <i class="ph ph-warning"></i> Report
+            </button>
+        ` : '';
+
+        const machineImageHtml = machine.image_url
+            ? `<img src="${machine.image_url}" class="w-8 h-8 rounded-lg object-cover border border-slate-200 shadow-sm" alt="${machine.name}">`
+            : `<div class="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400"><i class="ph ph-gear text-xs"></i></div>`;
+
+        const machineMeta = machine.type || machine.category || '';
+        infoCell.innerHTML = `
+            <div class="flex items-center gap-2">
+                ${machineImageHtml}
+                <div class="min-w-0">
+                    <div class="font-bold text-sm text-gray-800 truncate" title="${machine.name}">${machine.name}</div>
+                    ${machineMeta ? `<div class="text-[10px] uppercase tracking-wide text-slate-500 font-semibold truncate" title="${machineMeta}">${machineMeta}</div>` : ''}
+                    <div class="flex items-center gap-1 mt-1 mb-1">
+                         <span class="w-2 h-2 rounded-full ${machine.status === 'operational' ? 'bg-emerald-500' : 'bg-red-500'}"></span>
+                         <span class="text-[10px] text-gray-500 uppercase font-bold text-xs">${machine.status}</span>
+                    </div>
+                </div>
+            </div>
+            ${reportButtonHTML}
+        `;
+        row.appendChild(infoCell);
+
+        // Grid Cells
+        for (let i = 0; i < totalColumns; i++) {
+            const cell = document.createElement('div');
+            cell.className = "border-r border-gray-100 h-full w-full";
+            if (isMaintenance) {
+                cell.title = "Machine Maintenance - Locked";
+                cell.style.cursor = "not-allowed";
+            }
+            row.appendChild(cell);
+        }
+
+        // Task Container
+        const taskLayer = document.createElement('div');
+        taskLayer.className = "absolute inset-0 z-20 pointer-events-none"; // Events pass through
+        taskLayer.style.left = "200px";
+        taskLayer.style.width = "calc(100% - 200px)";
+
+        // Filter Tasks (Smart Search: ID, Product, or Machine Name)
+        const searchQuery = filterState.search;
+        const machineLeftTasks = machine.id === 'unassigned'
+            ? tasksCache.filter(t => !t.machine_id)
+            : tasksCache.filter(t => t.machine_id == machine.id);
+
+        let machineTasks = machineLeftTasks;
+        if (statusFilter && statusFilter !== 'all' && statusFilter !== 'maintenance') {
+            machineTasks = machineTasks.filter(t => {
+                const status = String(t.status || '').toLowerCase();
+                if (statusFilter === 'open') {
+                    return !['completed', 'canceled', 'archived'].includes(status);
+                }
+                if (statusFilter === 'active') {
+                    return status === 'in_progress';
+                }
+                if (statusFilter === 'pending') {
+                    return ['pending', 'draft', 'hold'].includes(status);
+                }
+                if (statusFilter === 'completed') {
+                    return status === 'completed';
+                }
+                return true;
+            });
+        }
+
+        if (stageFilter && stageFilter !== 'all') {
+            machineTasks = machineTasks.filter(t => {
+                const meta = getTaskStageMeta(t);
+                if (stageFilter === '__none__') {
+                    return !meta.id && !meta.name;
+                }
+                return String(meta.id || meta.name) === String(stageFilter);
+            });
+        }
+        const machineSearchBlob = [
+            machine.name || '',
+            machine.type || '',
+            machine.category || ''
+        ].join(' ').toLowerCase();
+        const machineNameMatch = machineSearchBlob.includes(searchQuery);
+
+        if (searchQuery) {
+            const baseTasksForSearch = machineTasks;
+            machineTasks = baseTasksForSearch.filter(t => {
+                const matchProduct = t.product && t.product.toLowerCase().includes(searchQuery);
+                const matchId = t.id && t.id.toString().includes(searchQuery);
+                return matchProduct || matchId || machineNameMatch;
+            });
+        }
+
+        // Keep machine row visible even if stage filter yields no tasks
+
+        const hasActiveTask = machineTasks.some(t => String(t.status || '').toLowerCase() === 'in_progress');
+        if (machineActivityFilter === 'active' && !hasActiveTask) {
+            return;
+        }
+        if (machineActivityFilter === 'idle' && hasActiveTask) {
+            return;
+        }
+
+        // HIDE ROW if: Search is active AND Machine doesn't match AND No matching tasks
+        if (searchQuery && !machineNameMatch && machineTasks.length === 0) {
+            // console.log(`   ⛔ Hiding Machine: ${machine.name} (No match, 0 tasks)`);
+            return; // Skip this iteration (Hide Row) // Skip this iteration (Hide Row)
+        } else if (searchQuery) {
+            console.log(`   ✅ Showing Machine: ${machine.name} (Match: ${machineNameMatch}, Tasks: ${machineTasks.length})`);
+        }
+
+        machineTasks.forEach(t => {
+            const startValue = t.start || timelineState.startDate || new Date();
+            const tStart = new Date(startValue).getTime();
+            const tEnd = t.end ? new Date(t.end).getTime() : tStart + (3600000); // default 1hr
+
+            // Check Overlap
+            if (tEnd < windowStartMs || tStart > windowEndMs) return;
+
+            // Calculate Position
+            const offsetMs = tStart - windowStartMs;
+            const durationMs = tEnd - tStart;
+
+            let leftPct = (offsetMs / windowDurationMs) * 100;
+            let widthPct = (durationMs / windowDurationMs) * 100;
+
+            // Dynamic Color based on Product/ID
+            const hue = (t.id * 137.508) % 360;
+            const baseColor = `hsl(${hue}, 70%, 50%)`; // Bold/Finished Color
+            const fadedColor = `hsl(${hue}, 70%, 85%)`; // Faded/Pending Color
+
+            const quantity = Number(t.progress_stats ? t.progress_stats.target : (t.quantity || 0)) || 0;
+            const finished = Number(t.progress_stats ? t.progress_stats.actual : (t.finished_qty || 0)) || 0;
+            const progressValue = Number(t.progress);
+            const reportedProgress = quantity > 0 ? (finished / quantity) * 100 : 0;
+            const rawProgress = reportedProgress > 0
+                ? reportedProgress
+                : (Number.isFinite(progressValue) ? progressValue : 0);
+            const progress = Math.max(0, Math.min(rawProgress, 100));
+
+            // Styles
+            const taskDiv = document.createElement('div');
+            // Base classes
+            taskDiv.className = "absolute h-14 top-3 rounded-lg shadow-lg border-0 overflow-hidden pointer-events-auto cursor-pointer hover:ring-2 hover:ring-white hover:scale-105 transition-all group";
+
+            // Gradient Background: Bold for finished %, Faded for rest
+            const isDraft = t.status === 'draft';
+
+            if (isDraft) {
+                taskDiv.style.backgroundColor = '#e5e7eb';
+                taskDiv.className += " border border-gray-300 border-dashed text-gray-700";
+            } else {
+                taskDiv.style.background = `linear-gradient(90deg, ${baseColor} ${progress}%, ${fadedColor} ${progress}%)`;
+                taskDiv.className += " text-white";
+            }
+            taskDiv.style.left = `${leftPct}%`;
+            taskDiv.style.width = `${Math.max(widthPct, 1)}%`; // Min width visibility
+
+            // Late Order Logic
+            const isLate = t.is_late === true;
+            if (isLate) taskDiv.className += " ring-2 ring-red-500 ring-offset-1";
+
+            // 15% Buffer Logic
+            const bufferWidth = '15%';
+            const mainWidth = '85%';
+
+            const progressTrackColor = isDraft ? 'rgba(107,114,128,0.25)' : 'rgba(255,255,255,0.25)';
+            const progressFillColor = isDraft ? 'rgba(107,114,128,0.7)' : 'rgba(255,255,255,0.9)';
+
+            taskDiv.innerHTML = `
+                <div class="flex h-full w-full text-white relative">
+                    <div class="h-full relative border-r border-white/20" 
+                         style="width: ${bufferWidth}; background: repeating-linear-gradient(45deg, rgba(255,255,255,0.1), rgba(255,255,255,0.1) 4px, transparent 4px, transparent 8px);">
+                         <div class="absolute inset-0 flex items-center justify-center text-[7px] font-bold rotate-90 opacity-80" title="Setup">SETUP</div>
+                    </div>
+                    <div class="flex-1 p-1.5 flex flex-col justify-between min-w-0" style="width: ${mainWidth};">
+                         <div class="flex justify-between items-start leading-none gap-2">
+                            <span class="font-bold text-[10px] truncate max-w-full" style="color: ${isDraft ? '#374151' : 'white'}">${t.product}</span>
+                            ${t.assignment_type ? `
+                                <span class="px-1 py-0.5 rounded-[4px] text-[6px] font-black uppercase tracking-tighter border ${t.assignment_type === 'auto' ? 'bg-emerald-400/20 border-emerald-400/40 text-emerald-100' : 'bg-amber-400/20 border-amber-400/40 text-amber-100'}">
+                                    ${t.assignment_type}
+                                </span>
+                            ` : ''}
+                         </div>
+                         
+                         <div class="flex items-center justify-between mt-auto">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                <i class="ph ph-user text-[10px] opacity-80"></i>
+                                <span class="text-[9px] font-black tracking-tight truncate" style="color: ${isDraft ? '#6b7280' : 'rgba(255,255,255,0.9)'}">
+                                    ${t.assigned_worker_name || 'Unassigned'}
+                                </span>
+                            </div>
+                            ${!isDraft ? (window.currentUserRole === 'supervisor' ? `
+                                <span class="text-[9px] font-mono font-bold opacity-90 drop-shadow-md">
+                                    Qty: ${finished} / ${quantity}
+                                </span>
+                            ` : `
+                                <span class="text-[8px] font-bold opacity-80 uppercase tracking-widest">
+                                    ${t.status === 'done' ? 'COMPLETED' : `Progress: ${Math.round(progress)}%`}
+                                </span>
+                            `) : ''}
+                        </div>
+                    </div>
+                    <div class="absolute left-0 right-0 bottom-0 h-1.5" style="background: ${progressTrackColor};">
+                        <div class="h-full" style="width: ${progress}%; background: ${progressFillColor};"></div>
+                    </div>
+                </div>
+            `;
+
+            taskDiv.onclick = (e) => {
+                e.stopPropagation();
+                if (window.openEditSheet) window.openEditSheet(t.id);
+            };
+
+            taskLayer.appendChild(taskDiv);
+        });
+
+        row.appendChild(taskLayer);
+
+        // Drag Interactions
+        row.dataset.machineType = machine.type || machine.category || "General";
+        row.className += " machine-row transition-opacity duration-200";
+
+        row.ondragover = (e) => {
+            e.preventDefault();
+            if (isMaintenance) {
+                e.dataTransfer.dropEffect = 'none';
+                return; // Strict block
+            }
+
+            const draggedTypes = window.currentlyDraggingAllowedTypes;
+            const machineType = machine.type || machine.category || "General";
+
+            let isValid = true;
+            if (draggedTypes && draggedTypes.length > 0) {
+                if (!draggedTypes.includes(machineType) && !draggedTypes.includes('General')) {
+                    isValid = false;
+                }
+            }
+
+            if (isValid) {
+                e.dataTransfer.dropEffect = 'copy';
+                row.classList.add('bg-blue-50');
+            } else {
+                e.dataTransfer.dropEffect = 'none';
+                row.classList.add('cursor-not-allowed');
+            }
+        };
+
+        row.ondragleave = () => {
+            row.classList.remove('bg-blue-50');
+            row.classList.remove('cursor-not-allowed');
+        };
+
+        row.ondrop = (e) => {
+            row.classList.remove('bg-blue-50');
+            row.classList.remove('cursor-not-allowed');
+
+            const draggedTypes = window.currentlyDraggingAllowedTypes;
+            const machineType = machine.type || machine.category || "General";
+            if (draggedTypes && draggedTypes.length > 0) {
+                if (!draggedTypes.includes(machineType) && !draggedTypes.includes('General')) {
+                    alert(`⛔ Invalid Machine!\nThis task requires: ${draggedTypes.join(', ')}`);
+                    return;
+                }
+            }
+            // NOTE: handleRowDrop needs to be updated to support dropping on specific dates in week/month view
+            // For now, it defaults to today/calculated time
+            handleRowDrop(e, machine.id, row, 0, 24);
+        };
+
+        bodyContainer.appendChild(row);
+    });
+
+    // Show "No Results" message if empty
+    if (bodyContainer.children.length === 0) {
+        bodyContainer.innerHTML = `
+            <div class="flex flex-col items-center justify-center h-64 text-gray-400">
+                <i class="ph ph-magnifying-glass text-4xl mb-2"></i>
+                <p class="text-sm font-medium">No matches found for "<span class="text-gray-600">${filterState.search}</span>"</p>
+                <button onclick="document.getElementById('globalSmartSearch').value=''; window.filterTimeline()" class="mt-2 text-xs text-blue-600 hover:underline">Clear Search</button>
+            </div>
+        `;
+    }
+
+    // Cleanup
+    document.addEventListener('dragend', window.handleDragEnd);
+}
+
+// --- DRAWER & EDIT LOGIC ---
+
+// Store current WO for Split functionality
+window.currentDrawerWO = null;
+window.currentDrawerMachines = [];
+window.currentDrawerRemainingQty = null;
+window.currentDrawerApprovedQty = 0;
+window.currentDrawerReleasedQty = 0;
+window.currentDrawerReleaseAvailable = 0;
+window.currentDrawerNextStage = null;
+
+function getDrawerMachines() {
+    if (Array.isArray(window.currentDrawerMachines) && window.currentDrawerMachines.length > 0) {
+        return window.currentDrawerMachines;
+    }
+    if (Array.isArray(machinesCache) && machinesCache.length > 0) {
+        return machinesCache;
+    }
+    return [];
+}
+
+function getPlannerData() {
+    if (tasksCache.length === 0) {
+        const tasksEl = document.getElementById('data-tasks');
+        if (tasksEl && tasksEl.textContent) {
+            const parsed = safeParseJSON(tasksEl.textContent);
+            tasksCache = Array.isArray(parsed) ? parsed : [];
+        }
+    }
+    if (machinesCache.length === 0) {
+        const machinesEl = document.getElementById('data-machines');
+        if (machinesEl && machinesEl.textContent) {
+            const parsed = safeParseJSON(machinesEl.textContent);
+            machinesCache = Array.isArray(parsed) ? parsed : [];
+            machinesCache = sortMachinesForTimeline(machinesCache);
+        }
+    }
+    return { tasks: tasksCache || [], machines: machinesCache || [] };
+}
+
+function formatShortDate(value) {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function escapeHtml(value) {
+    return String(value || '')
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+window.renderPlannerKanban = function () {
+    const alpineBoard = document.querySelector('#plannerViewKanban [x-data*="kanbanBoard"]');
+    const alpineInitialized = !!(alpineBoard && alpineBoard.__x);
+    const container = document.getElementById('plannerViewContainer');
+    const fallbackMount = document.getElementById('plannerKanbanFallback');
+    const mount = fallbackMount || document.getElementById('plannerKanbanMount');
+    const alpineRoot = document.querySelector('#plannerViewKanban .planner-kanban-alpine');
+    const isPlannerDashboard = !!document.querySelector('[data-planner-dashboard="true"]');
+
+    // Avoid affecting non-planner screens (e.g. Supervisor).
+    if (!isPlannerDashboard) {
+        if (alpineBoard) {
+            window.dispatchEvent(new CustomEvent('planner-refresh-kanban'));
+        }
+        return;
+    }
+
+    // Prefer Alpine Kanban when it is actually running (avoids white screen when Alpine fails to load).
+    if (alpineBoard && window.Alpine && alpineInitialized) {
+        window.__plannerKanbanInitRetry = 0;
+        if (fallbackMount) fallbackMount.classList.add('hidden');
+        if (alpineRoot) alpineRoot.classList.remove('hidden');
+        window.dispatchEvent(new CustomEvent('planner-refresh-kanban'));
+        return;
+    }
+
+    // If Alpine exists but hasn't initialized yet, give it a moment before falling back.
+    if (alpineBoard && window.Alpine && !alpineInitialized) {
+        window.dispatchEvent(new CustomEvent('planner-refresh-kanban'));
+        window.__plannerKanbanInitRetry = (window.__plannerKanbanInitRetry || 0) + 1;
+        if (window.__plannerKanbanInitRetry <= 3) {
+            setTimeout(() => {
+                if (window.renderPlannerKanban) window.renderPlannerKanban();
+            }, 150);
+            return;
+        }
+    }
+
+    // Ensure dispatch for Alpine components (like in supervisor dashboard)
+    window.dispatchEvent(new CustomEvent('planner-refresh-kanban'));
+
+    if (!mount) {
+        console.log("Kanban: Mount point not found, skipping vanilla render.");
+        return;
+    }
+    if (alpineRoot) alpineRoot.classList.add('hidden');
+    if (fallbackMount) fallbackMount.classList.remove('hidden');
+
+    const { tasks, machines } = getPlannerData();
+    const machineMap = new Map(machines.map(m => [String(m.id), m.name || m.content || `Machine #${m.id}`]));
+
+    const columns = [
+        { id: 'pending', title: 'Pending', color: 'bg-amber-400' },
+        { id: 'active', title: 'In Progress', color: 'bg-blue-500' },
+        { id: 'complete', title: 'Completed', color: 'bg-emerald-500' }
+    ];
+
+    const normalized = (tasks || []).filter(t => t && t.status !== 'canceled' && t.status !== 'archived');
+    const byColumn = {
+        pending: normalized.filter(t => !t.start || ['pending', 'draft', 'planned', 'scheduled'].includes(t.status)),
+        active: normalized.filter(t => (t.start || t.status === 'in_progress' || t.status === 'active' || t.status === 'on_hold') && !['completed', 'done', 'pending', 'draft'].includes(t.status)),
+        complete: normalized.filter(t => ['completed', 'done'].includes(t.status))
+    };
+
+    console.log(`Kanban Stats: Total ${normalized.length}, P:${byColumn.pending.length}, A:${byColumn.active.length}, C:${byColumn.complete.length}`);
+
+    const html = `
+        <div style="display:flex;gap:16px;flex-wrap:nowrap;align-items:flex-start;padding:4px;">
+            ${columns.map(col => `
+                <div style="width:320px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 2px 8px rgba(15,23,42,0.04);overflow:hidden;display:flex;flex-direction:column;max-height:600px;">
+                    <div style="padding:12px 14px;border-bottom:1px solid #e2e8f0;background:#ffffff;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="width:8px;height:8px;border-radius:999px;background:${col.id === 'pending' ? '#f59e0b' : col.id === 'active' ? '#3b82f6' : '#10b981'};"></span>
+                            <div style="font-weight:700;color:#334155;font-size:13px;">${col.title}</div>
+                        </div>
+                        <div style="background:#f1f5f9;color:#475569;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;">
+                            ${(byColumn[col.id] || []).length}
+                        </div>
+                    </div>
+                    <div style="padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex-1:1 auto;">
+                        ${(byColumn[col.id] || []).map(task => `
+                            <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;box-shadow:0 1px 2px rgba(15,23,42,0.06);cursor:pointer;"
+                                onclick="window.openWorkOrderModal && openWorkOrderModal(${task.id})">
+                                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                                    <div style="font-weight:700;color:#0f172a;font-size:13px;line-height:1.2;">${escapeHtml(task.product || task.product_name || 'Work Order')}</div>
+                                    <div style="font-size:11px;color:#94a3b8;">#${task.id}</div>
+                                </div>
+                                <div style="margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
+                                    <div style="font-size:11px;color:#2563eb;background:#eff6ff;border-radius:999px;padding:2px 8px;font-weight:600;">
+                                        ${escapeHtml(machineMap.get(String(task.machine_id)) || 'Unassigned')}
+                                    </div>
+                                    <div style="font-size:11px;color:#94a3b8;">${formatShortDate(task.start)}</div>
+                                </div>
+                            </div>
+                        `).join('') || `
+                            <div style="text-align:center;padding:24px 0;color:#94a3b8;font-size:12px;">No tasks</div>
+                        `}
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    mount.innerHTML = html;
+    mount.classList.remove('hidden');
+    mount.style.setProperty('display', 'block', 'important');
+    mount.style.visibility = 'visible';
+    mount.style.opacity = '1';
+    mount.style.height = 'auto';
+    if (!mount.style.minHeight) mount.style.minHeight = '360px';
+};
+
+window.renderPlannerList = function () {
+    const container = document.getElementById('plannerViewContainer');
+    const mount = document.getElementById('plannerListMount') || document.getElementById('plannerListFallback');
+    const alpineRoot = document.querySelector('#plannerViewList .planner-list-alpine');
+
+    // Ensure dispatch for Alpine components
+    window.dispatchEvent(new CustomEvent('planner-refresh-list'));
+
+    if (!mount) {
+        console.log("List: Mount point not found, skipping vanilla render.");
+        return;
+    }
+    if (alpineRoot) alpineRoot.classList.add('hidden');
+
+    const { tasks, machines } = getPlannerData();
+    const machineMap = new Map(machines.map(m => [String(m.id), m.name || m.content || `Machine #${m.id}`]));
+    const normalized = (tasks || []).filter(t => t && t.status !== 'canceled' && t.status !== 'archived');
+
+    const html = `
+
+    ${normalized.map(task => `
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 6px rgba(15,23,42,0.06);cursor:pointer;"
+            onclick="window.openWorkOrderModal && openWorkOrderModal(${task.id})">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+                <div style="font-weight:700;color:#0f172a;font-size:15px;">${escapeHtml(task.product || task.product_name || 'Work Order')}</div>
+                <div style="font-size:12px;color:#94a3b8;">#${task.id}</div>
+            </div>
+            <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid #e2e8f0;color:#334155;background:${task.status === 'completed' ? '#ecfdf3' : task.status === 'in_progress' ? '#eff6ff' : '#fef3c7'};">
+                    ${escapeHtml(task.status || 'pending')}
+                </span>
+                <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid #e2e8f0;color:#1e3a8a;background:#eef2ff;">
+                    Qty: ${escapeHtml(task.quantity || '')}
+                </span>
+            </div>
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
+                <div style="font-size:12px;color:#475569;">${escapeHtml(machineMap.get(String(task.machine_id)) || 'Unassigned')}</div>
+                <div style="font-size:11px;color:#94a3b8;">${formatShortDate(task.start)}</div>
+            </div>
+        </div>
+    `).join('') || `
+        <div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;">No work orders found</div>
+    `}
+
+    `;
+
+    mount.innerHTML = html;
+    mount.classList.remove('hidden');
+    mount.style.setProperty('display', 'block', 'important');
+    mount.style.visibility = 'visible';
+    mount.style.opacity = '1';
+    mount.style.height = 'auto';
+    if (!mount.style.minHeight) mount.style.minHeight = '360px';
+};
+
+window.renderPlannerCalendar = function () {
+    // If the page provides an Alpine-based Calendar (template include), don't overwrite it.
+    if (document.querySelector('#plannerViewCalendar [x-data*="productionCalendar"]')) {
+        window.dispatchEvent(new CustomEvent('planner-refresh-calendar'));
+        return;
+    }
+    const container = document.getElementById('plannerViewContainer');
+    const mount = document.getElementById('plannerCalendarMount') || document.getElementById('plannerCalendarFallback');
+    const alpineRoot = document.querySelector('#plannerViewCalendar .planner-calendar-alpine');
+
+    // Ensure dispatch for Alpine components
+    window.dispatchEvent(new CustomEvent('planner-refresh-calendar'));
+
+    if (!mount) {
+        console.log("Calendar: Mount point not found, skipping vanilla render.");
+        return;
+    }
+    if (alpineRoot) alpineRoot.classList.add('hidden');
+
+    const { tasks, machines } = getPlannerData();
+    const machineMap = new Map(machines.map(m => [String(m.id), m.name || m.content || `Machine #${m.id}`]));
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const monthName = now.toLocaleString('default', { month: 'long' });
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startDay = new Date(year, month, 1).getDay();
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const tasksByDate = {};
+    (tasks || []).forEach(task => {
+        if (!task.start) return;
+        const d = new Date(task.start);
+        if (Number.isNaN(d.getTime())) return;
+        if (d.getFullYear() !== year || d.getMonth() !== month) return;
+        const key = d.getDate();
+        tasksByDate[key] = tasksByDate[key] || [];
+        tasksByDate[key].push(task);
+    });
+
+    let cells = '';
+    for (let i = 0; i < startDay; i += 1) {
+        cells += `<div style="background:#f1f5f9;min-height:120px;"></div>`;
+    }
+    for (let day = 1; day <= daysInMonth; day += 1) {
+        const dayTasks = tasksByDate[day] || [];
+        cells += `
+            <div style="background:#ffffff;min-height:120px;padding:6px;border:1px solid #e2e8f0;overflow:hidden;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:999px;font-weight:700;font-size:12px;${day === now.getDate() ? 'background:#4f46e5;color:#ffffff;' : 'color:#334155;'}">${day}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;max-height:90px;overflow:auto;">
+                    ${dayTasks.map(task => `
+                        <div style="padding:4px 6px;border-radius:8px;border:1px solid #e2e8f0;font-size:10px;cursor:pointer;background:${task.status === 'completed' ? '#ecfdf3' : task.status === 'in_progress' ? '#eff6ff' : '#fef3c7'};"
+                            onclick="window.openWorkOrderModal && openWorkOrderModal(${task.id})">
+                            <div style="font-weight:700;">#${task.id}</div>
+                            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(task.product || task.product_name || 'WO')}</div>
+                            <div style="font-size:9px;color:#64748b;">${escapeHtml(machineMap.get(String(task.machine_id)) || 'Unassigned')}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    const html = `
+
+        <div style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 2px 6px rgba(15,23,42,0.06);min-height:360px;overflow:hidden;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #e2e8f0;">
+                <div style="font-weight:700;color:#0f172a;">${monthName} ${year}</div>
+                <div style="font-size:11px;color:#94a3b8;">Planner Calendar</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7, minmax(0, 1fr));background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                ${dayLabels.map(label => `<div style="padding:8px 0;text-align:center;font-size:11px;font-weight:700;color:#94a3b8;">${label}</div>`).join('')}
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7, minmax(0, 1fr));background:#e2e8f0;gap:1px;">
+                ${cells}
+            </div>
+        </div>
+
+    `;
+
+    mount.innerHTML = html;
+    mount.classList.remove('hidden');
+    mount.style.setProperty('display', 'block', 'important');
+    mount.style.visibility = 'visible';
+    mount.style.opacity = '1';
+    mount.style.height = 'auto';
+    if (!mount.style.minHeight) mount.style.minHeight = '360px';
+};
+
+function getPlannerViewElements() {
+    return {
+        container: document.getElementById('plannerViewContainer'),
+        label: document.querySelector('#plannerViewContainer [data-planner-view-label]'),
+        gantt: document.getElementById('plannerViewGantt'),
+        kanban: document.getElementById('plannerViewKanban'),
+        list: document.getElementById('plannerViewList'),
+        calendar: document.getElementById('plannerViewCalendar')
+    };
+}
+
+window.plannerSetView = function (view) {
+    const els = getPlannerViewElements();
+    if (!els.container) return;
+    const views = {
+        gantt: els.gantt,
+        kanban: els.kanban,
+        list: els.list,
+        calendar: els.calendar
+    };
+
+    Object.entries(views).forEach(([key, el]) => {
+        if (!el) return;
+        if (key === view) {
+            el.classList.remove('hidden');
+            el.style.removeProperty('display');
+            el.style.height = '100%';
+            el.style.minHeight = '100%';
+            el.style.zIndex = '2';
+            el.style.pointerEvents = 'auto';
+            el.setAttribute('aria-hidden', 'false');
+        } else {
+            el.classList.add('hidden');
+            el.style.display = 'none';
+            el.style.height = '0';
+            el.style.minHeight = '0';
+            el.style.zIndex = '1';
+            el.style.pointerEvents = 'none';
+            el.setAttribute('aria-hidden', 'true');
+        }
+    });
+
+    if (els.label) {
+        els.label.textContent = view.charAt(0).toUpperCase() + view.slice(1) + ' View';
+    }
+
+    if (view === 'kanban' && window.renderPlannerKanban) {
+        requestAnimationFrame(() => window.renderPlannerKanban());
+    }
+    if (view === 'calendar' && window.renderPlannerCalendar) {
+        requestAnimationFrame(() => window.renderPlannerCalendar());
+    }
+    if (view === 'list' && window.renderPlannerList) {
+        requestAnimationFrame(() => window.renderPlannerList());
+    }
+};
+
+function bindPlannerViewSwitcher() {
+    const els = getPlannerViewElements();
+    if (!els.container) return;
+    // Planner dashboard now uses Alpine `x-show` for view switching.
+    // Avoid fighting Alpine by toggling Tailwind `hidden` / inline display styles.
+    if (els.container.getAttribute('data-planner-view-switcher') === 'alpine') {
+        return;
+    }
+    const buttons = els.container.querySelectorAll('[data-planner-view]');
+    buttons.forEach(btn => {
+        if (btn.__plannerBound) return;
+        btn.__plannerBound = true;
+        btn.addEventListener('click', () => {
+            const view = btn.getAttribute('data-planner-view');
+            if (view) window.plannerSetView(view);
+        });
+    });
+    window.plannerSetView('gantt');
+}
+
+function normalizeMachineToken(value) {
+    return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+}
+
+function machineMatchesRequiredType(machine, requiredType) {
+    const target = normalizeMachineToken(requiredType);
+    if (!target) return true;
+
+    const fields = [
+        machine.type,
+        machine.category,
+        machine.name
+    ];
+    const haystack = fields.map(normalizeMachineToken).filter(Boolean).join(" ");
+    if (!haystack) return false;
+
+    if (haystack.includes(target)) return true;
+
+    const targetTokens = new Set(target.split(" ").filter(Boolean));
+    const hayTokens = new Set(haystack.split(" ").filter(Boolean));
+    for (const token of targetTokens) {
+        if (hayTokens.has(token)) return true;
+    }
+    return false;
+}
+
+function getNextStageForCurrent(stages, currentStageId) {
+    if (!Array.isArray(stages) || !currentStageId) return null;
+    const ordered = stages.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    const idx = ordered.findIndex(s => String(s.id) === String(currentStageId));
+    if (idx >= 0 && idx + 1 < ordered.length) {
+        return ordered[idx + 1];
+    }
+    return null;
+}
+
+function getCurrentStageRequiredType(wo, stages) {
+    if (!wo || !Array.isArray(stages)) return '';
+    const stageId = wo.current_stage_id || wo.stage_id;
+    if (!stageId) return '';
+    const stage = stages.find(s => String(s.id) === String(stageId));
+    if (!stage) return '';
+    return stage.machine_type || '';
+}
+
+window.openWorkOrderModal = function (woId) {
+    // 1. Open Drawer
+    // 2. Fetch specific WO details (API)
+    fetch(`/manufacturing/api/work-order/${woId}/`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const wo = data.work_order;
+                window.currentDrawerWO = wo; // Store for other actions
+
+                const stages = data.stages || [];
+                window.currentDrawerStages = stages; // Store globally for filtering
+
+                const drawerMachines = Array.isArray(data.machines) && data.machines.length > 0
+                    ? data.machines
+                    : machinesCache;
+                window.currentDrawerMachines = drawerMachines;
+                if (machinesCache.length === 0 && drawerMachines.length > 0) {
+                    machinesCache = drawerMachines;
+                }
+
+                document.getElementById('drawerTitle').innerText = wo.product_name;
+                document.getElementById('drawerSubtitle').innerText = `WO #${wo.id}`;
+                document.getElementById('drawerTaskId').value = wo.id;
+                document.getElementById('drawerStatus').value = wo.status;
+
+                // 🆕 Populate Customer & Edit Fields
+                const custName = wo.customer ? wo.customer.name : (wo.customer_name || 'Walk-in');
+                document.getElementById('drawerCustomerDisplay').innerText = custName;
+                document.getElementById('drawerQuantity').value = wo.quantity;
+                document.getElementById('drawerPriority').value = wo.priority;
+
+                const approvedQtyOnly = Number(wo.approved_qty ?? 0);
+                const producedQtyRaw = Number(wo.produced_qty ?? approvedQtyOnly);
+                const splitRemainingQty = Math.max(Number(wo.quantity || 0) - approvedQtyOnly, 0);
+                const fallbackRemaining = Math.max(Number(wo.quantity || 0) - producedQtyRaw, 0);
+                const remainingQty = Math.max(
+                    Number(wo.remaining_qty ?? fallbackRemaining),
+                    splitRemainingQty
+                );
+                const hintEl = document.getElementById('drawerSplitHint');
+                const remainingEl = document.getElementById('drawerRemainingQty');
+                const splitBtn = document.getElementById('drawerSplitBtn_New');
+                const releaseHintEl = document.getElementById('drawerReleaseHint');
+                const approvedEl = document.getElementById('drawerApprovedQty');
+                const releasedEl = document.getElementById('drawerReleasedQty');
+                const availableEl = document.getElementById('drawerReleaseAvailable');
+                const releaseBtn = document.getElementById('drawerReleaseBtn_New');
+                const role = getUserRole();
+                const canSplitRole = ['planner', 'admin', 'supervisor'].includes(role);
+                const canReleaseRole = ['planner', 'admin', 'supervisor'].includes(role);
+                const hasSplitModal = !!document.getElementById('splitModal');
+                const hasReleaseModal = !!document.getElementById('releaseModal');
+                window.currentDrawerRemainingQty = remainingQty;
+
+                const producedQty = producedQtyRaw;
+                const releasedQty = Number(wo.released_qty ?? 0);
+                const availableRelease = Number(wo.available_release_qty ?? Math.max(producedQty - releasedQty, 0));
+                const approvedQty = producedQty;
+                const qcPending = !!wo.qc_pending;
+                window.currentDrawerApprovedQty = producedQty;
+                window.currentDrawerReleasedQty = releasedQty;
+                window.currentDrawerReleaseAvailable = availableRelease;
+
+                const currentStageId = wo.current_stage_id || wo.stage_id;
+                const nextStage = getNextStageForCurrent(stages, currentStageId);
+                window.currentDrawerNextStage = nextStage;
+
+                if (hintEl && remainingEl) {
+                    remainingEl.textContent = remainingQty;
+                    const inactiveStatuses = ['completed', 'canceled', 'archived'];
+                    const canShowSplit = !inactiveStatuses.includes(wo.status) && canSplitRole && hasSplitModal;
+                    const shouldShowSplit = remainingQty > 0 && canShowSplit;
+                    if (shouldShowSplit) {
+                        hintEl.classList.remove('hidden');
+                    } else {
+                        hintEl.classList.add('hidden');
+                    }
+                    if (splitBtn) {
+                        splitBtn.disabled = !canShowSplit || remainingQty <= 0;
+                        splitBtn.classList.toggle('hidden', !canShowSplit);
+                    }
+                }
+                if (releaseHintEl && approvedEl && releasedEl && availableEl) {
+                    approvedEl.textContent = approvedQty;
+                    releasedEl.textContent = releasedQty;
+                    availableEl.textContent = availableRelease;
+                    const inactiveStatuses = ['canceled', 'archived'];
+                    const canShowRelease = !!nextStage && !inactiveStatuses.includes(wo.status) && canReleaseRole && hasReleaseModal;
+                    const shouldShowRelease = canShowRelease;
+                    const showReleaseHint = shouldShowRelease || qcPending;
+                    if (showReleaseHint) {
+                        releaseHintEl.classList.remove('hidden');
+                    } else {
+                        releaseHintEl.classList.add('hidden');
+                    }
+                    if (releaseBtn) {
+                        releaseBtn.disabled = !canShowRelease || qcPending;
+                        releaseBtn.classList.toggle('hidden', !canShowRelease);
+                    }
+                    const qcMsg = document.getElementById('drawerQcPendingMsg');
+                    if (qcMsg) {
+                        qcMsg.classList.toggle('hidden', !qcPending);
+                    }
+                }
+
+                if (window.__openReleaseAfterDrawer) {
+                    window.__openReleaseAfterDrawer = false;
+                    if (availableRelease > 0 && nextStage) {
+                        // Auto-release full available qty, then open the normal drawer
+                        fetch(`/manufacturing/api/work-order/${wo.id}/release/`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ release_quantity: availableRelease, machine_id: null })
+                        })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    if (data.new_wo_id && window.openWorkOrderModal) {
+                                        setTimeout(() => window.openWorkOrderModal(data.new_wo_id), 50);
+                                    }
+                                    if (window.initGanttChart) window.initGanttChart(true);
+                                } else {
+                                    alert(data.error || "Failed to start next stage.");
+                                }
+                            })
+                            .catch(err => {
+                                console.error(err);
+                                alert("Release Error: " + err);
+                            });
+                    }
+                }
+
+                // Populate Start Date (convert ISO to datetime-local format)
+                if (wo.start_date) {
+                    const startDate = new Date(wo.start_date);
+                    const localDateTime = new Date(startDate.getTime() - (startDate.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                    document.getElementById('drawerStartDate').value = localDateTime;
+                } else {
+                    document.getElementById('drawerStartDate').value = '';
+                }
+
+                // Populate Stages
+                const stageSelect = document.getElementById('drawerStage');
+                const stageContainer = document.getElementById('drawerStageContainer');
+                stageSelect.innerHTML = '<option value="">-- Select Stage --</option>';
+
+                if (stages.length > 0) {
+                    stageContainer.classList.remove('hidden');
+                    stages.forEach(s => {
+                        const opt = document.createElement('option');
+                        opt.value = s.id;
+                        opt.innerText = `${s.order}. ${s.name}`;
+                        stageSelect.appendChild(opt);
+                    });
+
+                    // Bind Change Event for Filtering
+                    stageSelect.onchange = function () {
+                        filterMachinesByStage(this.value);
+                    };
+                } else {
+                    stageContainer.classList.add('hidden');
+                }
+
+                // Populate Machines
+                const machSelect = document.getElementById('drawerMachine');
+                machSelect.innerHTML = '<option value="">-- Select Machine --</option>';
+                drawerMachines.forEach(m => {
+                    const isMaint = m.status === 'maintenance' || m.status === 'breakdown';
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    const typeLabel = m.type || m.category;
+                    opt.innerText = m.name + (typeLabel ? ` (${typeLabel})` : '') + (isMaint ? ' ⚠️ Maintenance' : '');
+
+                    if (isMaint) {
+                        opt.disabled = true;
+                        opt.classList.add('bg-red-50', 'text-red-500');
+                    }
+
+                    if (wo.machine_id == m.id) opt.selected = true;
+                    machSelect.appendChild(opt);
+                });
+
+                // Show Drawer
+                document.getElementById('editTaskDrawer').classList.remove('translate-x-full');
+                document.getElementById('drawerOverlay').classList.remove('hidden');
+            } else {
+                alert("API Error: " + (data.error || "Unknown"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Script Error: " + err);
+    });
+};
+
+window.openWorkOrderForRelease = function (woId, presetQty = null) {
+    if (presetQty !== null && presetQty !== undefined) {
+        window.__releasePresetQty = Number(presetQty);
+    } else {
+        window.__releasePresetQty = null;
+    }
+    window.__openReleaseAfterDrawer = true;
+    window.openWorkOrderModal(woId);
+};
+
+// Quick start next stage: release full available qty, then open the normal edit panel
+window.startNextStageNow = function (woId, availableQty) {
+    const qty = Number(availableQty || 0);
+    if (!woId || qty <= 0) {
+        alert("No available quantity to release.");
+        return;
+    }
+
+    fetch(`/manufacturing/api/work-order/${woId}/release/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ release_quantity: qty, machine_id: null })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (data.new_wo_id && window.openWorkOrderModal) {
+                    setTimeout(() => {
+                        window.openWorkOrderModal(data.new_wo_id);
+                    }, 50);
+                }
+                if (window.initGanttChart) window.initGanttChart(true);
+            } else {
+                alert(data.error || "Failed to start next stage.");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Release Error: " + err);
+        });
+};
+
+// --- SPLIT LOGIC ---
+window.openSplitModal = function () {
+    if (!window.currentDrawerWO) return;
+
+    const wo = window.currentDrawerWO;
+    const remainingQty = window.currentDrawerRemainingQty;
+    const currentQty = Number.isFinite(remainingQty) ? remainingQty : wo.quantity;
+    document.getElementById('splitOriginalId').value = wo.id;
+    document.getElementById('splitCurrentQty').innerText = currentQty;
+    document.getElementById('splitProductName').innerText = wo.product_name;
+    document.getElementById('splitQtyInput').value = '';
+    document.getElementById('splitQtyInput').max = Math.max(currentQty - 1, 1);
+    document.getElementById('splitQtyDisplay').innerText = '0';
+    document.getElementById('btnConfirmSplit').disabled = true;
+    document.getElementById('splitQtyError').classList.add('hidden');
+
+    // Populate Split Machine Select (Exclude current if needed? Or allow same?)
+    // Usually split to DIFFERENT machine.
+    const splitMachSelect = document.getElementById('splitMachineSelect');
+    splitMachSelect.innerHTML = '<option value="">-- Select Target Machine --</option>';
+    const drawerMachines = getDrawerMachines();
+    const requiredType = getCurrentStageRequiredType(wo, window.currentDrawerStages || []);
+    let filteredMachines = drawerMachines;
+    if (requiredType) {
+        const matches = drawerMachines.filter(m => machineMatchesRequiredType(m, requiredType));
+        if (matches.length > 0) {
+            filteredMachines = matches;
+        }
+    }
+    filteredMachines.forEach(m => {
+        // Exclude current check logic if desired?
+        // if (m.id == wo.machine_id) return;
+
+        const isMaint = m.status === 'maintenance' || m.status === 'breakdown';
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        const typeLabel = m.type || m.category;
+        opt.innerText = m.name + (typeLabel ? ` (${typeLabel})` : '') + (isMaint ? ' ⚠️ Maintenance' : '');
+
+        if (isMaint) {
+            opt.disabled = true;
+            opt.classList.add('bg-red-50', 'text-red-500');
+        }
+
+        splitMachSelect.appendChild(opt);
+    });
+
+    document.getElementById('splitModal').classList.remove('hidden', 'pointer-events-none');
+    document.getElementById('splitModalOverlay').classList.remove('hidden');
+
+    // Small delay for animation
+    setTimeout(() => {
+        document.getElementById('splitModalContent').classList.remove('scale-95', 'opacity-0');
+    }, 10);
+};
+
+window.closeSplitModal = function () {
+    document.getElementById('splitModalContent').classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        document.getElementById('splitModal').classList.add('hidden', 'pointer-events-none');
+        document.getElementById('splitModalOverlay').classList.add('hidden');
+    }, 300);
+};
+
+window.validateSplit = function () {
+    const input = document.getElementById('splitQtyInput');
+    const qty = parseInt(input.value) || 0;
+    const fallbackQty = window.currentDrawerWO ? window.currentDrawerWO.quantity : 0;
+    const currentQty = Number.isFinite(window.currentDrawerRemainingQty)
+        ? window.currentDrawerRemainingQty
+        : fallbackQty;
+    const btn = document.getElementById('btnConfirmSplit');
+    const errorMsg = document.getElementById('splitQtyError');
+    const display = document.getElementById('splitQtyDisplay');
+
+    display.innerText = qty;
+
+    if (qty <= 0) {
+        btn.disabled = true;
+        return;
+    }
+
+    if (qty >= currentQty) {
+        errorMsg.classList.remove('hidden');
+        btn.disabled = true;
+    } else {
+        errorMsg.classList.add('hidden');
+        btn.disabled = false;
+    }
+};
+
+window.confirmSplit = function () {
+    const woId = document.getElementById('splitOriginalId').value;
+    const qty = document.getElementById('splitQtyInput').value;
+    const machineId = document.getElementById('splitMachineSelect').value;
+
+    if (!machineId) {
+        alert("Please select a target machine");
+        return;
+    }
+
+    const btn = document.getElementById('btnConfirmSplit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Splitting...';
+
+    fetch(`/manufacturing/api/work-order/${woId}/split/`, {
+        method: 'POST',
+        body: JSON.stringify({
+            split_quantity: qty,
+            machine_id: machineId,
+            setup_time: document.getElementById('splitSetupTime').value || 0,
+            time_per_unit: document.getElementById('splitTimePerUnit').value || 0
+        })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Success!
+                window.closeSplitModal();
+                window.closeEditDrawer(); // Close parent drawer too
+                window.initGanttChart(true); // Refresh timeline
+                // alert("Split Successful!");
+            } else {
+                alert("Error: " + data.error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph ph-arrows-split"></i> Confirm Split';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Network Error");
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph ph-arrows-split"></i> Confirm Split';
+        });
+};
+
+// --- RELEASE TO NEXT STAGE LOGIC ---
+window.openReleaseModal = function () {
+    if (!window.currentDrawerWO) { alert("Debug: Global currentDrawerWO is missing!"); return; }
+    const availableQty = Number(window.currentDrawerReleaseAvailable || 0);
+    const nextStage = window.currentDrawerNextStage;
+    if (!nextStage) {
+        alert("No next stage available.");
+        return;
+    }
+
+    const wo = window.currentDrawerWO;
+    document.getElementById('releaseOriginalId').value = wo.id;
+    document.getElementById('releaseNextStageName').innerText = nextStage.name || 'Next Stage';
+    document.getElementById('releaseApprovedQty').innerText = window.currentDrawerApprovedQty || 0;
+    document.getElementById('releaseAlreadyQty').innerText = window.currentDrawerReleasedQty || 0;
+    document.getElementById('releaseAvailableQty').innerText = availableQty;
+
+    const qtyInput = document.getElementById('releaseQtyInput');
+    qtyInput.value = '';
+    qtyInput.max = availableQty;
+    document.getElementById('releaseQtyDisplay').innerText = '0';
+    document.getElementById('btnConfirmRelease').disabled = true;
+    const errEl = document.getElementById('releaseQtyError');
+    if (availableQty <= 0) {
+        errEl.classList.remove('hidden');
+        errEl.textContent = 'No approved quantity available to release.';
+    } else {
+        errEl.classList.add('hidden');
+        errEl.textContent = 'Quantity exceeds available output.';
+    }
+
+    const machineSelect = document.getElementById('releaseMachineSelect');
+    machineSelect.innerHTML = '<option value="">-- Unassigned --</option>';
+    const drawerMachines = getDrawerMachines();
+    const requiredType = nextStage.machine_type || '';
+    const filteredMachines = requiredType
+        ? drawerMachines.filter(m => machineMatchesRequiredType(m, requiredType))
+        : drawerMachines;
+    filteredMachines.forEach(m => {
+        const isMaint = m.status === 'maintenance' || m.status === 'breakdown';
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        const typeLabel = m.type || m.category;
+        opt.innerText = m.name + (typeLabel ? ` (${typeLabel})` : '') + (isMaint ? ' ⚠️ Maintenance' : '');
+        if (isMaint) {
+            opt.disabled = true;
+            opt.classList.add('bg-red-50', 'text-red-500');
+        }
+        machineSelect.appendChild(opt);
+    });
+
+    document.getElementById('releaseModal').classList.remove('hidden', 'pointer-events-none');
+    document.getElementById('releaseModalOverlay').classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('releaseModalContent').classList.remove('scale-95', 'opacity-0');
+    }, 10);
+
+    if (window.__releasePresetQty !== null && window.__releasePresetQty !== undefined) {
+        const preset = Number(window.__releasePresetQty);
+        if (qtyInput && preset > 0) {
+            qtyInput.value = preset;
+            if (typeof window.validateRelease === 'function') {
+                window.validateRelease();
+            }
+        }
+        window.__releasePresetQty = null;
+    }
+};
+
+window.closeReleaseModal = function () {
+    document.getElementById('releaseModalContent').classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        document.getElementById('releaseModal').classList.add('hidden', 'pointer-events-none');
+        document.getElementById('releaseModalOverlay').classList.add('hidden');
+    }, 300);
+};
+
+window.validateRelease = function () {
+    const input = document.getElementById('releaseQtyInput');
+    const qty = parseInt(input.value) || 0;
+    const availableQty = Number(window.currentDrawerReleaseAvailable || 0);
+    const btn = document.getElementById('btnConfirmRelease');
+    const errorMsg = document.getElementById('releaseQtyError');
+    const display = document.getElementById('releaseQtyDisplay');
+
+    display.innerText = qty;
+
+    if (qty <= 0) {
+        btn.disabled = true;
+        return;
+    }
+    if (qty > availableQty) {
+        errorMsg.classList.remove('hidden');
+        btn.disabled = true;
+        return;
+    }
+    errorMsg.classList.add('hidden');
+    btn.disabled = false;
+};
+
+window.confirmRelease = function () {
+    const woId = document.getElementById('releaseOriginalId').value;
+    const qty = document.getElementById('releaseQtyInput').value;
+    const machineId = document.getElementById('releaseMachineSelect').value;
+
+    if (!woId || !qty) return;
+
+    const btn = document.getElementById('btnConfirmRelease');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Releasing...';
+
+    fetch(`/manufacturing/api/work-order/${woId}/release/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            release_quantity: qty,
+            machine_id: machineId || null
+        })
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.closeReleaseModal();
+                if (data.new_wo_id && window.openWorkOrderModal) {
+                    setTimeout(() => {
+                        window.openWorkOrderModal(data.new_wo_id);
+                    }, 50);
+                }
+                window.initGanttChart(true);
+            } else {
+                alert(data.error || "Failed to release to next stage.");
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Release Error: " + err);
+        })
+        .finally(() => {
+            btn.innerHTML = '<i class="ph ph-arrow-right"></i> Release';
+            btn.disabled = false;
+        });
+};
+
+
+window.openEditSheet = function (taskId) {
+    // Re-use openWorkOrderModal if it's the same ID logic
+    // But tasksCache might have different ID format?
+    // Tasks on timeline usually map to WO ID.
+    window.openWorkOrderModal(taskId);
+};
+
+window.closeEditDrawer = function () {
+    document.getElementById('editTaskDrawer').classList.add('translate-x-full');
+    document.getElementById('drawerOverlay').classList.add('hidden');
+};
+
+window.saveTaskChanges = function () {
+    const woId = document.getElementById('drawerTaskId').value;
+    const machineId = document.getElementById('drawerMachine').value;
+    const stageId = document.getElementById('drawerStage').value;
+    const status = document.getElementById('drawerStatus').value;
+    const quantity = document.getElementById('drawerQuantity').value;
+    const priority = document.getElementById('drawerPriority').value;
+    const startDate = document.getElementById('drawerStartDate').value;
+
+    // Validate: At least one field should be changed
+    if (!machineId && !status && !quantity && !priority && !startDate && !stageId) {
+        alert("Please make at least one change before saving.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('wo_id', woId);
+    if (machineId) formData.append('machine_id', machineId);
+    if (stageId) formData.append('stage_id', stageId);
+    if (status) formData.append('status', status);
+    if (quantity) formData.append('quantity', quantity);
+    if (priority) formData.append('priority', priority);
+    if (startDate) formData.append('start_date', startDate);
+
+    fetch('/manufacturing/api/assign-wo/', {
+        method: 'POST',
+        body: formData
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // alert("Assigned successfully!");
+                window.closeEditDrawer();
+                // Refresh Timeline to show new task
+                window.initGanttChart(true);
+            } else {
+                alert("Error: " + data.error);
+            }
+        })
+        .catch(err => console.error(err));
+};
+
+window.deleteTaskFromSchedule = function () {
+    const id = document.getElementById('drawerTaskId').value;
+    const idx = tasksCache.findIndex(t => t.id == id);
+    if (idx > -1) {
+        if (confirm("Are you sure you want to remove this task from the schedule? It will move back to Pending.")) {
+            // In real app, update backend status to 'pending' and nullify machine
+            tasksCache.splice(idx, 1);
+            renderTimeline();
+            closeEditDrawer();
+        }
+    }
+};
+
+
+function handleRowDrop(e, machineId, rowElem, startHour, hourCount) {
+    e.preventDefault();
+    rowElem.classList.remove('bg-blue-50');
+
+    try {
+        const rawData = e.dataTransfer.getData('text/plain');
+        if (!rawData) return;
+        const data = JSON.parse(rawData);
+
+        // Calculate Time
+        const rect = rowElem.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left - 200; // Account for Machine Info col
+        const gridWidth = rect.width - 200;
+
+        if (offsetX < 0) return;
+
+        const pct = offsetX / gridWidth;
+        const totalHours = hourCount;
+        const hoursOffset = pct * totalHours;
+
+        const droppedHour = startHour + Math.floor(hoursOffset);
+        const droppedMin = Math.floor((hoursOffset % 1) * 60);
+
+        const dropDate = new Date(); // Timeline usually shows *Today*
+        // Ideally we should use the date from the timeline header (which is currently just current day)
+        // For now, assume today.
+        dropDate.setHours(droppedHour, droppedMin, 0, 0);
+
+        // Calculate End Date (+1 Hour Default)
+        const endDate = new Date(dropDate);
+        endDate.setHours(dropDate.getHours() + 1);
+
+        // Optimistic UI Update
+        const tempId = 'temp-' + Date.now();
+        const optimisticTask = {
+            id: tempId,
+            machine_id: machineId,
+            product: data.content,
+            start: dropDate.toISOString(),
+            end: endDate.toISOString(),
+            status: 'in_progress',
+            progress: 0
+        };
+        tasksCache.push(optimisticTask);
+        renderTimeline();
+
+        // API Call to Persist
+        const formData = new FormData();
+        formData.append('id', data.id);
+        formData.append('machine_id', machineId);
+        formData.append('status', 'in_progress');
+        formData.append('start_date', dropDate.toISOString());
+        formData.append('end_date', endDate.toISOString());
+
+        fetch('/manufacturing/api/work-order/' + data.id + '/update/', {
+            method: 'POST',
+            body: formData
+        })
+            .then(res => res.json())
+            .then(resp => {
+                if (resp.success) {
+                    // Remove optimistic, Fetch fresh
+                    // window.initGanttChart(true); // This might be jarring.
+                    // Better: Just leave it until next refresh?
+                    // Or update the ID of the optimistic task?
+                    window.initGanttChart(true);
+                } else {
+                    alert("Save Failed: " + resp.error);
+                    // Revert
+                    const idx = tasksCache.indexOf(optimisticTask);
+                    if (idx > -1) tasksCache.splice(idx, 1);
+                    renderTimeline();
+                }
+            })
+            .catch(err => {
+                alert("Network Error saving task.");
+                const idx = tasksCache.indexOf(optimisticTask);
+                if (idx > -1) tasksCache.splice(idx, 1);
+                renderTimeline();
+            });
+
+    } catch (err) {
+        console.error("Drop failed", err);
+    }
+}
+
+// Auto-Init on Load
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.initGanttChart === 'function') {
+        window.initGanttChart();
+    }
+});
+
+
+function filterMachinesByStage(stageId) {
+    const machSelect = document.getElementById('drawerMachine');
+    if (!machSelect) return;
+
+    // 1. Reset: Show all options first
+    Array.from(machSelect.options).forEach(opt => opt.hidden = false);
+
+    if (!stageId) return; // No stage selected -> Show all
+
+    // 2. Find selected stage data
+    const stages = Array.isArray(window.currentDrawerStages) ? window.currentDrawerStages : [];
+    const stage = stages.find(s => s.id == stageId);
+    if (!stage || !stage.machine_type) return; // No type restriction
+
+    const requiredType = String(stage.machine_type || "").toLowerCase().trim();
+    console.log(`Filtering machines for Stage: ${stage.name} (Type: ${requiredType})`);
+
+    // 3. Filter options
+    const availableMachines = getDrawerMachines();
+    let visibleCount = 0;
+    Array.from(machSelect.options).forEach(opt => {
+        if (!opt.value) return; // Skip placeholder
+
+        const machine = availableMachines.find(m => m.id == opt.value);
+        if (machine) {
+            const matches = machineMatchesRequiredType(machine, requiredType);
+            if (!matches) {
+                opt.hidden = true;
+            } else {
+                visibleCount += 1;
+            }
+        }
+    });
+
+    if (visibleCount === 0) {
+        console.warn(`No machines matched type "${requiredType}". Showing all machines as fallback.`);
+        Array.from(machSelect.options).forEach(opt => opt.hidden = false);
+    }
+
+    // 4. Reset selection if current selection is now hidden
+    if (machSelect.selectedOptions[0].hidden) {
+        machSelect.value = "";
+    }
+}
+
+
+// --- Helper: CSRF Token ---
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// --- Planner Actions ---
+window.closePlannerAction = async function (woId) {
+    // Prevent event bubbling if called from a card
+    if (window.event) window.event.stopPropagation();
+
+    if (!confirm("Are you sure you want to close this Work Order?")) return;
+
+    try {
+        const res = await fetch(`/manufacturing/api/work-order/${woId}/close/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!res.ok) throw new Error("Request failed");
+
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert("Error closing order: " + (data.error || "Unknown error"));
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Network error or server failed to respond.");
+    }
+};

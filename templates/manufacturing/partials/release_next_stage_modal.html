@@ -1,0 +1,72 @@
+<!-- Release to Next Stage Modal -->
+<div id="releaseModalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] hidden transition-opacity"
+    onclick="closeReleaseModal()"></div>
+
+<div id="releaseModal" class="fixed inset-0 z-[130] flex items-center justify-center p-4 hidden pointer-events-none">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all duration-300 scale-95 opacity-0"
+        id="releaseModalContent">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <i class="ph ph-arrow-right text-emerald-600"></i> Release to Next Stage
+            </h3>
+            <button onclick="closeReleaseModal()" type="button"
+                class="p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <i class="ph ph-x text-slate-500"></i>
+            </button>
+        </div>
+
+        <div class="p-5 space-y-4">
+            <input type="hidden" id="releaseOriginalId">
+
+            <div class="p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                <div class="text-xs text-emerald-700 font-semibold">Next Stage</div>
+                <div id="releaseNextStageName" class="text-sm font-bold text-emerald-900">-</div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <div class="text-[10px] text-slate-500 font-semibold uppercase">Produced</div>
+                    <div id="releaseApprovedQty" class="text-lg font-bold text-slate-800">0</div>
+                </div>
+                <div class="p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <div class="text-[10px] text-slate-500 font-semibold uppercase">Released</div>
+                    <div id="releaseAlreadyQty" class="text-lg font-bold text-slate-800">0</div>
+                </div>
+                <div class="p-2 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <div class="text-[10px] text-emerald-700 font-semibold uppercase">Available</div>
+                    <div id="releaseAvailableQty" class="text-lg font-bold text-emerald-800">0</div>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold text-slate-600">Release Quantity</label>
+                <input type="number" id="releaseQtyInput" min="1"
+                    class="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="Enter quantity..." oninput="validateRelease()">
+                <div class="text-xs text-red-500 mt-1 hidden" id="releaseQtyError">Quantity exceeds available output.</div>
+            </div>
+
+            <div>
+                <label class="text-xs font-bold text-slate-600">Assign Machine (optional)</label>
+                <select id="releaseMachineSelect"
+                    class="w-full mt-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+                    <option value="">-- Unassigned --</option>
+                </select>
+            </div>
+
+            <div class="text-xs text-slate-500">
+                You will release <span id="releaseQtyDisplay" class="font-bold text-emerald-700">0</span> units to the next stage.
+            </div>
+        </div>
+
+        <div class="p-5 border-t border-slate-100 flex gap-3">
+            <button onclick="closeReleaseModal()" class="flex-1 px-4 py-2 text-sm text-slate-600 bg-white hover:bg-slate-100 rounded-lg font-semibold border border-slate-200 transition">
+                Cancel
+            </button>
+            <button onclick="confirmRelease()" id="btnConfirmRelease" disabled
+                class="flex-1 px-4 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg font-bold shadow-md transition disabled:opacity-50">
+                <i class="ph ph-arrow-right"></i> Release
+            </button>
+        </div>
+    </div>
+</div>

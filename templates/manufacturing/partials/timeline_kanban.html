@@ -1,0 +1,118 @@
+{% load tenant_i18n %}
+<div class="flex gap-6 min-w-max min-h-[360px]" x-data="kanbanBoard()">
+    <!-- COLUMNS -->
+    <template x-for="column in columns" :key="column.id">
+        <div class="flex flex-col w-80 bg-slate-50 border border-slate-200 rounded-xl shadow-sm">
+            <!-- Header -->
+            <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-xl">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full" :class="column.color"></span>
+                    <h4 class="font-bold text-slate-700 text-sm" x-text="column.title"></h4>
+                </div>
+                <span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold"
+                    x-text="getTasks(column.id).length"></span>
+            </div>
+
+            <!-- Task List -->
+            <div class="flex-1 overflow-y-auto p-3 space-y-3">
+                <template x-for="task in getTasks(column.id)" :key="task.id">
+                    <div
+                        class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-move group">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="font-bold text-slate-800 text-sm leading-tight" x-text="task.product"></span>
+                            <span class="text-[10px] text-slate-400 font-mono">#<span x-text="task.id"></span></span>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-50">
+                            <div class="flex items-center gap-1">
+                                <template x-if="task.machine_id">
+                                    <span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium"
+                                        x-text="getMachineName(task.machine_id)"></span>
+                                </template>
+                            </div>
+                            <template x-if="task.start">
+                                <span class="text-[10px] text-slate-400" x-text="formatDate(task.start)"></span>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Empty State -->
+                <div x-show="getTasks(column.id).length === 0" class="text-center py-8 opacity-50">
+                    <div class="text-2xl mb-1">📭</div>
+                    <span class="text-xs font-medium text-slate-400">{% tenant_trans "No tasks" %}</span>
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+
+<script>
+    (function registerKanbanBoard() {
+        const register = () => Alpine.data('kanbanBoard', () => ({
+            tasks: [],
+            machines: [],
+            columns: [
+                { id: 'pending', title: '{% tenant_trans "Scheduled" %}', color: 'bg-amber-400' },
+                { id: 'active', title: '{% tenant_trans "In Progress" %}', color: 'bg-blue-500' },
+                { id: 'complete', title: '{% tenant_trans "Completed" %}', color: 'bg-emerald-500' }
+            ],
+            init() {
+                this.refreshData();
+                window.addEventListener('planner-refresh-kanban', () => this.refreshData());
+            },
+            refreshData() {
+                // Load data from global scripts injected in planner_dashboard
+                try {
+                    const tasksEl = document.getElementById('data-tasks');
+                    const machinesEl = document.getElementById('data-machines');
+                    if (tasksEl) this.tasks = JSON.parse(tasksEl.textContent);
+                    if (machinesEl) this.machines = JSON.parse(machinesEl.textContent);
+                } catch (e) {
+                    console.error("Kanban Data Error", e);
+                }
+            },
+            getTasks(statusId) {
+                const searchInput = document.getElementById('globalSmartSearch');
+                const query = searchInput ? searchInput.value.toLowerCase() : '';
+
+                return this.tasks.filter(t => {
+                    if (t.status === 'canceled' || t.status === 'archived') return false;
+
+                    // Search Filter
+                    if (query) {
+                        const match = (t.product && t.product.toLowerCase().includes(query)) ||
+                            (t.id && String(t.id).includes(query));
+                        if (!match) return false;
+                    }
+
+                    // Map timeline statuses to columns (Synced with timeline.js)
+                    if (statusId === 'pending') {
+                        return !t.start || ['pending', 'draft', 'planned', 'scheduled'].includes(t.status);
+                    }
+                    if (statusId === 'active') {
+                        return (t.start || t.status === 'in_progress' || t.status === 'active' || t.status === 'on_hold') &&
+                            !['completed', 'done', 'pending', 'draft'].includes(t.status);
+                    }
+                    if (statusId === 'complete') {
+                        return ['completed', 'done'].includes(t.status);
+                    }
+                    return false;
+                });
+            },
+            getMachineName(id) {
+                const m = this.machines.find(x => x.id == id);
+                return m ? (m.name || m.content) : 'Machine #' + id;
+            },
+            formatDate(dateStr) {
+                if (!dateStr) return '';
+                return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            }
+        }));
+        if (window.Alpine) {
+            register();
+        } else {
+            document.addEventListener('alpine:init', register);
+        }
+    })();
+</script>

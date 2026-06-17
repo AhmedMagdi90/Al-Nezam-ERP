@@ -1,0 +1,65 @@
+<dialog id="machineFaultModal" class="modal bg-transparent p-0 overflow-visible group">
+    <div class="bg-white rounded-[40px] shadow-2xl w-full max-w-lg mx-auto relative overflow-hidden animate-fade-in-up">
+        <!-- Header -->
+        <div class="bg-rose-500 p-8 text-white relative">
+            <h3 class="text-3xl font-black mb-1">Report Machine Fault</h3>
+            <p class="text-rose-100 font-medium">This will stop production and notify maintenance.</p>
+            <div class="absolute -bottom-6 -right-6 text-9xl opacity-10">
+                <i class="ph ph-warning"></i>
+            </div>
+        </div>
+
+        <form method="POST" action="{% url 'maintenance_dashboard' %}" class="p-8 space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+
+            <div>
+                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Which
+                    Machine?</label>
+                <select name="machine_id" required
+                    class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-rose-100 focus:border-rose-400 transition-all outline-none">
+                    <option value="">Select a Machine...</option>
+                    {% for m in machines %}
+                    <option value="{{ m.id }}">{{ m.name }} ({{ m.code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Impact
+                    Level</label>
+                <select name="status" required
+                    class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 focus:ring-4 focus:ring-rose-100 focus:border-rose-400 transition-all outline-none">
+                    <option value="maintenance">Minor Issue (Requires Maintenance)</option>
+                    <option value="broken" selected>Breakdown (Production Stopped)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Fault
+                    Description</label>
+                <textarea name="note" required placeholder="What happened? (e.g., Motor overheating, Belt snapped...)"
+                    class="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 h-32 focus:ring-4 focus:ring-rose-100 focus:border-rose-400 transition-all outline-none"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-4">
+                <button type="button" onclick="document.getElementById('machineFaultModal').close()"
+                    class="py-4 rounded-2xl font-black text-slate-400 hover:bg-slate-50 transition-colors uppercase text-sm tracking-widest">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-black shadow-xl shadow-rose-200 transition-all hover:-translate-y-1 uppercase text-sm tracking-widest">
+                    Send Alert
+                </button>
+            </div>
+        </form>
+    </div>
+</dialog>
+
+<style>
+    /* Backdrop styling for native <dialog> */
+    #machineFaultModal::backdrop {
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+    }
+</style>

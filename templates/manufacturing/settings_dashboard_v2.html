@@ -1,0 +1,2087 @@
+﻿{% extends "manufacturing/base_dashboard.html" %}
+{% load static i18n tenant_i18n %}
+
+{% block title %}System Settings - Nezam{% endblock %}
+{% block top_nav %}
+{% if settings_scope == 'quality' %}
+<header id="app-top-nav" class="hidden h-16 bg-white border-b border-slate-200 items-center justify-between px-6 flex-shrink-0 z-50">
+    <div class="flex items-center gap-4">
+        {% if company and company.logo %}
+        <img src="{{ company.logo.url }}" alt="{{ company.name|default:'Company' }} logo"
+            class="w-10 h-10 rounded-xl object-cover shadow-lg">
+        {% else %}
+        <div
+            class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-fuchsia-500 flex items-center justify-center text-white font-bold shadow-lg">
+            {{ company.name|default:"Company"|slice:":1"|upper }}
+        </div>
+        {% endif %}
+        <div class="hidden md:flex flex-col">
+            <span class="text-sm font-black text-slate-800 leading-none">{{ company.name|default:"Company" }}</span>
+            <span class="text-[11px] text-slate-500 font-semibold">{% tenant_trans "Quality Settings" %}</span>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+        <a href="{% url 'quality_check' %}"
+            class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+            <i class="ph ph-arrow-left"></i> {% tenant_trans "Back to Quality" %}
+        </a>
+        <a href="{% url 'logout' %}"
+            class="px-4 py-2 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2">
+            <i class="ph ph-sign-out"></i> {% tenant_trans "Sign Out" %}
+        </a>
+    </div>
+</header>
+{% elif settings_scope == 'maintenance' %}
+<header id="app-top-nav" class="hidden h-16 bg-white border-b border-slate-200 items-center justify-between px-6 flex-shrink-0 z-50">
+    <div class="flex items-center gap-4">
+        {% if company and company.logo %}
+        <img src="{{ company.logo.url }}" alt="{{ company.name|default:'Company' }} logo"
+            class="w-10 h-10 rounded-xl object-cover shadow-lg">
+        {% else %}
+        <div
+            class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-fuchsia-500 flex items-center justify-center text-white font-bold shadow-lg">
+            {{ company.name|default:"Company"|slice:":1"|upper }}
+        </div>
+        {% endif %}
+        <div class="hidden md:flex flex-col">
+            <span class="text-sm font-black text-slate-800 leading-none">{{ company.name|default:"Company" }}</span>
+            <span class="text-[11px] text-slate-500 font-semibold">{% tenant_trans "Maintenance Settings" %}</span>
+        </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+        <a href="{% url 'maintenance_dashboard' %}{% if current_role_name == 'planner' %}?mode=planner{% endif %}"
+            class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-2">
+            <i class="ph ph-arrow-left"></i> {% tenant_trans "Back to Maintenance" %}
+        </a>
+        <a href="{% url 'logout' %}"
+            class="px-4 py-2 rounded-xl border border-red-200 text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2">
+            <i class="ph ph-sign-out"></i> {% tenant_trans "Sign Out" %}
+        </a>
+    </div>
+</header>
+{% else %}
+<header id="app-top-nav" class="hidden min-h-[84px] bg-white/95 backdrop-blur border-b border-slate-200 items-center justify-between gap-3 px-5 xl:px-6 py-3 flex-shrink-0 z-50">
+    <div class="flex items-center gap-2.5 min-w-0 shrink">
+        {% if company and company.logo %}
+        <img src="{{ company.logo.url }}" alt="{{ company.name|default:'Company' }} logo"
+            class="w-8 h-8 rounded-xl object-cover shadow-md">
+        {% else %}
+        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-cyan-500 to-fuchsia-500 flex items-center justify-center text-white font-bold shadow-md">
+            {{ company.name|default:"Company"|slice:":1"|upper }}
+        </div>
+        {% endif %}
+        <div class="hidden xl:flex items-center gap-2 min-w-0 leading-none whitespace-nowrap">
+            <span class="text-sm font-black text-slate-900 truncate">{{ company.name|default:"Company" }}</span>
+            <span class="text-[10px] text-slate-500 font-semibold truncate">{% tenant_trans "Manufacturing Suite" %}</span>
+        </div>
+    </div>
+
+    <nav class="flex-1 min-w-0 flex justify-center px-2 xl:px-4">
+        <div class="flex max-w-[760px] 2xl:max-w-[820px] w-full items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2 py-2 overflow-x-auto shadow-sm custom-scrollbar">
+            <a href="{% with role=current_role_name|default:'' %}{% if role == 'supervisor' %}{% url 'supervisor_dashboard' %}{% elif role == 'worker' %}{% url 'record_output' %}{% elif role == 'quality' %}{% url 'quality_check' %}{% elif role == 'maintenance' %}{% url 'maintenance_dashboard' %}{% elif role == 'store' %}{% url 'store_dashboard' %}{% else %}{% url 'dashboard' %}{% endif %}{% endwith %}"
+                class="px-2 xl:px-2.5 py-1.5 rounded-full text-[11px] xl:text-[12px] font-semibold flex items-center gap-1.5 transition text-slate-600 hover:bg-white hover:text-slate-900 whitespace-nowrap">
+                <i class="ph ph-factory text-sm"></i> {% tenant_trans "Manufacturing" %}
+            </a>
+            <a href="{% url 'factory_setup' %}"
+                class="px-2 xl:px-2.5 py-1.5 rounded-full text-[11px] xl:text-[12px] font-semibold flex items-center gap-1.5 transition text-slate-600 hover:bg-white hover:text-slate-900 whitespace-nowrap">
+                <i class="ph ph-wrench text-sm"></i> {% tenant_trans "Factory Setup" %}
+            </a>
+            {% with role=current_role_name|default:'' %}
+            <a href="{% url 'quality_check' %}{% if role == 'planner' or planner_nav_mode or '/manufacturing/dashboard' in request.path or '/manufacturing/planner' in request.path %}?mode=planner{% endif %}"
+                class="px-2 xl:px-2.5 py-1.5 rounded-full text-[11px] xl:text-[12px] font-semibold flex items-center gap-1.5 transition text-slate-600 hover:bg-white hover:text-slate-900 whitespace-nowrap">
+                <i class="ph ph-check-circle text-sm"></i> {% tenant_trans "Quality" %}
+            </a>
+            <a href="{% url 'maintenance_dashboard' %}{% if role == 'planner' or planner_nav_mode or '/manufacturing/dashboard' in request.path or '/manufacturing/planner' in request.path %}?mode=planner{% endif %}"
+                class="px-2 xl:px-2.5 py-1.5 rounded-full text-[11px] xl:text-[12px] font-semibold flex items-center gap-1.5 transition text-slate-600 hover:bg-white hover:text-slate-900 whitespace-nowrap">
+                <i class="ph ph-wrench-screwdriver text-sm"></i> {% tenant_trans "Maintenance" %}
+            </a>
+            {% endwith %}
+            <a href="{% url 'reports_dashboard' %}"
+                class="px-2 xl:px-2.5 py-1.5 rounded-full text-[11px] xl:text-[12px] font-semibold flex items-center gap-1.5 transition text-slate-600 hover:bg-white hover:text-slate-900 whitespace-nowrap">
+                <i class="ph ph-chart-bar text-sm"></i> {% tenant_trans "Reports Center" %}
+            </a>
+        </div>
+    </nav>
+
+    <div class="flex items-center gap-1.5 shrink-0 self-center">
+        <div class="flex items-center">
+            {% include "manufacturing/partials/language_switcher.html" with language_switcher_id="settings-language-switcher" %}
+        </div>
+        <a href="{% url 'settings_dashboard' %}"
+            class="h-10 px-2.5 xl:px-3 rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white text-[12px] xl:text-[13px] font-semibold shadow-[0_14px_26px_-18px_rgba(217,70,239,0.55)] inline-flex items-center gap-2 whitespace-nowrap align-middle">
+            <i class="ph ph-gear text-sm"></i> {% tenant_trans "Settings" %}
+        </a>
+        <a href="{% url 'logout' %}"
+            class="h-10 px-2.5 xl:px-3 rounded-xl border border-red-200 text-[12px] xl:text-[13px] font-semibold text-red-600 hover:bg-red-50 inline-flex items-center gap-2 whitespace-nowrap align-middle">
+            <i class="ph ph-sign-out text-sm"></i> {% tenant_trans "Sign Out" %}
+        </a>
+    </div>
+</header>
+{% endif %}
+{% endblock %}
+
+{% block app_header %}{% endblock %}
+
+{% block content %}
+<div class="h-full flex flex-col relative overflow-hidden" x-data="{ 
+    activeTab: '{{ active_tab|default:'general' }}',
+    showInviteModal: {% if request.GET.member_modal == 'invite' %}true{% else %}false{% endif %},
+    showEditMemberModal: false,
+    teamSearch: '',
+    teamRoleFilter: 'all',
+    teamStatusFilter: 'all',
+    translationQuery: '',
+    editMember: {
+        id: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        newPassword: '',
+        confirmPassword: '',
+        departments: [],
+        roleId: '',
+        shift: '',
+        workerModeEnabled: false
+    },
+    roleNameMap: {
+        {% for role in available_roles %}
+        '{{ role.id }}': '{{ role.name|lower|escapejs }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    },
+    isSupervisorRole(roleId) {
+        return (this.roleNameMap[String(roleId)] || '') === 'supervisor';
+    },
+    isPlannerRole(roleId) {
+        return (this.roleNameMap[String(roleId)] || '') === 'planner';
+    },
+    isStoreRole(roleId) {
+        return (this.roleNameMap[String(roleId)] || '') === 'store';
+    },
+    roleNeedsCoverage(roleId) {
+        return !!roleId && !this.isPlannerRole(roleId) && !this.isStoreRole(roleId);
+    },
+    matchesTeamMember(name, contact, role, status) {
+        const query = String(this.teamSearch || '').trim().toLowerCase();
+        const haystack = `${name || ''} ${contact || ''} ${role || ''}`.toLowerCase();
+        const roleValue = String(role || '').toLowerCase();
+        const statusValue = String(status || '').toLowerCase();
+        const roleOk = this.teamRoleFilter === 'all' || roleValue === this.teamRoleFilter;
+        const statusOk = this.teamStatusFilter === 'all' || statusValue === this.teamStatusFilter;
+        return roleOk && statusOk && (!query || haystack.includes(query));
+    },
+    splitDepartmentValues(raw) {
+        if (!raw) return [];
+        const seen = new Set();
+        return String(raw)
+            .split(/[\n;]+/)
+            .map(item => item.trim())
+            .filter(Boolean)
+            .filter(item => {
+                const key = item.toLowerCase();
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+    },
+    openEditMember(member) {
+        this.editMember = {
+            id: member.id || '',
+            firstName: member.firstName || '',
+            lastName: member.lastName || '',
+            email: member.email || '',
+            phone: member.phone || '',
+            newPassword: '',
+            confirmPassword: '',
+            departments: this.splitDepartmentValues(member.departmentRaw || ''),
+            roleId: member.roleId || '',
+            shift: member.shift || '',
+            workerModeEnabled: !!member.workerModeEnabled
+        };
+        this.showEditMemberModal = true;
+    },
+    closeEditMember() {
+        this.showEditMemberModal = false;
+        this.editMember = {
+            id: '',
+            firstName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            newPassword: '',
+            confirmPassword: '',
+            departments: [],
+            roleId: '',
+            shift: '',
+            workerModeEnabled: false
+        };
+    }
+}">
+
+    <!-- Header Section -->
+    <div class="px-6 pt-2 pb-2 flex-shrink-0 animate-fade-in-up">
+        <div class="rounded-[22px] border border-slate-200 bg-white shadow-[0_18px_50px_-42px_rgba(15,23,42,0.32)]">
+            <div class="px-4 py-3 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-11 h-11 rounded-[16px] bg-gradient-to-br from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center shadow-[0_16px_28px_-18px_rgba(217,70,239,0.52)] shrink-0">
+                        <i class="ph ph-gear-six text-[1.1rem]"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-[1.4rem] xl:text-[1.55rem] leading-none font-black tracking-[-0.045em] text-slate-950">{% tenant_trans "Settings" %}</h1>
+                        <p class="mt-1 text-xs font-semibold text-slate-700">{% tenant_trans "Company and locale" %}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 xl:shrink-0">
+                    <div class="inline-flex items-center gap-2 rounded-[14px] border border-cyan-100 bg-gradient-to-r from-cyan-50 to-fuchsia-50 px-3 py-2 text-xs font-black text-slate-800 shadow-[0_10px_24px_-20px_rgba(34,211,238,0.25)]">
+                        <i class="ph ph-stack text-cyan-500 text-sm"></i>
+                        <span>
+                            {% with scope=settings_scope|default:"manufacturing" %}
+                            {% if scope == "quality" %}{% tenant_trans "Quality" %}{% elif scope == "maintenance" %}{% tenant_trans "Maintenance" %}{% elif scope == "store" %}{% tenant_trans "Store" %}{% else %}{% tenant_trans "Manufacturing" %}{% endif %}
+                            {% endwith %}
+                        </span>
+                    </div>
+                    <div class="inline-flex items-center gap-2 rounded-[14px] border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-800 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]">
+                        <span class="inline-flex items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-700">EN / AR</span>
+                        <span>{{ translation_language|upper }}</span>
+                    </div>
+                    <a href="{% with role=current_role_name|default:'' %}{% if role == 'supervisor' %}{% url 'supervisor_dashboard' %}{% elif role == 'worker' %}{% url 'record_output' %}{% elif role == 'quality' %}{% url 'quality_check' %}{% elif role == 'maintenance' %}{% url 'maintenance_dashboard' %}{% elif role == 'store' %}{% url 'store_dashboard' %}{% else %}{% url 'dashboard' %}{% endif %}{% endwith %}"
+                        aria-label="{% tenant_trans 'Close settings' %}"
+                        title="{% tenant_trans 'Close settings' %}"
+                        class="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-slate-200 bg-white text-slate-500 shadow-[0_10px_24px_-20px_rgba(15,23,42,0.22)] hover:bg-slate-50 hover:text-slate-900">
+                        <i class="ph ph-x text-lg"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="px-4 pb-4">
+                <div data-reorderable-tabs="settings-v2-tab-order" class="min-w-0 flex items-center gap-1.5 overflow-x-auto rounded-[18px] border border-slate-200 bg-white p-1.5 shadow-sm">
+                    <button @click="activeTab = 'general'" data-tab-key="general" draggable="true"
+                        :class="activeTab === 'general' ? 'bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-[0_12px_24px_-16px_rgba(217,70,239,0.55)]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'"
+                        class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-[11px] font-black uppercase tracking-[0.18em] transition-all whitespace-nowrap cursor-grab active:cursor-grabbing">
+                        <i class="ph ph-house-line text-sm"></i><span>{% tenant_trans "General" %}</span>
+                    </button>
+                    <button @click="activeTab = 'system'" data-tab-key="system" draggable="true"
+                        :class="activeTab === 'system' ? 'bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-[0_12px_24px_-16px_rgba(217,70,239,0.55)]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'"
+                        class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-[11px] font-black uppercase tracking-[0.18em] transition-all whitespace-nowrap cursor-grab active:cursor-grabbing">
+                        <i class="ph ph-cpu text-sm"></i><span>{% tenant_trans "System" %}</span>
+                    </button>
+                    <button @click="activeTab = 'members'" data-tab-key="members" draggable="true"
+                        :class="activeTab === 'members' ? 'bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-[0_12px_24px_-16px_rgba(217,70,239,0.55)]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'"
+                        class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-[11px] font-black uppercase tracking-[0.18em] transition-all whitespace-nowrap cursor-grab active:cursor-grabbing">
+                        <i class="ph ph-users-three text-sm"></i><span>{% tenant_trans "Team" %}</span>
+                    </button>
+                    <button @click="activeTab = 'shift-planner'" data-tab-key="shift-planner" draggable="true"
+                        :class="activeTab === 'shift-planner' ? 'bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-[0_12px_24px_-16px_rgba(217,70,239,0.55)]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'"
+                        class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-[11px] font-black uppercase tracking-[0.18em] transition-all whitespace-nowrap cursor-grab active:cursor-grabbing">
+                        <i class="ph ph-calendar-check text-sm"></i><span>{% tenant_trans "Shift Planner" %}</span>
+                    </button>
+                    <button @click="activeTab = 'translations'" data-tab-key="translations" draggable="true"
+                        :class="activeTab === 'translations' ? 'bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-[0_12px_24px_-16px_rgba(217,70,239,0.55)]' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'"
+                        class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] text-[11px] font-black uppercase tracking-[0.18em] transition-all whitespace-nowrap cursor-grab active:cursor-grabbing">
+                        <span class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em]">EN / AR</span><span>{% tenant_trans "Translate" %}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto px-6 pb-4 custom-scrollbar relative z-10 animate-fade-in-up delay-100">
+
+        <!-- 1. GENERAL TAB -->
+        <div x-show="activeTab === 'general'" x-transition class="xl:h-full xl:overflow-y-auto pr-1 custom-scrollbar">
+            <div class="rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.3)] overflow-hidden xl:h-full">
+                <div class="grid xl:grid-cols-[180px_minmax(0,1fr)_280px] xl:h-full">
+                    <aside class="border-r border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f3fbff_55%,#fff5fd_100%)] p-4 flex flex-col justify-between gap-4 xl:overflow-y-auto custom-scrollbar">
+                        <div>
+                            <div class="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-700 shadow-sm">
+                                <i class="ph ph-star-four text-[11px] text-cyan-500"></i> {% tenant_trans "Identity" %}
+                            </div>
+
+                            <div class="mt-4">
+                                <div class="relative inline-block">
+                                    {% if company and company.logo %}
+                                    <img src="{{ company.logo.url }}" class="w-20 h-20 rounded-[20px] object-cover ring-4 ring-white shadow-[0_16px_28px_-18px_rgba(217,70,239,0.28)]">
+                                    {% else %}
+                                    <div class="w-20 h-20 rounded-[20px] bg-gradient-to-br from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center text-[1.9rem] font-black shadow-[0_16px_28px_-18px_rgba(217,70,239,0.4)]">
+                                        {{ company.name|default:request.user.username|slice:":1"|upper }}
+                                    </div>
+                                    {% endif %}
+                                    <label class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-white text-slate-950 flex items-center justify-center cursor-pointer shadow-lg border border-slate-200 hover:scale-105 transition-all">
+                                        <i class="ph ph-camera text-sm"></i>
+                                        <input type="file" name="company_logo" form="companyProfileForm" class="hidden" accept="image/*">
+                                    </label>
+                                </div>
+
+                                <h3 class="mt-4 text-[1.4rem] leading-none font-black tracking-[-0.04em] text-slate-950">{{ company.name|default:"Company" }}</h3>
+                            </div>
+                        </div>
+
+                        <div class="grid gap-2">
+                            <div class="inline-flex items-center gap-2 rounded-[14px] border border-cyan-100 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm">
+                                <i class="ph ph-image-square text-cyan-500 text-sm"></i>
+                                <span>{% tenant_trans "Logo" %}</span>
+                            </div>
+                            <div class="inline-flex items-center gap-2 rounded-[14px] border border-cyan-100 bg-white px-3 py-2 text-xs font-black text-slate-700 shadow-sm">
+                                <i class="ph ph-headset text-cyan-500 text-sm"></i>
+                                <span>{% tenant_trans "Support" %}</span>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <section class="border-r border-slate-200 p-4 flex flex-col gap-4 xl:h-full xl:overflow-y-auto custom-scrollbar">
+                        <form id="companyProfileForm" method="POST" action="{% url 'settings_dashboard' %}" enctype="multipart/form-data" class="h-full flex flex-col gap-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_profile">
+
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="inline-flex items-center gap-3 text-slate-950">
+                                    <div class="w-10 h-10 rounded-[14px] bg-gradient-to-br from-cyan-50 to-fuchsia-50 text-cyan-600 flex items-center justify-center">
+                                        <i class="ph ph-buildings text-lg"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Profile" %}</p>
+                                        <h2 class="text-[1.5rem] leading-none font-black tracking-[-0.04em]">{% tenant_trans "Company" %}</h2>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <div class="hidden xl:inline-flex items-center gap-2 rounded-[14px] border border-cyan-100 bg-gradient-to-r from-cyan-50 to-fuchsia-50 px-3 py-2 text-xs font-black text-slate-700">
+                                        <i class="ph ph-file-image text-cyan-500 text-sm"></i>
+                                        <span>{% tenant_trans "PNG / JPG" %}</span>
+                                    </div>
+                                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-[14px] bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white text-[11px] font-black uppercase tracking-[0.18em] shadow-[0_16px_30px_-18px_rgba(217,70,239,0.52)] hover:translate-y-[-1px] transition-all whitespace-nowrap">
+                                        <i class="ph ph-floppy-disk text-sm"></i>
+                                        <span>{% tenant_trans "Save" %}</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+                                <div>
+                                    <label class="mb-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400"><i class="ph ph-buildings text-sm text-cyan-500"></i><span>{% tenant_trans "Name" %}</span></label>
+                                    <input type="text" name="company_name" value="{{ company.name|default:'Company' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[14px] font-bold text-sm text-slate-800 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                </div>
+
+                                <div>
+                                    <label class="mb-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400"><i class="ph ph-envelope-simple text-sm text-cyan-500"></i><span>{% tenant_trans "Email" %}</span></label>
+                                    <input type="email" name="email" value="{{ request.user.email }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[14px] font-bold text-sm text-slate-800 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                </div>
+
+                                <div>
+                                    <label class="mb-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400"><i class="ph ph-phone text-sm text-cyan-500"></i><span>{% tenant_trans "Phone" %}</span></label>
+                                    <input type="text" name="phone" value="{{ request.user.profile.phone|default:'' }}" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[14px] font-bold text-sm text-slate-800 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-3 mt-auto">
+                                <div class="rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <p class="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "State" %}</p>
+                                    <div class="mt-2 inline-flex items-center gap-2 text-sm font-black text-slate-900"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> {% tenant_trans "Active" %}</div>
+                                </div>
+                                <div class="rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <p class="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Locale" %}</p>
+                                    <p class="mt-2 text-sm font-black text-slate-900">{{ translation_language|upper }}</p>
+                                </div>
+                                <div class="rounded-[14px] border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <p class="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Zone" %}</p>
+                                    <p class="mt-2 text-sm font-black text-slate-900">{% tenant_trans "Cairo" %}</p>
+                                </div>
+                            </div>
+                        </form>
+                    </section>
+
+                    <aside class="bg-slate-50/80 p-4 flex flex-col gap-4 xl:h-full xl:overflow-y-auto custom-scrollbar">
+                        <div class="rounded-[20px] border border-slate-200 bg-white overflow-hidden shadow-[0_16px_34px_-30px_rgba(15,23,42,0.18)]">
+                            <div class="border-b border-slate-200 px-4 py-3">
+                                <div class="inline-flex items-center gap-2 text-slate-950 font-black text-sm">
+                                    <i class="ph ph-globe text-cyan-500 text-base"></i>
+                                    <span>{% tenant_trans "Locale" %}</span>
+                                </div>
+                            </div>
+                            <div class="p-4 space-y-3">
+                                <div>
+                                    <label class="mb-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400"><span class="inline-flex items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-700">EN / AR</span><span>{% tenant_trans "Lang" %}</span></label>
+                                    <select class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[14px] font-bold text-sm text-slate-800 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                                        <option>{% tenant_trans "English (United States)" %}</option>
+                                        <option>{% tenant_trans "Arabic (Egypt)" %}</option>
+                                        <option>{% tenant_trans "German (Germany)" %}</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="mb-2 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400"><i class="ph ph-clock text-sm text-cyan-500"></i><span>{% tenant_trans "Zone" %}</span></label>
+                                    <select class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-[14px] font-bold text-sm text-slate-800 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                                        <option>UTC+02:00 (Cairo)</option>
+                                        <option>UTC+00:00 (GMT)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[20px] border border-cyan-100 bg-[linear-gradient(135deg,#f3fbff_0%,#ffffff_55%,#fff5fd_100%)] p-4 shadow-[0_16px_34px_-30px_rgba(217,70,239,0.2)] mt-auto">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-[14px] bg-gradient-to-br from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0 shadow-[0_14px_24px_-16px_rgba(217,70,239,0.45)]">
+                                    <i class="ph ph-shield-check text-lg"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Security" %}</p>
+                                    <h4 class="mt-1 text-base font-black text-slate-950">{% tenant_trans "Access" %}</h4>
+                                    <p class="mt-2 text-sm font-semibold text-slate-600">{% tenant_trans "Roles and permissions" %}.</p>
+                                </div>
+                            </div>
+                            <button class="w-full mt-4 inline-flex items-center justify-center gap-2 py-3 rounded-[14px] bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white text-[10px] font-black uppercase tracking-[0.18em] shadow-[0_16px_28px_-18px_rgba(217,70,239,0.48)] hover:translate-y-[-1px] transition-all">
+                                <i class="ph ph-lock-key text-sm"></i>
+                                <span>{% tenant_trans "Update" %}</span>
+                            </button>
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SYSTEM TAB -->
+        <div x-show="activeTab === 'system' || activeTab === 'shift-planner'" x-transition class="xl:h-full">
+            <div class="glass-panel-premium rounded-[28px] p-6 bg-white shadow-[0_18px_50px_-40px_rgba(15,23,42,0.28)] max-w-6xl xl:h-full xl:overflow-y-auto pr-1 custom-scrollbar">
+                <div x-show="activeTab === 'system'" class="flex items-center justify-between mb-6">
+                    <div>
+                        <h3 class="text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">{% tenant_trans "System rules" %}</h3>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em] mt-2">{% tenant_trans "Automation and logistics" %}
+                        </p>
+                    </div>
+                    <div class="relative group" tabindex="0"
+                        title="{% tenant_trans "Changes made here are applied to the shop floor immediately" %}"
+                        aria-label="{% tenant_trans "Changes made here are applied to the shop floor immediately" %}">
+                        <div
+                            class="inline-flex items-center gap-2 rounded-[14px] border border-cyan-100 bg-gradient-to-r from-cyan-50 to-fuchsia-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-800 shadow-[0_10px_24px_-20px_rgba(34,211,238,0.25)] cursor-help">
+                            <i class="ph ph-lightning text-cyan-500 text-sm"></i>
+                            <span>{% tenant_trans "Live" %}</span>
+                        </div>
+                        <div
+                            class="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-64 -translate-x-1/2 rounded-xl bg-slate-900 px-3 py-2 text-[11px] font-semibold normal-case tracking-normal leading-relaxed text-white shadow-2xl group-hover:block group-focus-within:block">
+                            {% tenant_trans "Changes made here are applied to the shop floor immediately" %}
+                        </div>
+                    </div>
+                </div>
+
+                <form x-show="activeTab === 'system'" id="mainSystemForm" method="POST" action="{% url 'settings_dashboard' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_system_rules">
+
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                        <!-- Scheduling Rules -->
+                        <section class="space-y-6">
+                            <h4
+                                class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                                Scheduling Automation</h4>
+                            <div class="space-y-4">
+                                <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-200/70">
+                                    <div class="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p class="text-sm font-black text-slate-800">{% tenant_trans "Default Operation Flow" %}</p>
+                                            <p class="text-[10px] text-slate-400 font-bold">{% tenant_trans "Choose whether new work orders run stage by stage or allow parallel execution." %}</p>
+                                        </div>
+                                        <div class="inline-flex rounded-xl border border-slate-200 bg-white p-1">
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="default_operation_flow_mode" value="series" class="peer sr-only" {% if settings.default_operation_flow_mode != 'parallel' %}checked{% endif %}>
+                                                <span class="inline-flex rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 transition peer-checked:bg-slate-950 peer-checked:text-white">{% tenant_trans "Series" %}</span>
+                                            </label>
+                                            <label class="cursor-pointer">
+                                                <input type="radio" name="default_operation_flow_mode" value="parallel" class="peer sr-only" {% if settings.default_operation_flow_mode == 'parallel' %}checked{% endif %}>
+                                                <span class="inline-flex rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 transition peer-checked:bg-slate-950 peer-checked:text-white">{% tenant_trans "Parallel" %}</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">{% tenant_trans "Auto-assign Workers" %}</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">{% tenant_trans "Based on skills and availability" %}
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="auto_assign_workers" {% if settings.auto_assign_workers %}checked{% endif %} class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500">
+                                        </div>
+                                    </div>
+                                </label>
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">{% tenant_trans "Predictive Maintenance" %}</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">{% tenant_trans "Smart machine downtime forecasting" %}
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="predictive_maintenance" {% if settings.predictive_maintenance %}checked{% endif %} class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </section>
+
+                        <!-- Maintenance Settings -->
+                        <section class="space-y-6">
+                            <h4
+                                class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                                Maintenance Logistics</h4>
+                            <div class="space-y-4">
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">{% tenant_trans "Automatic Fault Lockdown" %}</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">{% tenant_trans "Halt production on active faults" %}
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="auto_fault_lockdown" {% if settings.auto_fault_lockdown %}checked{% endif %} class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500">
+                                        </div>
+                                    </div>
+                                </label>
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">{% tenant_trans "Trouble Ticket Integration" %}</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">{% tenant_trans "Sync with global maintenance hub" %}
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="trouble_ticket_integration" {% if settings.trouble_ticket_integration %}checked{% endif %}
+                                            class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+                        <button type="button" onclick="saveSystemSettings(this)"
+                            class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white rounded-[16px] text-[11px] font-black uppercase tracking-[0.18em] shadow-[0_16px_28px_-18px_rgba(217,70,239,0.5)] hover:-translate-y-1 transition-all">
+                            <i class="ph ph-floppy-disk text-sm"></i>
+                            <span>{% tenant_trans "Save system" %}</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- NEW: Shift & Holiday Settings -->
+                <div x-show="activeTab === 'shift-planner'" class="mb-6 flex items-center justify-between gap-4">
+                    <div>
+                        <h3 class="text-[1.45rem] font-black tracking-[-0.04em] text-slate-900">{% tenant_trans "Shift setup" %}</h3>
+                        <p class="mt-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">{% tenant_trans "Shift times and calendar" %}</p>
+                    </div>
+                    <a href="{% url 'employee_shift_planner' %}"
+                        class="inline-flex items-center gap-2 rounded-[14px] bg-slate-950 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_24px_-18px_rgba(15,23,42,0.75)] hover:bg-slate-900">
+                        <i class="ph ph-arrows-left-right text-sm"></i>
+                        <span>{% tenant_trans "Open assignment board" %}</span>
+                    </a>
+                </div>
+
+                <div x-show="activeTab === 'shift-planner'" class="grid grid-cols-1 xl:grid-cols-[0.9fr_1.1fr] gap-5">
+
+                    <!-- Shift Configuration -->
+                    <section class="space-y-6">
+                        <h4
+                            class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                            Shift Schedule
+                        </h4>
+                        <form id="shiftForm" method="POST" action="{% url 'settings_dashboard' %}" class="space-y-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_shifts">
+                            <div class="space-y-2">
+                                <label for="shiftModeSelect" class="block text-[10px] font-black text-slate-400 uppercase tracking-widest">{% tenant_trans "Shift Mode" %}</label>
+                                <div class="relative">
+                                    <select
+                                        id="shiftModeSelect"
+                                        name="shift_mode"
+                                        class="w-full appearance-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-black text-slate-700 outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                                        {% for mode_value, mode_label in shift_mode_choices %}
+                                        <option value="{{ mode_value }}" {% if settings.shift_mode == mode_value %}selected{% endif %}>{{ mode_label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <i class="ph ph-caret-down pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                </div>
+                                <p id="shiftModeHelp" class="text-[11px] font-semibold text-slate-500">
+                                    Choose how many factory shifts are active. The scheduler and machine inheritance will follow this mode.
+                                </p>
+                            </div>
+
+                            <!-- Morning -->
+                            <div class="grid grid-cols-[68px_1fr_auto_1fr] items-center gap-3" data-shift-row="morning">
+                                <span class="text-xs font-bold text-slate-700">{% tenant_trans "Morning" %}</span>
+                                <input type="time" name="morning_start"
+                                    value="{{ normalized_shift_config.morning.start|default:'06:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                                <span class="text-slate-400">-</span>
+                                <input type="time" name="morning_end"
+                                    value="{{ normalized_shift_config.morning.end|default:'14:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                            </div>
+
+                            <!-- Evening -->
+                            <div class="grid grid-cols-[68px_1fr_auto_1fr] items-center gap-3" data-shift-row="evening">
+                                <span class="text-xs font-bold text-slate-700">{% tenant_trans "Evening" %}</span>
+                                <input type="time" name="evening_start"
+                                    value="{{ normalized_shift_config.afternoon.start|default:'14:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                                <span class="text-slate-400">-</span>
+                                <input type="time" name="evening_end"
+                                    value="{{ normalized_shift_config.afternoon.end|default:'22:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                            </div>
+
+                            <!-- Night -->
+                            <div class="grid grid-cols-[68px_1fr_auto_1fr] items-center gap-3" data-shift-row="night">
+                                <span class="text-xs font-bold text-slate-700">{% tenant_trans "Night" %}</span>
+                                <input type="time" name="night_start"
+                                    value="{{ normalized_shift_config.night.start|default:'22:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                                <span class="text-slate-400">-</span>
+                                <input type="time" name="night_end"
+                                    value="{{ normalized_shift_config.night.end|default:'06:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300">
+                            </div>
+
+                            <button type="submit"
+                                class="inline-flex items-center gap-2 rounded-[14px] bg-slate-950 px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_24px_-18px_rgba(15,23,42,0.75)] transition-all hover:-translate-y-0.5">
+                                <i class="ph ph-floppy-disk text-sm"></i>
+                                <span>{% tenant_trans "Save shifts" %}</span>
+                            </button>
+                        </form>
+                    </section>
+
+                    <!-- Holiday Calendar -->
+                    <section class="space-y-6">
+                        <h4
+                            class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                            Holiday Calendar
+                        </h4>
+
+                        <!-- Weekly Holidays -->
+                        <div class="mb-6">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">{% tenant_trans "Weekly Recurring" %}</p>
+                            <form method="POST" action="{% url 'settings_dashboard' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_weekly_holidays">
+                                <div class="flex flex-wrap gap-2">
+                                    {% for idx, name, short in week_days %}
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox" name="weekly_holidays" value="{{ idx }}"
+                                            class="peer sr-only" {% if idx in settings.weekly_holidays %}checked{% endif %}>
+                                        <div
+                                            class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-500 peer-checked:bg-slate-800 peer-checked:text-white peer-checked:border-slate-800 transition-all hover:border-slate-400">
+                                            {{ short }}
+                                        </div>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                                <button type="submit"
+                                    class="mt-3 inline-flex items-center gap-2 rounded-[14px] border border-cyan-100 bg-gradient-to-r from-cyan-50 to-fuchsia-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-800 shadow-[0_10px_24px_-20px_rgba(34,211,238,0.25)] transition-all hover:-translate-y-0.5">
+                                    <i class="ph ph-calendar-plus text-cyan-500 text-sm"></i>
+                                    <span>{% tenant_trans "Save weekly" %}</span>
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Yearly Holidays -->
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">{% tenant_trans "Yearly Dates" %}</p>
+                            <div class="space-y-2 mb-3 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                                {% for h in settings.holidays %}
+                                <div
+                                    class="flex justify-between items-center bg-slate-50 px-3 py-2 rounded border border-slate-200">
+                                    <div class="flex items-center gap-2">
+                                        <i class="ph ph-calendar-x text-slate-400"></i>
+                                        <span class="text-xs font-bold text-slate-700">{{ h.name }}</span>
+                                        <span class="text-[10px] text-slate-500">({{ h.date }})</span>
+                                    </div>
+                                    <form method="POST" action="{% url 'settings_dashboard' %}" class="inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="remove_holiday">
+                                        <input type="hidden" name="holiday_idx" value="{{ forloop.counter0 }}">
+                                        <button type="submit" class="text-slate-400 hover:text-red-500"><i
+                                                class="ph ph-trash"></i></button>
+                                    </form>
+                                </div>
+                                {% empty %}
+                                <p class="text-xs text-slate-400 italic">{% tenant_trans "No holidays added." %}</p>
+                                {% endfor %}
+                            </div>
+
+                            <form method="POST" action="{% url 'settings_dashboard' %}" class="flex gap-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="add_holiday">
+                                <input type="text" name="name" placeholder="{% tenant_trans 'Name' %}"
+                                    class="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs" required>
+                                <input type="date" name="date"
+                                    class="bg-white border border-slate-200 rounded px-2 py-1 text-xs" required>
+                                <button type="submit"
+                                    class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 px-3 py-2 text-xs font-black text-white shadow-[0_12px_20px_-16px_rgba(217,70,239,0.45)]">+</button>
+                            </form>
+                        </div>
+                    </section>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 3. TEAM TAB -->
+        <div x-show="activeTab === 'members'" x-transition class="flex flex-col gap-4 xl:h-full xl:overflow-y-auto pr-1 custom-scrollbar">
+            <!-- Header & Actions -->
+            <div class="flex flex-col gap-4 px-1 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{% tenant_trans "Team access" %}</p>
+                    <h2 class="mt-2 text-[1.8rem] font-black tracking-[-0.04em] text-slate-900">{% tenant_trans "Team members" %}</h2>
+                    <p class="mt-2 text-sm font-semibold text-slate-600">{% tenant_trans "Manage access, roles, shifts, and coverage from one focused workspace." %}</p>
+                </div>
+                <button @click="showInviteModal = true"
+                    class="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white rounded-[16px] text-[11px] font-black uppercase tracking-[0.18em] shadow-[0_16px_28px_-18px_rgba(217,70,239,0.5)] hover:-translate-y-0.5 transition-all">
+                    <i class="ph-bold ph-plus"></i> {% tenant_trans "Add Member" %}
+                </button>
+            </div>
+
+            <section data-team-command-center class="rounded-[24px] border border-slate-200 bg-white shadow-sm">
+                <div class="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/60 px-4 py-3 lg:flex-row lg:items-center">
+                    <div class="relative min-w-0 flex-1">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="search" x-model.debounce.150ms="teamSearch" placeholder="{% tenant_trans 'Search members by name, role, email, or phone' %}"
+                            class="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm font-semibold text-slate-700 outline-none transition-all placeholder-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="inline-flex h-11 items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 text-sm font-black text-blue-700">
+                            <i class="ph ph-users-three"></i>
+                            {{ team_members_count }} {% tenant_trans "members" %}
+                        </span>
+                        <select x-model="teamRoleFilter"
+                            class="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+                            <option value="all">{% tenant_trans "All roles" %}</option>
+                            {% for role in available_roles %}
+                            <option value="{{ role.name|lower }}">{{ role.name|title }}</option>
+                            {% endfor %}
+                        </select>
+                        <select x-model="teamStatusFilter"
+                            class="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50">
+                            <option value="all">{% tenant_trans "All status" %}</option>
+                            <option value="active">{% tenant_trans "Active" %}</option>
+                            <option value="inactive">{% tenant_trans "Inactive" %}</option>
+                        </select>
+                        <button type="button" @click="teamSearch = ''; teamRoleFilter = 'all'; teamStatusFilter = 'all'"
+                            class="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-600 hover:bg-slate-50">
+                            <i class="ph ph-arrow-counter-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-white text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                            <tr>
+                                <th class="w-10 px-4 py-3">
+                                    <input type="checkbox" aria-label="{% tenant_trans 'Select all members' %}"
+                                        class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                </th>
+                                <th class="px-4 py-3">{% tenant_trans "Member" %}</th>
+                                <th class="px-4 py-3">{% tenant_trans "Role" %}</th>
+                                <th class="px-4 py-3">{% tenant_trans "Shift" %}</th>
+                                <th class="px-4 py-3">{% tenant_trans "Location" %}</th>
+                                <th class="px-4 py-3">{% tenant_trans "Status" %}</th>
+                                <th class="px-4 py-3 text-right">{% tenant_trans "Actions" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for member in team_members %}
+                            <tr data-team-member-row
+                                x-show="matchesTeamMember('{{ member.get_full_name|default:member.username|escapejs }}', '{{ member.email|default:member.profile.phone|default:member.username|escapejs }}', '{{ member.safe_role_name|default:''|lower|escapejs }}', '{% if member.is_active %}active{% else %}inactive{% endif %}')"
+                                class="bg-white hover:bg-blue-50/40">
+                                <td class="px-4 py-3">
+                                    <input type="checkbox" aria-label="{% tenant_trans 'Select member' %}"
+                                        class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex min-w-[220px] items-center gap-3">
+                                        {% if member.profile.profile_image %}
+                                        <img src="{{ member.profile.profile_image.url }}" class="h-10 w-10 rounded-full object-cover">
+                                        {% else %}
+                                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-fuchsia-500 text-sm font-black text-white">
+                                            {{ member.username|slice:":1"|upper }}
+                                        </div>
+                                        {% endif %}
+                                        <div class="min-w-0">
+                                            <div class="truncate font-black text-slate-900">{{ member.get_full_name|default:member.username }}</div>
+                                            <div class="truncate text-xs font-semibold text-slate-500">{{ member.email|default:member.profile.phone|default:member.username }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-black uppercase tracking-[0.14em] text-blue-700">
+                                        {{ member.safe_role_name|default:"Specialist" }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center gap-2 text-sm font-bold text-slate-700">
+                                        <span class="h-2 w-2 rounded-full bg-violet-500"></span>
+                                        {{ member.profile.shift|default:"No shift"|title }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex max-w-[260px] flex-wrap gap-1.5">
+                                        {% for department_label in member.department_labels|slice:":2" %}
+                                        <span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-600">{{ department_label }}</span>
+                                        {% empty %}
+                                        <span class="text-xs font-semibold text-slate-400">{% tenant_trans "No coverage required" %}</span>
+                                        {% endfor %}
+                                        {% if member.department_labels|length > 2 %}
+                                        <span class="rounded-lg bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-500">+{{ member.department_labels|length|add:"-2" }}</span>
+                                        {% endif %}
+                                        {% if member.profile.worker_mode_enabled %}
+                                        <span class="rounded-lg bg-violet-50 px-2 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-violet-700">{% tenant_trans "Worker Mode" %}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] {% if member.is_active %}border border-emerald-100 bg-emerald-50 text-emerald-700{% else %}border border-slate-200 bg-slate-100 text-slate-500{% endif %}">
+                                        <span class="h-1.5 w-1.5 rounded-full {% if member.is_active %}bg-emerald-500 animate-pulse{% else %}bg-slate-400{% endif %}"></span>
+                                        {% if member.is_active %}{% tenant_trans "Active" %}{% else %}{% tenant_trans "Inactive" %}{% endif %}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex justify-end gap-2">
+                                        <button type="button"
+                                            @click="openEditMember({
+                                                id: '{{ member.id }}',
+                                                firstName: '{{ member.first_name|default_if_none:''|escapejs }}',
+                                                lastName: '{{ member.last_name|default_if_none:''|escapejs }}',
+                                                email: '{{ member.email|default_if_none:''|escapejs }}',
+                                                phone: '{{ member.profile.phone|default_if_none:''|escapejs }}',
+                                                departmentRaw: '{{ member.profile.department|default_if_none:''|escapejs }}',
+                                                roleId: '{{ member.profile.role_id|default_if_none:'' }}',
+                                                shift: '{{ member.profile.shift|default_if_none:''|escapejs }}',
+                                                workerModeEnabled: {% if member.profile.worker_mode_enabled %}true{% else %}false{% endif %}
+                                            })"
+                                            class="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-cyan-100 bg-cyan-50 px-3 text-xs font-black text-cyan-700 hover:bg-cyan-100">
+                                            <i class="ph ph-identification-card"></i>{% tenant_trans "Role & Shift" %}
+                                        </button>
+                                        <button type="button"
+                                            @click="openEditMember({
+                                                id: '{{ member.id }}',
+                                                firstName: '{{ member.first_name|default_if_none:''|escapejs }}',
+                                                lastName: '{{ member.last_name|default_if_none:''|escapejs }}',
+                                                email: '{{ member.email|default_if_none:''|escapejs }}',
+                                                phone: '{{ member.profile.phone|default_if_none:''|escapejs }}',
+                                                departmentRaw: '{{ member.profile.department|default_if_none:''|escapejs }}',
+                                                roleId: '{{ member.profile.role_id|default_if_none:'' }}',
+                                                shift: '{{ member.profile.shift|default_if_none:''|escapejs }}',
+                                                workerModeEnabled: {% if member.profile.worker_mode_enabled %}true{% else %}false{% endif %}
+                                            })"
+                                            class="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-black text-slate-600 hover:bg-slate-50">
+                                            <i class="ph ph-key"></i>{% tenant_trans "Password" %}
+                                        </button>
+                                        <form method="POST"
+                                            onsubmit="return confirm('{% tenant_trans "Delete this team member? This action cannot be undone." %}')">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="delete_user">
+                                            <input type="hidden" name="scope" value="{{ active_settings_scope }}">
+                                            <input type="hidden" name="user_id" value="{{ member.id }}">
+                                            <button type="submit"
+                                                title="{% tenant_trans 'Delete member' %}"
+                                                aria-label="{% tenant_trans 'Delete member' %}"
+                                                class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100">
+                                                <i class="ph ph-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="px-4 py-10 text-center">
+                                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-600">
+                                        <i class="ph ph-users-three text-xl"></i>
+                                    </div>
+                                    <div class="mt-3 text-base font-black text-slate-900">{% tenant_trans "No team members yet." %}</div>
+                                    <p class="mx-auto mt-2 max-w-md text-sm font-semibold text-slate-500">{% tenant_trans "Use Add Member above. After saving, the new member appears here with role, shift, coverage, and actions." %}</p>
+                                    <button type="button" @click="showInviteModal = true"
+                                        class="mt-4 inline-flex items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-cyan-700 hover:bg-cyan-100">
+                                        <i class="ph ph-plus"></i>
+                                        {% tenant_trans "Add first member" %}
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex flex-col gap-3 border-t border-slate-100 bg-white px-4 py-3 text-xs font-bold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{% tenant_trans "Showing" %} {{ team_members_count }} {% tenant_trans "team members" %}</span>
+                    <div class="inline-flex items-center gap-2">
+                        <button type="button" class="h-8 rounded-lg border border-slate-200 bg-slate-50 px-3 font-black text-slate-400" disabled>
+                            <i class="ph ph-caret-left"></i>
+                        </button>
+                        <span class="rounded-lg bg-blue-50 px-3 py-2 font-black text-blue-700">1</span>
+                        <button type="button" class="h-8 rounded-lg border border-slate-200 bg-slate-50 px-3 font-black text-slate-400" disabled>
+                            <i class="ph ph-caret-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <div data-team-stats-row class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-[18px] border border-blue-100 bg-white p-4 shadow-sm">
+                    <div class="h-1 w-16 rounded-full bg-gradient-to-r from-blue-500 to-cyan-400"></div>
+                    <p class="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{% tenant_trans "Total Members" %}</p>
+                    <div class="mt-1 text-3xl font-black text-blue-600">{{ team_members_count }}</div>
+                    <p class="mt-1 text-xs font-bold text-slate-500">{% tenant_trans "People in this workspace" %}</p>
+                </div>
+                <div class="rounded-[18px] border border-emerald-100 bg-white p-4 shadow-sm">
+                    <div class="h-1 w-16 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400"></div>
+                    <p class="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{% tenant_trans "Active" %}</p>
+                    <div class="mt-1 text-3xl font-black text-emerald-600">{{ active_team_members_count }}</div>
+                    <p class="mt-1 text-xs font-bold text-slate-500">{% tenant_trans "Can access the system" %}</p>
+                </div>
+                <div class="rounded-[18px] border border-amber-100 bg-white p-4 shadow-sm">
+                    <div class="h-1 w-16 rounded-full bg-gradient-to-r from-amber-400 to-orange-300"></div>
+                    <p class="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{% tenant_trans "Inactive" %}</p>
+                    <div class="mt-1 text-3xl font-black text-amber-600">{{ inactive_team_members_count }}</div>
+                    <p class="mt-1 text-xs font-bold text-slate-500">{% tenant_trans "Disabled or waiting" %}</p>
+                </div>
+                <div class="rounded-[18px] border border-fuchsia-100 bg-white p-4 shadow-sm">
+                    <div class="h-1 w-16 rounded-full bg-gradient-to-r from-fuchsia-500 to-violet-400"></div>
+                    <p class="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{% tenant_trans "Departments" %}</p>
+                    <div class="mt-1 text-3xl font-black text-fuchsia-600">{{ department_options|length }}</div>
+                    <p class="mt-1 text-xs font-bold text-slate-500">{% tenant_trans "Coverage lanes available" %}</p>
+                </div>
+            </div>
+
+            <div data-team-department-directory class="hidden grid-cols-1 gap-4">
+                <div class="bg-white rounded-[28px] border border-slate-200 shadow-sm p-6">
+                    <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em]">{% tenant_trans "Department Directory" %}</p>
+                            <h3 class="text-xl font-black text-slate-900 mt-2">{% tenant_trans "Department directory" %}</h3>
+                            <p class="text-sm font-semibold text-slate-600 mt-2">{% tenant_trans "Create lanes here, then assign them during onboarding." %}</p>
+                        </div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-50 to-fuchsia-50 text-slate-800 text-[10px] font-black uppercase tracking-[0.18em] border border-cyan-100">
+                            <i class="ph ph-stack text-cyan-500 text-sm"></i>
+                            <span>{{ settings_scope|default:"manufacturing"|title }}</span>
+                        </div>
+                    </div>
+
+                    <form method="POST" action="{% url 'settings_dashboard' %}" class="flex flex-col sm:flex-row gap-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_department">
+                        <input type="hidden" name="scope" value="{{ settings_scope|default:'manufacturing' }}">
+                        <input type="text" name="department_name" required placeholder="{% tenant_trans 'e.g. Machining, Dispatch, Line 2' %}"
+                            class="flex-1 px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                        <button type="submit"
+                            class="px-6 py-4 bg-slate-950 text-white rounded-2xl text-sm font-black uppercase tracking-[0.18em] hover:bg-slate-900 transition-all">
+                            {% tenant_trans "Add Department" %}
+                        </button>
+                    </form>
+
+                    <div class="mt-5 flex flex-wrap gap-2">
+                        {% for department in department_options %}
+                        <div class="inline-flex items-center gap-2 px-3 py-2 rounded-2xl border border-slate-200 bg-slate-50">
+                            <span class="text-xs font-black uppercase tracking-[0.18em] text-slate-700">{{ department }}</span>
+                            {% if department in custom_department_options %}
+                            <form method="POST" action="{% url 'settings_dashboard' %}" class="inline-flex">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="remove_department">
+                                <input type="hidden" name="scope" value="{{ settings_scope|default:'manufacturing' }}">
+                                <input type="hidden" name="department_name" value="{{ department }}">
+                                <button type="submit" class="text-slate-400 hover:text-rose-500 transition-colors">
+                                    <i class="ph ph-x text-sm"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <span class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{% tenant_trans "Default" %}</span>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <p class="text-sm font-semibold text-slate-400">{% tenant_trans "No departments available yet." %}</p>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="hidden rounded-[28px] border border-cyan-100 bg-[linear-gradient(135deg,#f4fbff_0%,#ffffff_55%,#fff6fd_100%)] p-6 shadow-[0_16px_34px_-30px_rgba(217,70,239,0.18)]">
+                    <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{% tenant_trans "How it works" %}</p>
+                    <div class="mt-4 space-y-4">
+                        <div class="flex items-start gap-3 rounded-[18px] border border-white/80 bg-white px-4 py-4 shadow-sm">
+                            <div class="w-8 h-8 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center text-xs font-black shrink-0">1</div>
+                            <div>
+                                <p class="text-sm font-black text-slate-900">{% tenant_trans "Create the department here" %}</p>
+                                <p class="text-xs font-semibold text-slate-500 mt-1">{% tenant_trans "This list feeds the add-member assignment dropdown." %}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 rounded-[18px] border border-white/80 bg-white px-4 py-4 shadow-sm">
+                            <div class="w-8 h-8 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center text-xs font-black shrink-0">2</div>
+                            <div>
+                                <p class="text-sm font-black text-slate-900">{% tenant_trans "Assign it during onboarding" %}</p>
+                                <p class="text-xs font-semibold text-slate-500 mt-1">{% tenant_trans "The selected department is stored on the member profile." %}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 rounded-[18px] border border-white/80 bg-white px-4 py-4 shadow-sm">
+                            <div class="w-8 h-8 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center text-xs font-black shrink-0">3</div>
+                            <div>
+                                <p class="text-sm font-black text-slate-900">{% tenant_trans "Remove only custom departments" %}</p>
+                                <p class="text-xs font-semibold text-slate-500 mt-1">{% tenant_trans "Default system departments stay available for each app scope." %}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. TRANSLATIONS TAB -->
+        <div x-show="activeTab === 'translations'" x-transition class="xl:h-full xl:overflow-y-auto pr-1 custom-scrollbar">
+            <div class="grid grid-cols-1 xl:grid-cols-[0.96fr_1.04fr] gap-4">
+                <div class="bg-white rounded-[32px] border border-slate-200 shadow-sm p-6">
+                    <div class="flex items-start justify-between gap-4 mb-6">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em]">{% tenant_trans "Translation Handoff" %}</p>
+                            <h3 class="text-[1.45rem] font-black tracking-[-0.04em] text-slate-900 mt-2">{% tenant_trans "Excel download and upload" %}</h3>
+                            <p class="text-sm font-semibold text-slate-600 mt-2">{% tenant_trans "Download one sheet with English, Arabic, and screen hints. Edit it offline, then upload it back and the company UI updates from that file." %}</p>
+                        </div>
+                        <div class="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-[0.18em]">
+                            {{ translation_language|upper }}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <a href="{% url 'settings_dashboard' %}?tab=translations&scope={{ settings_scope|default:'manufacturing' }}&action=download_translation_sheet"
+                            class="rounded-[24px] border border-cyan-100 bg-[linear-gradient(135deg,#f4fbff_0%,#ffffff_60%,#fff7fd_100%)] p-5 shadow-[0_16px_34px_-30px_rgba(217,70,239,0.18)]">
+                            <div class="w-11 h-11 rounded-[16px] bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center shadow-[0_16px_28px_-18px_rgba(217,70,239,0.5)]">
+                                <i class="ph ph-download-simple text-lg"></i>
+                            </div>
+                            <h4 class="mt-4 text-lg font-black text-slate-900">{% tenant_trans "Download translation sheet" %}</h4>
+                            <p class="mt-2 text-sm font-semibold text-slate-600">{% tenant_trans "Excel includes all known UI text, current Arabic value, and a short screen hint so the customer can translate outside the system." %}</p>
+                            <div class="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-700 border border-cyan-100">
+                                <i class="ph ph-file-xls text-sm"></i> {% tenant_trans "XLSX export" %}
+                            </div>
+                        </a>
+
+                        <form method="POST" action="{% url 'settings_dashboard' %}" enctype="multipart/form-data"
+                            class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-5 space-y-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="import_translation_sheet">
+                            <input type="hidden" name="scope" value="{{ settings_scope|default:'manufacturing' }}">
+                            <div class="w-11 h-11 rounded-[16px] bg-slate-900 text-white flex items-center justify-center">
+                                <i class="ph ph-upload-simple text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-black text-slate-900">{% tenant_trans "Upload edited sheet" %}</h4>
+                                <p class="mt-2 text-sm font-semibold text-slate-600">{% tenant_trans "Upload the same file after editing the Arabic column. English source should stay unchanged so import can match the correct text." %}</p>
+                            </div>
+                            <label class="block">
+                                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{% tenant_trans "Excel file *" %}</span>
+                                <input type="file" name="translation_sheet" accept=".xlsx,.xlsm"
+                                    class="block w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 file:mr-4 file:rounded-xl file:border-0 file:bg-cyan-50 file:px-4 file:py-2 file:text-xs file:font-black file:uppercase file:tracking-[0.18em] file:text-cyan-700">
+                            </label>
+                            <button type="submit"
+                                class="w-full px-5 py-3 bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white rounded-2xl text-xs font-black uppercase tracking-[0.18em] shadow-[0_16px_28px_-18px_rgba(217,70,239,0.5)] hover:-translate-y-0.5 transition-all">
+                                Upload and apply
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                            <div class="text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">{% tenant_trans "Rows" %}</div>
+                            <div class="mt-2 text-2xl font-black text-slate-900">{{ translation_sheet_rows|length }}</div>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                            <div class="text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">{% tenant_trans "Editable Target" %}</div>
+                            <div class="mt-2 text-2xl font-black text-slate-900">{% tenant_trans "Arabic" %}</div>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
+                            <div class="text-[10px] uppercase font-black tracking-[0.2em] text-slate-400">{% tenant_trans "Import Scope" %}</div>
+                            <div class="mt-2 text-2xl font-black text-slate-900">{% tenant_trans "Company" %}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-[32px] border border-cyan-100 bg-[linear-gradient(135deg,#f4fbff_0%,#ffffff_55%,#fff6fd_100%)] p-6 shadow-[0_16px_34px_-30px_rgba(217,70,239,0.18)]">
+                    <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">{% tenant_trans "Workflow" %}</p>
+                    <div class="mt-4 space-y-4">
+                        <div class="flex items-start gap-3 rounded-[18px] border border-white/80 bg-white px-4 py-4 shadow-sm">
+                            <div class="w-8 h-8 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center text-xs font-black shrink-0">1</div>
+                            <div>
+                                <p class="text-sm font-black text-slate-900">{% tenant_trans "Download the current translation workbook" %}</p>
+                                <p class="text-xs font-semibold text-slate-500 mt-1">{% tenant_trans "The file contains English source text, current Arabic, and a short hint telling where the text appears in the system." %}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 rounded-[18px] border border-white/80 bg-white px-4 py-4 shadow-sm">
+                            <div class="w-8 h-8 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center text-xs font-black shrink-0">2</div>
+                            <div>
+                                <p class="text-sm font-black text-slate-900">{% tenant_trans "Edit only the Arabic translation column" %}</p>
+                                <p class="text-xs font-semibold text-slate-500 mt-1">{% tenant_trans "Do not change English source text. That column is the matching key used during upload." %}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 rounded-[18px] border border-white/80 bg-white px-4 py-4 shadow-sm">
+                            <div class="w-8 h-8 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center text-xs font-black shrink-0">3</div>
+                            <div>
+                                <p class="text-sm font-black text-slate-900">{% tenant_trans "Upload the edited workbook back" %}</p>
+                                <p class="text-xs font-semibold text-slate-500 mt-1">{% tenant_trans "Each Arabic value becomes a company translation override and appears immediately after upload." %}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 rounded-[24px] border border-white/80 bg-white p-5 shadow-sm">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">{% tenant_trans "Sheet Columns" %}</p>
+                                <p class="text-sm font-semibold text-slate-600 mt-1">{% tenant_trans "This is what the customer receives in Excel." %}</p>
+                            </div>
+                            <span class="px-3 py-1.5 rounded-full bg-cyan-50 text-cyan-700 text-[10px] font-black uppercase tracking-[0.18em]">
+                                Ready
+                            </span>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                                <div class="text-xs font-black text-slate-900">{% tenant_trans "English Source" %}</div>
+                                <div class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "Exact UI source text used for matching." %}</div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                                <div class="text-xs font-black text-slate-900">{% tenant_trans "Arabic Translation" %}</div>
+                                <div class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "Customer edits this column." %}</div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                                <div class="text-xs font-black text-slate-900">{% tenant_trans "Screen Hint" %}</div>
+                                <div class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "Short description of where the text appears." %}</div>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                                <div class="text-xs font-black text-slate-900">{% tenant_trans "Template Location" %}</div>
+                                <div class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "Internal page/component reference for support teams." %}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-[32px] border border-slate-200 shadow-sm p-6 mt-4">
+                <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-5">
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.22em]">{% tenant_trans "Preview" %}</p>
+                        <h3 class="text-xl font-black text-slate-900 mt-2">{% tenant_trans "What the Excel file contains" %}</h3>
+                    </div>
+                    <div class="relative w-full lg:w-[360px]">
+                        <i class="ph ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" x-model="translationQuery" placeholder="{% tenant_trans 'Search source, Arabic, or hint...' %}"
+                            class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-[24px] border border-slate-200">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "English" %}</th>
+                                <th class="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Arabic" %}</th>
+                                <th class="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Screen Hint" %}</th>
+                                <th class="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Status" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200 bg-white">
+                            {% for entry in translation_sheet_rows %}
+                            <tr x-show="'{{ entry.msgid|escapejs|lower }} {{ entry.msgstr|escapejs|lower }} {{ entry.screen_hint|escapejs|lower }} {{ entry.template_location|escapejs|lower }}'.includes((translationQuery || '').toLowerCase())">
+                                <td class="px-4 py-4 align-top">
+                                    <div class="text-sm font-black text-slate-900">{{ entry.msgid }}</div>
+                                    <div class="mt-2 text-xs font-semibold text-slate-400">{{ entry.template_location }}</div>
+                                </td>
+                                <td class="px-4 py-4 align-top">
+                                    <div class="text-sm font-semibold text-slate-700" dir="rtl">{{ entry.msgstr|default:"-" }}</div>
+                                </td>
+                                <td class="px-4 py-4 align-top">
+                                    <div class="text-sm font-semibold text-slate-600">{{ entry.screen_hint }}</div>
+                                </td>
+                                <td class="px-4 py-4 align-top">
+                                    <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.18em] {% if entry.origin == 'company' %}bg-cyan-50 text-cyan-700{% elif entry.origin == 'missing' %}bg-amber-50 text-amber-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+                                        {{ entry.origin }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="px-6 py-8 text-center text-sm font-semibold text-slate-500">{% tenant_trans "No translation rows available yet." %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INVITE MODAL Overlay -->
+    <div x-cloak x-show="showInviteModal" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-950/55 backdrop-blur-xl p-4 md:p-6">
+
+        <div class="bg-white rounded-[32px] shadow-[0_40px_120px_-48px_rgba(15,23,42,0.65)] w-full max-w-4xl max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-3rem)] overflow-hidden animate-in zoom-in duration-300 flex flex-col my-auto"
+            @click.away="dismissInviteModal()"
+            x-data="{
+                currentStep: Math.min(3, Math.max(1, Number('{{ request.GET.member_step|default:'1'|escapejs }}') || 1)),
+                serverError: '{{ request.GET.invite_error|default:''|escapejs }}',
+                firstName: '',
+                lastName: '',
+                email: '',
+                phone: '',
+                departmentSelections: [],
+                roleId: '',
+                shift: '',
+                workerModeEnabled: false,
+                password: '',
+                confirmPassword: '',
+                roleNameMap: {
+                    {% for role in available_roles %}
+                    '{{ role.id }}': '{{ role.name|lower|escapejs }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                },
+                roleDisplayMap: {
+                    {% for role in available_roles %}
+                    '{{ role.id }}': '{{ role.name|title|escapejs }}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                },
+                shiftLabelMap: {
+                    '': 'No shift assigned',
+                    {% for shift in shift_options %}
+                    '{{ shift.value|escapejs }}': '{{ shift.label|escapejs }}{% if shift.window %} ({{ shift.window|escapejs }}){% endif %}'{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                },
+                isSupervisorRole(roleId) {
+                    return (this.roleNameMap[String(roleId)] || '') === 'supervisor';
+                },
+                isPlannerRole(roleId) {
+                    return (this.roleNameMap[String(roleId)] || '') === 'planner';
+                },
+                isStoreRole(roleId) {
+                    return (this.roleNameMap[String(roleId)] || '') === 'store';
+                },
+                roleNeedsCoverage(roleId) {
+                    return !!roleId && !this.isPlannerRole(roleId) && !this.isStoreRole(roleId);
+                },
+                initials() {
+                    const seed = `${this.firstName} ${this.lastName}`.trim();
+                    if (!seed) return 'TM';
+                    return seed
+                        .split(/\s+/)
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map(part => part[0].toUpperCase())
+                        .join('');
+                },
+                displayName() {
+                    const full = `${this.firstName} ${this.lastName}`.trim();
+                    return full || 'Enter first and last name';
+                },
+                contactPreview() {
+                    return (this.email || this.phone) ? 'Contact details added' : 'Add work email or phone';
+                },
+                usernamePreview() {
+                    return 'Generated after save';
+                },
+                passwordScore() {
+                    let score = 0;
+                    if ((this.password || '').length >= 8) score += 1;
+                    if (/[A-Z]/.test(this.password || '')) score += 1;
+                    if (/[0-9]/.test(this.password || '')) score += 1;
+                    if (/[^A-Za-z0-9]/.test(this.password || '')) score += 1;
+                    return score;
+                },
+                passwordLabel() {
+                    const score = this.passwordScore();
+                    if (score >= 4) return 'Strong';
+                    if (score >= 2) return 'Medium';
+                    if ((this.password || '').length > 0) return 'Weak';
+                    return 'Pending';
+                },
+                passwordBarClass() {
+                    const score = this.passwordScore();
+                    if (score >= 4) return 'bg-emerald-400';
+                    if (score >= 2) return 'bg-amber-400';
+                    if ((this.password || '').length > 0) return 'bg-rose-400';
+                    return 'bg-slate-600';
+                },
+                departmentSummary(values) {
+                    if (this.isStoreRole(this.roleId)) return 'No department required for Store.';
+                    if (!values.length) return 'Select one or more categories.';
+                    return `${values.length} category${values.length === 1 ? '' : 'ies'} selected`;
+                },
+                selectedRoleLabel() {
+                    return this.roleDisplayMap[String(this.roleId)] || 'Select role';
+                },
+                selectedShiftLabel() {
+                    return this.shiftLabelMap[String(this.shift)] || 'No shift assigned';
+                },
+                init() {
+                    if (!this.serverError) {
+                        this.clearInviteDraft();
+                        this.$nextTick(() => {
+                            this.clearInviteDraft();
+                            window.setTimeout(() => this.clearInviteDraft(), 250);
+                            window.setTimeout(() => this.clearInviteDraft(), 900);
+                        });
+                    }
+                },
+                clearInviteDraft() {
+                    this.firstName = '';
+                    this.lastName = '';
+                    this.email = '';
+                    this.phone = '';
+                    this.password = '';
+                    this.confirmPassword = '';
+                    const fields = [
+                        this.$refs.inviteFirstNameInput,
+                        this.$refs.inviteLastNameInput,
+                        this.$refs.inviteEmailInput,
+                        this.$refs.invitePhoneInput,
+                        this.$refs.invitePasswordInput,
+                        this.$refs.inviteConfirmPasswordInput,
+                    ];
+                    fields.forEach((field) => {
+                        if (!field) return;
+                        field.value = '';
+                        field.setCustomValidity?.('');
+                    });
+                },
+                coverageSelectionRequired() {
+                    return this.roleNeedsCoverage(this.roleId);
+                },
+                passwordsReadyForComparison() {
+                    return (this.password || '').length > 0 || (this.confirmPassword || '').length > 0;
+                },
+                passwordsMatch() {
+                    if (!(this.password || '').length || !(this.confirmPassword || '').length) return false;
+                    return this.password === this.confirmPassword;
+                },
+                passwordMatchState() {
+                    if (!this.passwordsReadyForComparison()) return 'idle';
+                    return this.passwordsMatch() ? 'match' : 'mismatch';
+                },
+                dismissInviteModal() {
+                    this.serverError = '';
+                    showInviteModal = false;
+                    try {
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('member_modal');
+                        url.searchParams.delete('member_step');
+                        url.searchParams.delete('invite_error');
+                        window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+                    } catch (error) {}
+                },
+                errorGuide() {
+                    if (!this.serverError) return '';
+                    if (this.currentStep === 1) return 'Review the required identity fields marked with * and correct the value before continuing.';
+                    if (this.currentStep === 2) return 'Choose a valid role. Coverage is required only for operational roles.';
+                    return 'Review the password requirements and confirm the same password in both required fields.';
+                },
+                stepState(step) {
+                    if (step === this.currentStep) return 'current';
+                    if (step < this.currentStep) return 'complete';
+                    return 'upcoming';
+                },
+                validateStep(step) {
+                    const refMap = {
+                        1: this.$refs.identityStep,
+                        2: this.$refs.assignmentStep,
+                        3: this.$refs.securityStep,
+                    };
+                    const section = refMap[step];
+                    if (!section) return true;
+                    const fields = Array.from(section.querySelectorAll('input, select, textarea')).filter((field) => {
+                        return !!field && !field.disabled && field.type !== 'hidden';
+                    });
+                    for (const field of fields) {
+                        if (typeof field.checkValidity === 'function' && !field.checkValidity()) {
+                            field.reportValidity();
+                            return false;
+                        }
+                    }
+                    if (step === 1 && !(String(this.email || '').trim() || String(this.phone || '').trim())) {
+                        const phoneField = this.$refs.invitePhoneInput;
+                        if (phoneField) {
+                            phoneField.setCustomValidity('Enter either email or phone.');
+                            phoneField.reportValidity();
+                            phoneField.setCustomValidity('');
+                        }
+                        return false;
+                    }
+                    if (step === 3 && (this.password || this.confirmPassword) && this.password !== this.confirmPassword) {
+                        const confirmField = this.$refs.inviteConfirmPasswordInput;
+                        if (confirmField) {
+                            confirmField.setCustomValidity('Passwords do not match.');
+                            confirmField.reportValidity();
+                            confirmField.setCustomValidity('');
+                        }
+                        return false;
+                    }
+                    return true;
+                },
+                nextStep() {
+                    if (this.currentStep >= 3) return;
+                    if (!this.validateStep(this.currentStep)) return;
+                    this.currentStep += 1;
+                },
+                previousStep() {
+                    if (this.currentStep <= 1) return;
+                    this.currentStep -= 1;
+                },
+                jumpToStep(step) {
+                    if (step < this.currentStep) {
+                        this.currentStep = step;
+                        return;
+                    }
+                    if (step === this.currentStep) return;
+                    const targetStep = Math.min(step, this.currentStep + 1);
+                    if (this.validateStep(this.currentStep)) {
+                        this.currentStep = targetStep;
+                    }
+                },
+                submitInvite(event) {
+                    if (!this.validateStep(1)) {
+                        this.currentStep = 1;
+                        return;
+                    }
+                    if (!this.validateStep(2)) {
+                        this.currentStep = 2;
+                        return;
+                    }
+                    if (!this.validateStep(3)) {
+                        this.currentStep = 3;
+                        return;
+                    }
+                    event.target.submit();
+                }
+            }">
+
+            <div class="overflow-y-auto bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 md:p-6">
+                <div class="mb-5 flex items-start justify-between gap-6">
+                    <div class="max-w-2xl">
+                        <p class="text-[11px] font-black text-cyan-600 uppercase tracking-[0.35em]">{% tenant_trans "Planner Settings" %}</p>
+                        <h3 class="mt-2 text-3xl md:text-[2.8rem] leading-[0.98] font-black text-slate-800 tracking-[-0.055em]">{% tenant_trans "Create Team Member" %}</h3>
+                        <p class="mt-2 max-w-xl text-base font-semibold text-slate-600">{% tenant_trans "Create the account, assign department access, and finish security setup in three guided steps." %}</p>
+                    </div>
+                    <button @click="dismissInviteModal()"
+                        class="shrink-0 w-12 h-12 rounded-full bg-white/90 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-[0_16px_32px_-24px_rgba(15,23,42,0.45)]">
+                        <i class="ph ph-x text-2xl"></i>
+                    </button>
+                </div>
+
+                <form method="POST" action="{% url 'settings_dashboard' %}" @submit.prevent="submitInvite($event)" autocomplete="off" class="w-full">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="invite_user">
+                    <input type="hidden" name="scope" value="{{ settings_scope|default:'manufacturing' }}">
+
+                    <div class="rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_-48px_rgba(37,99,235,0.28)] overflow-hidden">
+                        <div class="border-b border-slate-200 bg-slate-50/80 px-5 py-4 md:px-6">
+                            <div class="grid grid-cols-3 gap-2 md:gap-3">
+                                <button type="button" @click="jumpToStep(1)"
+                                    :class="stepState(1) === 'current' ? 'text-cyan-600 after:scale-x-100' : 'text-slate-500 hover:text-slate-700 after:scale-x-0'"
+                                    class="relative rounded-2xl bg-white px-3 py-3 text-left transition-all after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:origin-left after:bg-cyan-500 after:transition-transform">
+                                    <div class="text-[11px] font-black uppercase tracking-[0.2em]">{% tenant_trans "General Info" %}</div>
+                                    <div class="mt-1 text-sm font-semibold">{% tenant_trans "Identity" %}</div>
+                                </button>
+                                <button type="button" @click="jumpToStep(2)"
+                                    :class="stepState(2) === 'current' ? 'text-cyan-600 after:scale-x-100' : 'text-slate-500 hover:text-slate-700 after:scale-x-0'"
+                                    class="relative rounded-2xl bg-white px-3 py-3 text-left transition-all after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:origin-left after:bg-cyan-500 after:transition-transform">
+                                    <div class="text-[11px] font-black uppercase tracking-[0.2em]">{% tenant_trans "Employee Access" %}</div>
+                                    <div class="mt-1 text-sm font-semibold">{% tenant_trans "Assignment" %}</div>
+                                </button>
+                                <button type="button" @click="jumpToStep(3)"
+                                    :class="stepState(3) === 'current' ? 'text-cyan-600 after:scale-x-100' : 'text-slate-500 hover:text-slate-700 after:scale-x-0'"
+                                    class="relative rounded-2xl bg-white px-3 py-3 text-left transition-all after:absolute after:bottom-0 after:left-3 after:right-3 after:h-0.5 after:origin-left after:bg-cyan-500 after:transition-transform">
+                                    <div class="text-[11px] font-black uppercase tracking-[0.2em]">{% tenant_trans "Security Setup" %}</div>
+                                    <div class="mt-1 text-sm font-semibold">{% tenant_trans "Password" %}</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="px-5 py-5 md:px-6 md:py-6">
+                            <div x-show="serverError" x-cloak class="mb-5 rounded-[22px] border border-rose-200 bg-rose-50 px-4 py-4">
+                                <div class="flex items-start gap-3">
+                                    <div class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
+                                        <i class="ph ph-warning-circle text-lg"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.22em] text-rose-600">{% tenant_trans "Submission Error" %}</div>
+                                        <div class="mt-1 text-sm font-black text-slate-800" x-text="serverError"></div>
+                                        <p class="mt-2 text-xs font-semibold text-slate-500" x-text="errorGuide()"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-5 rounded-[18px] border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-500">
+                                {% tenant_trans "Fields marked with" %} <span class="font-black text-rose-500">*</span> {% tenant_trans "are required" %}.
+                            </div>
+
+                            <div class="mb-5 rounded-[22px] border border-cyan-100 bg-cyan-50/70 px-4 py-4">
+                                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-cyan-500 to-fuchsia-500 text-base font-black text-white shadow-[0_16px_30px_-20px_rgba(217,70,239,0.55)]" x-text="initials()"></div>
+                                        <div class="min-w-0">
+                                            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700">{% tenant_trans "Draft Preview" %}</p>
+                                            <div class="mt-1 truncate text-base font-black text-slate-800" x-text="displayName()"></div>
+                                            <div class="truncate text-sm font-semibold text-slate-500" x-text="contactPreview()"></div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2 md:w-[320px]">
+                                        <div class="rounded-2xl border border-white/70 bg-white/80 px-3 py-2.5">
+                                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{% tenant_trans "Role" %}</div>
+                                            <div class="mt-1 text-sm font-black text-slate-800" x-text="selectedRoleLabel()"></div>
+                                        </div>
+                                        <div class="rounded-2xl border border-white/70 bg-white/80 px-3 py-2.5">
+                                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{% tenant_trans "Shift" %}</div>
+                                            <div class="mt-1 text-sm font-black text-slate-800" x-text="selectedShiftLabel()"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4">
+                                <section x-ref="identityStep" x-show="currentStep === 1" x-cloak x-transition.opacity class="rounded-[24px] border border-slate-200 bg-white p-5">
+                                <div class="flex items-start justify-between gap-4 mb-5">
+                                    <div>
+                                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.24em]">{% tenant_trans "Section 01" %}</p>
+                                        <h5 class="text-lg font-black text-slate-900 mt-2">{% tenant_trans "Member Identity" %}</h5>
+                                        <p class="mt-2 text-sm font-semibold text-slate-500">{% tenant_trans "Start with the person’s name and at least one contact method: work email or phone." %}</p>
+                                    </div>
+                                    <div class="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-400">
+                                        <i class="ph ph-identification-card text-base"></i>
+                                        Basic profile
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "First Name" %} <span class="text-rose-500">*</span></label>
+                                        <input x-ref="inviteFirstNameInput" type="text" name="first_name" required x-model="firstName" autocomplete="off"
+                                            class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "Last Name" %} <span class="text-rose-500">*</span></label>
+                                        <input x-ref="inviteLastNameInput" type="text" name="last_name" required x-model="lastName" autocomplete="off"
+                                            class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "Work Email" %}</label>
+                                        <div class="relative">
+                                            <i class="ph ph-envelope-simple absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                            <input x-ref="inviteEmailInput" type="email" name="email" x-model="email" autocomplete="new-password" autocapitalize="off" spellcheck="false"
+                                                @input="if (phone) { $refs.invitePhoneInput?.setCustomValidity(''); }"
+                                                class="w-full pl-14 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "Phone" %}</label>
+                                        <div class="relative">
+                                            <i class="ph ph-phone absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                            <input x-ref="invitePhoneInput" type="tel" name="phone" x-model="phone" autocomplete="new-password"
+                                                @input="setCustomValidity('')"
+                                                class="w-full pl-14 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                        </div>
+                                    </div>
+                                    <p class="md:col-span-2 mt-0.5 text-xs font-semibold text-slate-400">{% tenant_trans "Enter at least one: work email or phone. Username preview:" %} <span class="font-black text-slate-600" x-text="usernamePreview()"></span></p>
+                                </div>
+                            </section>
+
+                            <section x-ref="assignmentStep" x-show="currentStep === 2" x-cloak x-transition.opacity class="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+                                <div class="flex items-start justify-between gap-4 mb-5">
+                                    <div>
+                                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.24em]">{% tenant_trans "Section 02" %}</p>
+                                        <h5 class="text-lg font-black text-slate-900 mt-2">{% tenant_trans "Assignment" %}</h5>
+                                        <p class="mt-2 text-sm font-semibold text-slate-500">{% tenant_trans "Define operational scope once so the right dashboards and queues are visible immediately." %}</p>
+                                    </div>
+                                    <div class="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-400">
+                                        <i class="ph ph-users-three text-base"></i>
+                                        Department and role
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "Coverage" %} <span x-show="coverageSelectionRequired()" x-cloak class="text-rose-500">*</span></label>
+                                        <div x-show="roleNeedsCoverage(roleId) && {{ department_options|length }} === 0" x-cloak class="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">
+                                            No departments exist yet. Create departments first, then assign this user.
+                                        </div>
+                                        <div x-show="isPlannerRole(roleId)" x-cloak class="mb-3 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3">
+                                            <div class="text-sm font-black text-slate-800">{% tenant_trans "Planner gets full coverage automatically." %}</div>
+                                            <p class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "All departments created in this scope will be assigned to this planner by default." %}</p>
+                                            <div class="mt-3 flex flex-wrap gap-2" x-show="{{ department_options|length }} > 0">
+                                                {% for department in department_options %}
+                                                <span class="rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700 border border-cyan-100">{{ department }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div x-show="isStoreRole(roleId)" x-cloak class="mb-3 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+                                            <div class="text-sm font-black text-slate-800">{% tenant_trans "Store keeper does not need department coverage." %}</div>
+                                            <p class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "Store access is limited to material checks and finished-goods receipt queues." %}</p>
+                                        </div>
+                                        <div x-show="roleNeedsCoverage(roleId)" x-cloak>
+                                        <div class="rounded-2xl border border-slate-200 bg-white max-h-44 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                                            {% for department in department_options %}
+                                            <label class="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 cursor-pointer">
+                                                <input type="checkbox" name="department" value="{{ department }}" x-model="departmentSelections"
+                                                    class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400">
+                                                <span class="text-sm font-bold text-slate-700">{{ department }}</span>
+                                            </label>
+                                            {% endfor %}
+                                        </div>
+                                        <p class="mt-2.5 text-xs font-semibold text-slate-400" x-text="departmentSummary(departmentSelections)"></p>
+                                        <div x-show="departmentSelections.length" x-cloak class="mt-2.5 flex flex-wrap gap-2">
+                                            <template x-for="item in departmentSelections" :key="item">
+                                                <span class="px-2 py-1 rounded-full bg-cyan-50 text-cyan-700 text-[10px] font-black uppercase tracking-[0.18em]" x-text="item"></span>
+                                            </template>
+                                        </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-4 content-start">
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "Role" %} <span class="text-rose-500">*</span></label>
+                                            <div class="relative">
+                                                <select name="role" required x-model="roleId"
+                                                    @change="if (!isSupervisorRole(roleId)) workerModeEnabled = false; if (isStoreRole(roleId)) departmentSelections = []"
+                                                    class="w-full appearance-none px-4 py-3.5 bg-white border border-slate-200 rounded-2xl font-black text-sm text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all cursor-pointer">
+                                                    <option value="" selected disabled>{% tenant_trans "Select role" %}</option>
+                                                    {% for role in available_roles %}
+                                                    <option value="{{ role.id }}">{{ role.name|title }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <i class="ph ph-caret-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"></i>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "Shift" %}</label>
+                                            <div class="relative">
+                                                <select name="shift" x-model="shift"
+                                                    class="w-full appearance-none px-4 py-3.5 bg-white border border-slate-200 rounded-2xl font-black text-sm text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all cursor-pointer">
+                                                    <option value="">{% tenant_trans "No shift assigned" %}</option>
+                                                    {% for shift in shift_options %}
+                                                    <option value="{{ shift.value }}">{{ shift.label }}{% if shift.window %} ({{ shift.window }}){% endif %}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <i class="ph ph-caret-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"></i>
+                                            </div>
+                                        </div>
+                                        <p class="text-xs font-semibold text-slate-400">{% tenant_trans "Assign the standard operating shift for this employee." %}</p>
+                                    </div>
+                                </div>
+
+                                <div x-show="isSupervisorRole(roleId)" x-cloak class="mt-4 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3.5">
+                                    <label class="flex items-start gap-3 cursor-pointer">
+                                        <input type="checkbox" name="worker_mode_enabled" x-model="workerModeEnabled"
+                                            class="mt-1 h-4 w-4 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-400">
+                                        <div>
+                                            <div class="text-sm font-black text-slate-800">{% tenant_trans "Enable worker mode" %}</div>
+                                            <div class="mt-1 text-xs font-semibold text-slate-500">
+                                                This supervisor can open the worker station in another tab and execute or close tasks assigned directly to them.
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    {% for role in available_roles %}
+                                    <span class="px-3 py-1.5 rounded-full bg-white text-slate-700 text-[10px] font-black uppercase tracking-[0.18em] border border-slate-200">{{ role.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </section>
+
+                            <section x-ref="securityStep" x-show="currentStep === 3" x-cloak x-transition.opacity class="rounded-[24px] border border-slate-200 bg-white p-5">
+                                <div class="flex items-start justify-between gap-4 mb-5">
+                                    <div>
+                                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.24em]">{% tenant_trans "Section 03" %}</p>
+                                        <h5 class="text-lg font-black text-slate-900 mt-2">{% tenant_trans "Security" %}</h5>
+                                        <p class="mt-2 text-sm font-semibold text-slate-500">{% tenant_trans "Set the initial password and confirm it before creating the account." %}</p>
+                                    </div>
+                                    <div class="hidden sm:flex items-center gap-2 text-xs font-bold text-slate-400">
+                                        <i class="ph ph-lock-key text-base"></i>
+                                        Primary password
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">{% tenant_trans "Primary Password" %} <span class="text-rose-500">*</span></label>
+                                        <input x-ref="invitePasswordInput" type="password" name="password" required minlength="8" x-model="password" autocomplete="new-password"
+                                            class="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Confirm {% tenant_trans "Primary Password" %} <span class="text-rose-500">*</span></label>
+                                        <input x-ref="inviteConfirmPasswordInput" type="password" name="confirm_password" required minlength="8" x-model="confirmPassword" autocomplete="new-password"
+                                            :class=\"passwordMatchState() === 'match' ? 'border-emerald-300 bg-emerald-50/60 focus:ring-emerald-100 focus:border-emerald-300' : (passwordMatchState() === 'mismatch' ? 'border-rose-300 bg-rose-50/60 focus:ring-rose-100 focus:border-rose-300' : 'border-slate-200 bg-slate-50 focus:ring-cyan-100 focus:border-cyan-300')\"
+                                            class="w-full px-4 py-3.5 border rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 transition-all">
+                                        <div class="mt-2 min-h-[20px]">
+                                            <div x-show="passwordMatchState() === 'match'" x-cloak class="inline-flex items-center gap-2 text-xs font-bold text-emerald-600">
+                                                <i class="ph ph-check-circle text-sm"></i>
+                                                <span>{% tenant_trans "Passwords match." %}</span>
+                                            </div>
+                                            <div x-show="passwordMatchState() === 'mismatch'" x-cloak class="inline-flex items-center gap-2 text-xs font-bold text-rose-600">
+                                                <i class="ph ph-warning-circle text-sm"></i>
+                                                <span>{% tenant_trans "Passwords do not match yet." %}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-3 mt-4">
+                                    <div class="p-4 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-start gap-3">
+                                        <div class="w-10 h-10 rounded-2xl bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0">
+                                            <i class="ph ph-shield-check"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-black text-slate-800">{% tenant_trans "Primary access ready" %}</p>
+                                            <p class="text-xs font-semibold text-slate-600 mt-1">{% tenant_trans "Use a strong first password now, then rotate it later if your operating policy requires first-login reset." %}</p>
+                                        </div>
+                                    </div>
+                                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                                        <div class="flex items-center justify-between">
+                                            <div class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">{% tenant_trans "Strength" %}</div>
+                                            <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-700" x-text="passwordLabel()"></div>
+                                        </div>
+                                        <div class="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
+                                            <div class="h-full rounded-full transition-all duration-300"
+                                                :class="passwordBarClass()"
+                                                :style="`width: ${Math.max(passwordScore() * 25, password ? 20 : 0)}%`"></div>
+                                        </div>
+                                        <div class="mt-3 text-xs font-semibold text-slate-500">
+                                            Use 8+ characters with upper-case letters, numbers, and symbols.
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-200 bg-slate-50/80 px-5 py-4 md:px-6">
+                            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                        <i class="ph ph-briefcase text-xs"></i><span x-text="selectedRoleLabel()"></span>
+                                    </span>
+                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                        <i class="ph ph-clock text-xs"></i><span x-text="selectedShiftLabel()"></span>
+                                    </span>
+                                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+                                        <i class="ph ph-stack text-xs"></i><span x-text="isStoreRole(roleId) ? 'No Coverage Required' : (departmentSelections.length ? departmentSelections.length + ' Categories' : 'No Coverage Yet')"></span>
+                                    </span>
+                                </div>
+                                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+                                    <button x-show="currentStep === 1" x-cloak type="button" @click="dismissInviteModal()"
+                                        class="sm:min-w-[160px] py-3.5 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl text-sm font-black border border-slate-200 transition-all">
+                                        Cancel
+                                    </button>
+                                    <button x-show="currentStep > 1" x-cloak type="button" @click="previousStep()"
+                                        class="sm:min-w-[160px] py-3.5 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl text-sm font-black border border-slate-200 transition-all">
+                                        Back
+                                    </button>
+                                    <button x-show="currentStep < 3" x-cloak type="button" @click="nextStep()"
+                                        class="sm:min-w-[220px] py-3.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-2xl text-sm font-black shadow-[0_24px_50px_-24px_rgba(6,182,212,0.65)] transition-all">
+                                        Continue
+                                    </button>
+                                    <button x-show="currentStep === 3" x-cloak type="submit"
+                                        class="sm:min-w-[220px] py-3.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-2xl text-sm font-black shadow-[0_24px_50px_-24px_rgba(6,182,212,0.65)] transition-all">
+                                        Create User
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div x-cloak x-show="showEditMemberModal" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[210] flex items-start justify-center overflow-y-auto bg-slate-900/60 backdrop-blur-xl p-4 md:p-6">
+        <div class="bg-white rounded-[36px] shadow-2xl w-full max-w-3xl max-h-[calc(100vh-2rem)] md:max-h-[calc(100vh-3rem)] overflow-hidden animate-in zoom-in duration-300 flex flex-col my-auto"
+            @click.away="closeEditMember()">
+            <div class="bg-gradient-to-br from-white via-slate-50 to-fuchsia-50/60 p-6 md:p-8 overflow-y-auto">
+                <div class="flex justify-between items-start mb-8">
+                    <div>
+                        <p class="text-[11px] font-black text-cyan-600 uppercase tracking-[0.35em]">{% tenant_trans "Team Settings" %}</p>
+                        <h3 class="text-3xl font-black text-slate-800 tracking-tight mt-2">{% tenant_trans "Edit Team Member" %}</h3>
+                        <p class="text-sm font-semibold text-slate-600 mt-2">{% tenant_trans "Update role, department, and employee shift from one place." %}</p>
+                    </div>
+                    <button @click="closeEditMember()"
+                        class="w-12 h-12 rounded-full bg-white/80 border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-sm">
+                        <i class="ph ph-x text-2xl"></i>
+                    </button>
+                </div>
+
+                <form method="POST" action="{% url 'settings_dashboard' %}" class="space-y-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_member">
+                    <input type="hidden" name="scope" value="{{ settings_scope|default:'manufacturing' }}">
+                    <input type="hidden" name="member_id" :value="editMember.id">
+
+                    <section class="rounded-[28px] border border-slate-200 bg-white p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "First Name" %} <span class="text-rose-500">*</span></label>
+                                <input type="text" name="first_name" required x-model="editMember.firstName"
+                                    class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "Last Name" %} <span class="text-rose-500">*</span></label>
+                                <input type="text" name="last_name" required x-model="editMember.lastName"
+                                    class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                            </div>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "Work Email" %}</label>
+                                <input type="email" name="email" x-model="editMember.email"
+                                    class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "Phone" %}</label>
+                                <input type="tel" name="phone" x-model="editMember.phone"
+                                    class="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all">
+                            </div>
+                            <p class="md:col-span-2 -mt-1 text-xs font-semibold text-slate-400">{% tenant_trans "Keep at least one contact method on the account: email or phone." %}</p>
+                        </div>
+                    </section>
+
+                    <section class="rounded-[28px] border border-slate-200 bg-slate-50/80 p-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "Coverage" %} <span x-show="roleNeedsCoverage(editMember.roleId)" x-cloak class="text-rose-500">*</span></label>
+                                <div x-show="isStoreRole(editMember.roleId)" x-cloak class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-4">
+                                    <div class="text-sm font-black text-slate-800">{% tenant_trans "No department required." %}</div>
+                                    <p class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "Store keeper access is controlled by the Store role." %}</p>
+                                </div>
+                                <div x-show="isPlannerRole(editMember.roleId)" x-cloak class="rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-4">
+                                    <div class="text-sm font-black text-slate-800">{% tenant_trans "Planner receives full coverage." %}</div>
+                                    <p class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "All departments are assigned automatically." %}</p>
+                                </div>
+                                <div x-show="roleNeedsCoverage(editMember.roleId)" x-cloak class="rounded-2xl border border-slate-200 bg-white max-h-52 overflow-y-auto custom-scrollbar p-2 space-y-1">
+                                    {% for department in department_options %}
+                                    <label class="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-slate-50 cursor-pointer">
+                                        <input type="checkbox" name="department" value="{{ department }}" x-model="editMember.departments"
+                                            class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400">
+                                        <span class="text-sm font-bold text-slate-700">{{ department }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                                <p class="mt-3 text-xs font-semibold text-slate-400" x-text="isStoreRole(editMember.roleId) ? 'No coverage required.' : (editMember.departments.length ? `${editMember.departments.length} categor${editMember.departments.length === 1 ? 'y' : 'ies'} selected` : 'Select one or more categories.')"></p>
+                                <div x-show="roleNeedsCoverage(editMember.roleId) && editMember.departments.length" x-cloak class="mt-3 flex flex-wrap gap-2">
+                                    <template x-for="item in editMember.departments" :key="item">
+                                        <span class="px-2 py-1 rounded-full bg-cyan-50 text-cyan-700 text-[10px] font-black uppercase tracking-[0.18em]" x-text="item"></span>
+                                    </template>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "Role" %} <span class="text-rose-500">*</span></label>
+                                <div class="relative">
+                                    <select name="role" required x-model="editMember.roleId"
+                                        @change="if (!isSupervisorRole(editMember.roleId)) editMember.workerModeEnabled = false; if (isStoreRole(editMember.roleId)) editMember.departments = []"
+                                        class="w-full appearance-none px-5 py-4 bg-white border border-slate-200 rounded-2xl font-black text-sm text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all cursor-pointer">
+                                        <option value="" disabled>{% tenant_trans "Select role" %}</option>
+                                        {% for role in available_roles %}
+                                        <option value="{{ role.id }}">{{ role.name|title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <i class="ph ph-caret-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "Shift" %}</label>
+                                <div class="relative">
+                                    <select name="shift" x-model="editMember.shift"
+                                        class="w-full appearance-none px-5 py-4 bg-white border border-slate-200 rounded-2xl font-black text-sm text-slate-700 outline-none focus:ring-4 focus:ring-cyan-100 focus:border-cyan-300 transition-all cursor-pointer">
+                                        <option value="">{% tenant_trans "No shift assigned" %}</option>
+                                        {% for shift in shift_options %}
+                                        <option value="{{ shift.value }}">{{ shift.label }}{% if shift.window %} ({{ shift.window }}){% endif %}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <i class="ph ph-caret-down absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 text-lg pointer-events-none"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="isSupervisorRole(editMember.roleId)" x-cloak class="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-4">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="checkbox" name="worker_mode_enabled" x-model="editMember.workerModeEnabled"
+                                    class="mt-1 h-4 w-4 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-400">
+                                <div>
+                                    <div class="text-sm font-black text-slate-800">{% tenant_trans "Enable worker mode" %}</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">
+                                        Let this supervisor open the worker station and close tasks assigned to them without losing supervisor access.
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </section>
+
+                    <div class="flex flex-col-reverse md:flex-row md:items-center md:justify-between gap-4">
+                        <div class="text-xs font-semibold text-slate-400">
+                            Changes apply immediately inside the current company and scope.
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-3 md:min-w-[320px]">
+                            <button type="button" @click="closeEditMember()"
+                                class="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl text-sm font-black uppercase tracking-[0.2em] border border-slate-200 transition-all">
+                                Cancel
+                            </button>
+                            <button type="submit"
+                                class="flex-1 py-4 bg-slate-900 text-white rounded-2xl text-sm font-black uppercase tracking-[0.2em] shadow-[0_24px_50px_-24px_rgba(15,23,42,0.8)] hover:bg-slate-900 hover:-translate-y-0.5 transition-all">
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                {% if current_role_name == 'admin' %}
+                <form method="POST" action="{% url 'settings_dashboard' %}" class="mt-6 space-y-4 rounded-[28px] border border-amber-200 bg-amber-50/70 p-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reset_member_password">
+                    <input type="hidden" name="scope" value="{{ settings_scope|default:'manufacturing' }}">
+                    <input type="hidden" name="member_id" :value="editMember.id">
+
+                    <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                        <div>
+                            <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.24em]">{% tenant_trans "Security Reset" %}</p>
+                            <h4 class="mt-2 text-lg font-black text-slate-900">{% tenant_trans "Reset Member Password" %}</h4>
+                            <p class="mt-2 text-sm font-semibold text-slate-600">{% tenant_trans "Admins can set a new temporary password for another user. Use the personal password form for your own account." %}</p>
+                        </div>
+                        <span class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">
+                            <i class="ph ph-shield-check text-xs"></i> {% tenant_trans "Admin Only" %}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "New Password" %}</label>
+                            <input type="password" name="new_password" minlength="8" x-model="editMember.newPassword"
+                                class="w-full px-5 py-4 bg-white border border-amber-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-amber-100 focus:border-amber-300 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{% tenant_trans "Confirm New Password" %}</label>
+                            <input type="password" name="confirm_password" minlength="8" x-model="editMember.confirmPassword"
+                                class="w-full px-5 py-4 bg-white border border-amber-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-amber-100 focus:border-amber-300 transition-all">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div class="text-xs font-semibold text-slate-500">
+                            Minimum 8 characters. This updates the selected member immediately.
+                        </div>
+                        <button type="submit"
+                            class="md:min-w-[220px] py-4 bg-amber-500 text-white rounded-2xl text-sm font-black uppercase tracking-[0.2em] shadow-[0_24px_50px_-24px_rgba(245,158,11,0.55)] hover:bg-amber-600 hover:-translate-y-0.5 transition-all">
+                            Reset Password
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function syncFactoryShiftModeVisibility() {
+        const select = document.getElementById('shiftModeSelect');
+        if (!select) return;
+        const mode = String(select.value || '3');
+        const rowMap = {
+            morning: document.querySelector('[data-shift-row="morning"]'),
+            evening: document.querySelector('[data-shift-row="evening"]'),
+            night: document.querySelector('[data-shift-row="night"]'),
+        };
+        const help = document.getElementById('shiftModeHelp');
+        const visibleRows = mode === '1'
+            ? ['morning']
+            : mode === '2'
+                ? ['morning', 'evening']
+                : ['morning', 'evening', 'night'];
+
+        Object.entries(rowMap).forEach(([key, row]) => {
+            if (!row) return;
+            const isVisible = visibleRows.includes(key);
+            row.classList.toggle('hidden', !isVisible);
+        });
+
+        if (help) {
+            help.textContent = mode === '1'
+                ? 'Factory runs one shift only. Evening and night will be treated as off-hours.'
+                : mode === '2'
+                    ? 'Factory runs morning and evening shifts. Night will be treated as off-hours.'
+                    : 'Factory runs morning, evening, and night shifts.';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        syncFactoryShiftModeVisibility();
+        const select = document.getElementById('shiftModeSelect');
+        if (select) {
+            select.addEventListener('change', syncFactoryShiftModeVisibility);
+        }
+    });
+
+    async function saveSystemSettings(btn) {
+        const originalText = btn.innerText;
+        btn.innerText = "Saving...";
+        btn.disabled = true;
+        btn.classList.add('opacity-75');
+
+        // 1. Submit Shifts (Silent Background)
+        const shiftForm = document.getElementById('shiftForm');
+        if (shiftForm) {
+            try {
+                const formData = new FormData(shiftForm);
+                // Extract CSRF token from the form
+                const csrfToken = shiftForm.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                await fetch(shiftForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                console.log("âœ“ Shifts saved successfully.");
+            } catch (e) {
+                console.error("âœ— Failed to save shifts:", e);
+            }
+        }
+
+        // 2. Submit Main Config (Real Page Reload)
+        const mainForm = document.getElementById('mainSystemForm');
+        if (mainForm) {
+            mainForm.submit();
+        } else {
+            // Fallback if main form missing (unlikely)
+            location.reload();
+        }
+    }
+</script>
+{% endblock %}
+
+
+
+
+
+
+

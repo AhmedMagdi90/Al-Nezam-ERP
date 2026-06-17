@@ -1,0 +1,1841 @@
+{% extends 'manufacturing/base_dashboard.html' %}
+{% load static %}
+
+{% block title %}BOM Builder{% endblock %}
+
+{% block app_header %}
+<style>
+    /* Hide number input spinners */
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    input[type=number] {
+        -moz-appearance: textfield;
+        /* Firefox */
+        appearance: textfield;
+        /* Standard */
+    }
+</style>
+<header class="bg-white border-b border-gray-200 flex-shrink-0 z-40" style="padding: 0;">
+    <!-- Row 1: Product Info -->
+    <div class="h-12 flex items-center justify-between px-6 border-b border-gray-100">
+        <div class="flex items-center gap-3" x-data>
+            <!-- 🔙 Close Button -->
+            <a href="{% url 'planner_dashboard' %}"
+                class="flex items-center text-slate-400 hover:text-slate-800 hover:bg-slate-100 p-2 rounded-full transition mr-2"
+                title="Close Builder">
+                <i class="ph ph-x text-xl"></i>
+            </a>
+
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Product:</label>
+                    <input type="text" x-model="$store.bom.data.productName"
+                        class="border border-gray-200 px-3 py-1.5 rounded text-sm w-40 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Batch:</label>
+                    <input type="number" x-model.number="$store.bom.data.batchSize"
+                        class="border border-gray-200 px-3 py-1.5 rounded text-sm w-24 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Batch Type:</label>
+                    <select x-model="$store.bom.data.batchType"
+                        class="border border-gray-200 px-3 py-1.5 rounded text-sm w-24 focus:outline-none focus:border-blue-500 bg-white">
+                        <option value="pcs">pcs</option>
+                        <option value="kg">kg</option>
+                        <option value="gm">gm</option>
+                        <option value="m">m</option>
+                        <option value="cm">cm</option>
+                        <option value="l">l</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Attachment:</label>
+                    <input type="file" id="fullBomAttachmentInput" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                        class="w-48 border border-gray-200 rounded text-xs file:mr-2 file:py-1.5 file:px-2 file:border-0 file:bg-indigo-50 file:text-indigo-700">
+                    <a x-show="$store.bom.data.attachment" x-cloak :href="$store.bom.data.attachment?.url" target="_blank" rel="noopener"
+                        class="text-xs font-bold text-indigo-600 hover:text-indigo-800">Open</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right side: Notifications & User -->
+        <div class="flex items-center gap-3">
+            <button type="button" x-show="$store.bom.data.id && $store.bom.data.status !== 'active'" @click="activateBOM()"
+                class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded text-sm font-bold transition shadow-sm flex items-center gap-2">
+                <i class="ph ph-check-circle"></i> Activate
+            </button>
+            <div class="flex items-center gap-2">
+                <template x-if="$store.bom.lastSaveMessage">
+                    <div class="text-xs font-semibold px-3 py-1 rounded-full border"
+                        :class="$store.bom.lastSaveType === 'success'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : $store.bom.lastSaveType === 'error'
+                                ? 'bg-red-50 text-red-700 border-red-200'
+                                : 'bg-slate-50 text-slate-600 border-slate-200'"
+                        x-text="$store.bom.lastSaveMessage"></div>
+                </template>
+                <button @click="$store.bom.saveBOM()" :disabled="$store.bom.isSaving"
+                    :class="$store.bom.isSaving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
+                    class="text-white px-4 py-1.5 rounded text-sm font-bold transition shadow-sm mr-2 flex items-center gap-2">
+                    <i class="ph" :class="$store.bom.isSaving ? 'ph-spinner-gap animate-spin' : 'ph-floppy-disk'"></i>
+                    <span x-text="$store.bom.isSaving ? 'Saving...' : 'Save BOM'"></span>
+                </button>
+            </div>
+            <button class="relative text-slate-600 hover:text-slate-900">
+                <i class="ph ph-bell text-xl"></i>
+            </button>
+            <div class="flex items-center gap-2 text-slate-600">
+                <i class="ph ph-user-circle text-xl"></i>
+                <span class="text-sm font-semibold">ADMIN</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 2: Tabs -->
+    <div class="h-12 flex items-center px-6 bg-gray-50" x-data>
+        <div data-reorderable-tabs="bom-builder-tab-order" class="flex gap-2">
+            <button @click="$store.bom.currentTab = 'materials'" data-tab-key="materials" draggable="true"
+                :class="$store.bom.currentTab === 'materials' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-gray-100'"
+                class="px-4 py-1.5 rounded font-semibold text-sm transition cursor-grab active:cursor-grabbing">
+                MATERIALS
+            </button>
+            <button @click="$store.bom.currentTab = 'quality'" data-tab-key="quality" draggable="true"
+                :class="$store.bom.currentTab === 'quality' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-gray-100'"
+                class="px-4 py-1.5 rounded font-semibold text-sm transition cursor-grab active:cursor-grabbing">
+                QUALITY CONTROL
+            </button>
+            <button @click="$store.bom.currentTab = 'operations'" data-tab-key="operations" draggable="true"
+                :class="$store.bom.currentTab === 'operations' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-gray-100'"
+                class="px-4 py-1.5 rounded font-semibold text-sm transition cursor-grab active:cursor-grabbing">
+                OPERATIONS
+            </button>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<style>
+    /* BOM Styles */
+    main {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        background: #e8edf2 !important;
+    }
+
+    .bom-content {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        padding: 1rem 1.5rem;
+    }
+
+    .bom-main {
+        background: white;
+        border-radius: 0.75rem;
+        padding: 1rem;
+    }
+
+    .bom-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.4rem;
+    }
+
+    .materials-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+    }
+
+    .materials-table th {
+        text-align: left;
+        padding: 0.4rem 0.6rem;
+        background: #f8fafc;
+        color: #475569;
+        font-weight: 600;
+        font-size: 0.7rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .materials-table td {
+        padding: 0.4rem 0.6rem;
+        border-bottom: 1px solid #e2e8f0;
+        color: #1e293b;
+    }
+
+    .materials-table tr:hover {
+        background: #f8fafc;
+    }
+
+    .component-name-cell {
+        max-width: 250px;
+        white-space: nowrap;
+        position: relative;
+    }
+
+    .delete-btn {
+        color: #ef4444;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: opacity 0.2s;
+    }
+
+    .delete-btn:hover {
+        opacity: 1;
+    }
+
+    .summary-card {
+        background: white;
+        border: 2px solid #2563eb;
+        border-radius: 0.75rem;
+        padding: 0.875rem;
+        height: fit-content;
+    }
+
+    .summary-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.6rem;
+    }
+
+    .total-cost {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #2563eb;
+        margin-bottom: 0.75rem;
+        line-height: 1.2;
+    }
+
+    .cost-breakdown {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .cost-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.7rem;
+    }
+
+    .cost-label {
+        color: #64748b;
+    }
+
+    .cost-value {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .recalculate-btn {
+        width: 100%;
+        padding: 0.4rem;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 0.375rem;
+        font-weight: 600;
+        font-size: 0.7rem;
+        cursor: pointer;
+        margin-bottom: 0.75rem;
+    }
+
+    .trend-chart {
+        width: 100%;
+        height: 70px;
+        background: #f8fafc;
+        border-radius: 0.375rem;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0.6rem;
+        position: relative;
+    }
+
+    .trend-label {
+        position: absolute;
+        bottom: 0.3rem;
+        right: 0.3rem;
+        font-size: 0.6rem;
+        color: #94a3b8;
+    }
+
+    .add-material-btn {
+        margin-top: 0.6rem;
+        padding: 0.4rem 0.875rem;
+        background: #f1f5f9;
+        border: 2px dashed #cbd5e1;
+        border-radius: 0.375rem;
+        color: #2563eb;
+        font-weight: 600;
+        font-size: 0.7rem;
+        cursor: pointer;
+    }
+
+    .editable-input {
+        border: 1px solid transparent;
+        padding: 0.2rem 0.3rem;
+        border-radius: 0.25rem;
+        background: transparent;
+        width: 100%;
+        font-size: 0.8rem;
+    }
+
+    .editable-input:hover {
+        border-color: #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .editable-input:focus {
+        outline: none;
+        border-color: #2563eb;
+        background: white;
+    }
+
+    .wastage-input-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(78px, 1fr));
+        gap: 0.4rem;
+        align-items: center;
+        width: 100%;
+    }
+
+    .wastage-input-group {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        min-width: 0;
+    }
+
+    .wastage-input-label {
+        color: #64748b;
+        font-size: 0.7rem;
+        font-weight: 700;
+        min-width: 1.4rem;
+        text-align: center;
+    }
+
+    .wastage-number-input {
+        min-width: 0;
+        text-align: center;
+    }
+
+    .wastage-unit-suffix {
+        color: #64748b;
+        font-size: 0.7rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    /* Autocomplete Styles */
+    .autocomplete-wrapper {
+        position: relative;
+    }
+
+    .autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.375rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        margin-top: 2px;
+    }
+
+    .autocomplete-item {
+        padding: 0.5rem 0.75rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        transition: background 0.15s;
+    }
+
+    .autocomplete-item:hover,
+    .autocomplete-item.selected {
+        background: #f1f5f9;
+    }
+
+    .create-new-badge {
+        font-size: 0.7rem;
+        color: #2563eb;
+        font-weight: 600;
+        padding: 0.125rem 0.375rem;
+        background: #eff6ff;
+        border-radius: 0.25rem;
+    }
+
+    /* Operations layout: full width + scroll when needed */
+    .bom-operations {
+        height: calc(100vh - 200px);
+    }
+
+    .bom-operations > div {
+        min-height: 0;
+    }
+</style>
+
+<div x-data>
+    <div class="bom-content">
+        <div x-data="{ showBomNotes: false }" class="relative rounded-lg border bg-white px-3 py-2 shadow-sm"
+            :class="$store.bom.blockingSaveIssues.length ? 'border-red-200' : 'border-emerald-200'">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex min-w-0 items-center gap-2">
+                    <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                        :class="$store.bom.blockingSaveIssues.length ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'">
+                        <i class="ph" :class="$store.bom.blockingSaveIssues.length ? 'ph-warning-circle' : 'ph-check-circle'"></i>
+                    </span>
+                    <div class="min-w-0">
+                        <div class="truncate text-sm font-bold text-slate-800" x-text="$store.bom.readinessStatusLabel"></div>
+                        <div class="truncate text-xs text-slate-500" x-text="$store.bom.saveImpactSummary"></div>
+                    </div>
+                </div>
+                <div class="flex shrink-0 items-center gap-2 text-xs">
+                    <span class="rounded-md bg-slate-50 px-2.5 py-1 font-semibold text-slate-600">
+                        <span class="font-black text-slate-900" x-text="$store.bom.data.components.length"></span>
+                        Materials
+                    </span>
+                    <span class="rounded-md bg-slate-50 px-2.5 py-1 font-semibold text-slate-600">
+                        <span class="font-black text-slate-900" x-text="$store.bom.data.operations.length"></span>
+                        Stages
+                    </span>
+                    <button type="button" @click="showBomNotes = !showBomNotes"
+                        class="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 font-black uppercase tracking-[0.12em] transition"
+                        :class="$store.bom.readinessIssues.length ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'">
+                        <i class="ph ph-note"></i>
+                        Notes
+                        <span class="rounded-full bg-white px-1.5 text-[10px]" x-text="$store.bom.readinessIssues.length"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div x-show="showBomNotes" x-cloak @click.outside="showBomNotes = false"
+                class="absolute right-3 top-[calc(100%+0.5rem)] z-50 w-full max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">BOM Notes</div>
+                        <div class="mt-1 text-sm font-bold text-slate-900" x-text="$store.bom.readinessStatusLabel"></div>
+                    </div>
+                    <button type="button" @click="showBomNotes = false"
+                        class="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-50 hover:text-slate-700">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+                <div class="mb-3 grid grid-cols-3 gap-2 text-center text-xs">
+                    <div class="rounded-md bg-slate-50 px-3 py-2">
+                        <div class="font-bold text-slate-800" x-text="$store.bom.data.components.length"></div>
+                        <div class="text-slate-500">Materials</div>
+                    </div>
+                    <div class="rounded-md bg-slate-50 px-3 py-2">
+                        <div class="font-bold text-slate-800" x-text="$store.bom.data.operations.length"></div>
+                        <div class="text-slate-500">Stages</div>
+                    </div>
+                    <div class="rounded-md bg-slate-50 px-3 py-2">
+                        <div class="font-bold text-slate-800" x-text="$store.bom.data.status || 'draft'"></div>
+                        <div class="text-slate-500">Status</div>
+                    </div>
+                </div>
+                <ul x-show="$store.bom.readinessIssues.length" class="grid gap-2 text-sm text-slate-700">
+                    <template x-for="issue in $store.bom.readinessIssues" :key="issue">
+                        <li class="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2">
+                            <i class="ph ph-info mt-0.5 text-amber-500"></i>
+                            <span x-text="issue"></span>
+                        </li>
+                    </template>
+                </ul>
+                <div x-show="!$store.bom.readinessIssues.length" class="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                    No notes.
+                </div>
+            </div>
+        </div>
+
+        <div class="bom-main">
+            <!-- MATERIALS TAB -->
+            <div x-show="$store.bom.currentTab === 'materials'">
+                <table class="materials-table">
+                    <thead>
+                        <tr>
+                            <th>Component Name</th>
+                            <th style="text-align: center; width: 80px;">Unit</th>
+                            <th style="text-align: center; width: 90px;">Required Qty</th>
+                            <th style="text-align: center; width: 240px;">Wastage</th>
+                            <th style="width: 35px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(comp, index) in $store.bom.data.components" :key="index">
+                            <tr>
+                                <td class="component-name-cell">
+                                    <div class="autocomplete-wrapper" x-data="materialAutocomplete(comp)">
+                                        <input type="text" x-model="comp.name" @input="handleInput"
+                                            @keydown="handleKeydown" @blur="setTimeout(() => showDropdown = false, 200)"
+                                            class="editable-input" :title="comp.name" placeholder="Type to search...">
+
+                                        <div x-show="showDropdown && searchResults.length > 0" x-ref="dropdownList"
+                                            class="autocomplete-dropdown" style="z-index: 9999;">
+                                            <template x-for="(result, idx) in searchResults" :key="idx">
+                                                <div @click="selectItem(result)"
+                                                    :class="idx === selectedIndex ? 'selected' : ''"
+                                                    class="autocomplete-item">
+                                                    <span x-text="result.name"></span>
+                                                    <span x-show="result.isNew" class="create-new-badge">Create
+                                                        New</span>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <select x-model="comp.unit" class="editable-input" style="text-align: center;">
+                                        <option value="pcs">pcs</option>
+                                        <option value="kg">kg</option>
+                                        <option value="g">g</option>
+                                        <option value="m">m</option>
+                                        <option value="cm">cm</option>
+                                        <option value="mm">mm</option>
+                                        <option value="l">l</option>
+                                        <option value="ml">ml</option>
+                                        <option value="set">set</option>
+                                        <option value="roll">roll</option>
+                                        <option value="sheet">sheet</option>
+                                        <option value="box">box</option>
+                                        <option value="pack">pack</option>
+                                        <option value="pair">pair</option>
+                                    </select>
+                                </td>
+                                <td style="text-align: center;"><input type="number" x-model.number="comp.qty"
+                                        @input="$store.bom.syncWastageForRequiredQty(comp)" class="editable-input"
+                                        style="text-align: center;">
+                                </td>
+                                <td style="text-align: center;">
+                                    <div class="wastage-input-grid">
+                                        <div class="wastage-input-group">
+                                            <span class="wastage-input-label">%</span>
+                                            <input type="number" min="0" step="0.1"
+                                                x-model.number="comp.wastage_percent"
+                                                @input="$store.bom.syncWastageFromPercent(comp)"
+                                                class="editable-input wastage-number-input"
+                                                title="Wastage percentage">
+                                        </div>
+                                        <div class="wastage-input-group">
+                                            <span class="wastage-input-label">Qty</span>
+                                            <input type="number" min="0" step="0.001"
+                                                x-model.number="comp.wastage_qty"
+                                                @input="$store.bom.syncWastageFromQty(comp)"
+                                                class="editable-input wastage-number-input"
+                                                title="Wastage quantity">
+                                            <span class="wastage-unit-suffix" x-text="comp.unit || 'pcs'"></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align: center;">
+                                    <i @click="$store.bom.deleteMaterial(index)" class="ph ph-trash delete-btn"
+                                        style="font-size: 1rem;" title="Delete this material"></i>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+
+                <button @click="$store.bom.addMaterial()" class="add-material-btn">+ Add Material</button>
+            </div>
+
+            <!-- QUALITY TAB -->
+            <div x-show="$store.bom.currentTab === 'quality'">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h1 class="bom-title">Quality Control Plan</h1>
+                        <p style="color: #64748b; font-size: 0.8rem;">Define quality checks and link them to specific
+                            operations.</p>
+                    </div>
+                </div>
+
+                <table class="materials-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Checkpoint Details</th>
+                            <th style="width: 15%;">Inspection Type</th>
+                            <th style="width: 20%;">Acceptance Criteria</th>
+                            <th style="width: 15%;">Frequency</th>
+                            <th style="width: 5%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template x-for="(check, index) in $store.bom.data.qualityChecks" :key="index">
+                            <tr>
+                                <!-- Checkpoint Name -->
+                                <td>
+                                    <input type="text" x-model="check.name" class="editable-input"
+                                        placeholder="e.g. Surface Inspection">
+                                </td>
+
+                                <!-- Type -->
+                                <td>
+                                    <select x-model="check.type" class="editable-input">
+                                        <option value="pass_fail">Pass/Fail</option>
+                                        <option value="measure">Measurement</option>
+                                        <option value="instructions">Instructions</option>
+                                    </select>
+                                </td>
+
+                                <!-- Criteria -->
+                                <td>
+                                    <input type="text" x-model="check.criteria" class="editable-input"
+                                        placeholder="e.g. No Scratches">
+                                </td>
+
+                                <!-- Frequency -->
+                                <td>
+                                    <select x-model="check.frequency" class="editable-input">
+                                        <option value="100%">100% (All Units)</option>
+                                        <option value="10%">Sampling (10%)</option>
+                                        <option value="hourly">Hourly</option>
+                                    </select>
+                                </td>
+
+                                <!-- Delete -->
+                                <td style="text-align: center;">
+                                    <i @click="$store.bom.deleteQualityCheck(index)" class="ph ph-trash delete-btn"
+                                        style="font-size: 1rem;" title="Delete this check"></i>
+                                </td>
+                            </tr>
+                        </template>
+
+                        <!-- Empty State -->
+                        <tr x-show="$store.bom.data.qualityChecks.length === 0">
+                            <td colspan="6" class="text-center py-8 text-slate-400">
+                                <i class="ph ph-clipboard-text text-3xl mb-2"></i>
+                                <p class="text-xs">No quality checks defined yet.</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <button @click="$store.bom.addQualityCheck()" class="add-material-btn mt-4">+ Add Checkpoint</button>
+            </div>
+
+            <!-- OPERATIONS TAB (Master-Detail Layout) -->
+            <div x-show="$store.bom.currentTab === 'operations'" class="bom-operations flex bg-slate-50/50 -m-6 p-6">
+                <!-- Negative margin to fill container -->
+
+                <!-- LEFT COLUMN: Sequence List (Compact) -->
+                <div class="w-60 order-2 flex flex-col border-r border-slate-200 px-4 bg-white/50 backdrop-blur-sm">
+                    <div class="mb-3 px-1">
+                        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Sequence</h2>
+                        <div class="text-sm font-semibold text-slate-700">ASM-450B</div>
+                    </div>
+
+                    <!-- Drop Zone (Sortable List) -->
+                    <div class="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar"
+                        :class="{ 'bg-blue-50/50 rounded-lg ring-2 ring-blue-100 ring-inset': $store.bom.isDragging }"
+                        @dragover.prevent="$store.bom.isDragging = true"
+                        @dragleave.prevent="$store.bom.isDragging = false" @drop.prevent="$store.bom.handleDrop()">
+
+                        <!-- Empty State -->
+                        <div x-show="$store.bom.data.operations.length === 0"
+                            class="text-center py-10 px-4 text-slate-400 border-2 border-dashed border-slate-100 rounded-lg">
+                            <i class="ph ph-arrow-right text-xl mb-2"></i>
+                            <p class="text-[10px]">Drag stages or resources from right</p>
+                        </div>
+
+                        <template x-for="(op, index) in $store.bom.data.operations" :key="op.id">
+                            <div @click="$store.bom.selectOperation(op.id)"
+                                class="group flex items-center px-3 py-2 rounded-md cursor-pointer border transition-all text-xs"
+                                :class="$store.bom.selectedOpId === op.id ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-white border-transparent hover:border-slate-200 hover:bg-slate-50 text-slate-600'">
+
+                                <!-- Step Number -->
+                                <div class="w-5 h-5 rounded flex items-center justify-center font-bold mr-2 text-[10px]"
+                                    :class="$store.bom.selectedOpId === op.id ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-500'">
+                                    <span x-text="(index + 1) * 10"></span>
+                                </div>
+
+                                <!-- Name -->
+                                <div class="flex-1 truncate font-medium">
+                                    <span x-text="op.name"></span>
+                                </div>
+
+                                <!-- QC Indicator -->
+                                <template x-if="op.quality_check">
+                                    <i class="ph ph-shield-check ml-2"
+                                        :class="$store.bom.selectedOpId === op.id ? 'text-blue-200' : 'text-blue-500'"></i>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Total Time Footer -->
+                    <div
+                        class="mt-3 pt-3 border-t border-slate-100 text-[10px] flex justify-between text-slate-500 px-1">
+                        <span>Total Time:</span>
+                        <span class="font-bold text-slate-700"
+                            x-text="$store.bom.formatDuration($store.bom.calculateTotalTime())"></span>
+                    </div>
+                </div>
+
+                <!-- CENTER COLUMN: Editor (Spacious but Compact Controls) -->
+                <div class="flex-1 order-3 px-4 flex flex-col overflow-y-auto custom-scrollbar">
+                    <template x-if="$store.bom.selectedOp">
+                        <div class="w-full pt-2">
+                            <!-- Header -->
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span
+                                            class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wide"
+                                            x-text="$store.bom.selectedOp.type"></span>
+                                    </div>
+                                    <input type="text" x-model="$store.bom.selectedOp.name"
+                                        @input="$store.bom.syncSelectedOperationStage($event.target.value)" list="stage_options"
+                                        class="text-xl font-bold text-slate-800 bg-transparent border-none focus:ring-0 p-0 w-full placeholder-slate-300"
+                                        placeholder="Operation Name">
+                                    <datalist id="stage_options">
+                                        {% for stage_name in existing_stages %}
+                                        <option value="{{ stage_name|escape }}"></option>
+                                        {% empty %}
+                                        <option value="Assembly"></option>
+                                        <option value="Quality Control"></option>
+                                        <option value="Packaging"></option>
+                                        {% endfor %}
+                                    </datalist>
+                                    <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                        <span class="inline-flex items-center gap-1 rounded-full px-2 py-1 font-semibold"
+                                            :class="$store.bom.resolveStageForOperation($store.bom.selectedOp) ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'">
+                                            <i class="ph" :class="$store.bom.resolveStageForOperation($store.bom.selectedOp) ? 'ph-link' : 'ph-plus-circle'"></i>
+                                            <span x-text="$store.bom.selectedOperationStageImpact"></span>
+                                        </span>
+                                        <span x-show="!$store.bom.selectedOp.machine_id && !$store.bom.resolveStageForOperation($store.bom.selectedOp)?.machine_id"
+                                            class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-600">
+                                            <i class="ph ph-flow-arrow"></i>
+                                            Stage-only route; planner will use the stage/category capacity.
+                                        </span>
+                                    </div>
+                                </div>
+                                <button @click="$store.bom.deleteOperation($store.bom.selectedOpIndex)"
+                                    class="text-slate-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50">
+                                    <i class="ph ph-trash text-lg"></i>
+                                </button>
+                            </div>
+
+                            <!-- Editor Sections -->
+                            <div class="space-y-6">
+                                <!-- Time Settings Section -->
+                                <!-- Time Settings Section (Compact) -->
+                                <section>
+                                    <div
+                                        class="inline-flex max-w-full flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 shadow-sm">
+                                        <div class="flex items-center gap-2 pr-1 text-xs font-bold text-slate-700">
+                                            <span
+                                                class="flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                                                <i class="ph ph-clock text-base"></i>
+                                            </span>
+                                            <span>Time</span>
+                                        </div>
+
+                                        <div class="flex h-9 items-center rounded-md border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
+                                            <label class="px-2 text-[10px] font-black uppercase tracking-wide text-slate-400">Setup</label>
+                                            <div class="flex min-w-0 border-l border-slate-200">
+                                                <input type="number" x-model="$store.bom.selectedOp.setup_time" min="0" step="0.01"
+                                                    placeholder="0"
+                                                    class="w-14 border-0 bg-transparent px-1.5 py-1.5 text-sm font-semibold text-slate-700 focus:ring-0">
+                                                <select x-model="$store.bom.selectedOp.setup_time_unit"
+                                                    class="w-14 border-0 border-l border-slate-200 bg-transparent px-1 py-1.5 text-xs font-bold text-slate-600 focus:ring-0">
+                                                    <option value="sec">sec</option>
+                                                    <option value="min">min</option>
+                                                    <option value="hr">hr</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex h-9 items-center rounded-md border border-slate-200 bg-slate-50 focus-within:border-blue-400 focus-within:bg-white">
+                                            <label class="px-2 text-[10px] font-black uppercase tracking-wide text-slate-400">Item</label>
+                                            <div class="flex min-w-0 border-l border-slate-200">
+                                                <input type="number" x-model="$store.bom.selectedOp.run_time" min="0" step="0.01"
+                                                    placeholder="0"
+                                                    class="w-14 border-0 bg-transparent px-1.5 py-1.5 text-sm font-semibold text-slate-700 focus:ring-0">
+                                                <select x-model="$store.bom.selectedOp.run_time_unit"
+                                                    class="w-14 border-0 border-l border-slate-200 bg-transparent px-1 py-1.5 text-xs font-bold text-slate-600 focus:ring-0">
+                                                    <option value="sec">sec</option>
+                                                    <option value="min">min</option>
+                                                    <option value="hr">hr</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Operation Materials Section -->
+                                <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                                            <i class="ph ph-cube text-blue-600"></i> Materials For This Operation
+                                        </h3>
+                                        <span class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Optional</span>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mb-3">
+                                        Select only the BOM materials used at this stage/machine.
+                                    </p>
+
+                                    <template x-if="$store.bom.availableOperationMaterials.length === 0">
+                                        <div class="text-xs text-slate-400 italic">
+                                            Add materials in the Materials tab first.
+                                        </div>
+                                    </template>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2" x-show="$store.bom.availableOperationMaterials.length > 0">
+                                        <template x-for="mat in $store.bom.availableOperationMaterials" :key="mat.client_id">
+                                            <label class="flex items-center justify-between gap-2 p-2 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50/40 transition-colors cursor-pointer">
+                                                <div class="flex items-center gap-2 min-w-0">
+                                                    <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                        :value="mat.client_id"
+                                                        x-model="$store.bom.selectedOp.material_client_ids">
+                                                    <div class="min-w-0">
+                                                        <div class="text-xs font-semibold text-slate-700 truncate" x-text="mat.name"></div>
+                                                        <div class="text-[10px] text-slate-400" x-text="'Std: ' + (mat.qty || 0) + ' ' + (mat.unit || 'pcs')"></div>
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </template>
+                                    </div>
+                                </section>
+
+                                <!-- Quality Control Section -->
+                                <section>
+                                    <!-- Header (Conditional) -->
+                                    <h3 x-show="$store.bom.selectedOp.quality_check" x-transition.opacity
+                                        class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                                        <i class="ph ph-shield-check text-blue-600"></i> Quality Control
+                                    </h3>
+
+                                    <!-- Main Card / Toggle Wrapper -->
+                                    <div :class="$store.bom.selectedOp.quality_check ? 'bg-white p-4 rounded-xl border border-slate-200 shadow-sm' : 'py-1'"
+                                        class="transition-all duration-300">
+                                        <label class="flex items-center justify-between cursor-pointer group"
+                                            :class="$store.bom.selectedOp.quality_check ? 'mb-4 border-b border-slate-100 pb-3' : 'bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-blue-400 transition-colors'">
+                                            <div>
+                                                <div class="font-medium text-slate-700 text-sm flex items-center gap-2">
+                                                    <span>Quality Check Required</span>
+                                                    <span x-show="!$store.bom.selectedOp.quality_check"
+                                                        class="text-xs font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Optional</span>
+                                                </div>
+                                                <!-- Helper text only when checked or if we want it always? Let's hide it when unchecked to be cleaner per user request -->
+                                                <div x-show="$store.bom.selectedOp.quality_check"
+                                                    class="text-xs text-slate-400 mt-0.5">Flag this step for mandatory
+                                                    inspection.</div>
+                                            </div>
+                                            <div class="relative">
+                                                <input type="checkbox" x-model="$store.bom.selectedOp.quality_check"
+                                                    class="sr-only peer">
+                                                <div
+                                                    class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 shadow-inner">
+                                                </div>
+                                            </div>
+                                        </label>
+
+                                        <!-- Conditional Content if Checked -->
+                                        <div x-show="$store.bom.selectedOp.quality_check" x-transition class="mt-2">
+
+                                            <!-- List of Active Checks for this Operation -->
+                                            <div class="space-y-3 mb-4">
+                                                <template x-for="(check, idx) in $store.bom.selectedOpChecks"
+                                                    :key="idx">
+                                                    <div
+                                                        class="bg-slate-50 p-3 rounded-md border border-slate-100 relative group/check">
+                                                        <!-- Remove Button -->
+                                                        <button
+                                                            @click="$store.bom.unassignQualityCheck(check._originalIndex)"
+                                                            class="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors">
+                                                            <i class="ph ph-x-circle text-lg"></i>
+                                                        </button>
+
+                                                        <div class="grid grid-cols-1 gap-2">
+                                                            <!-- Name & Type -->
+                                                            <div class="flex gap-2">
+                                                                <div class="flex-1">
+                                                                    <label
+                                                                        class="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Check
+                                                                        Name</label>
+                                                                    <input type="text" x-model="check.name"
+                                                                        class="w-full text-xs font-medium bg-white border border-slate-200 rounded px-2 py-1"
+                                                                        placeholder="e.g. Surface Check">
+                                                                </div>
+                                                                <div class="w-1/3">
+                                                                    <label
+                                                                        class="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Type</label>
+                                                                    <select x-model="check.type"
+                                                                        class="w-full text-xs bg-white border border-slate-200 rounded px-2 py-1">
+                                                                        <option value="pass_fail">Pass/Fail</option>
+                                                                        <option value="measure">Measure</option>
+                                                                        <option value="instructions">Instruct</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Criteria -->
+                                                            <div>
+                                                                <label
+                                                                    class="text-[10px] uppercase font-bold text-slate-400 mb-0.5 block">Acceptance
+                                                                    Criteria</label>
+                                                                <input type="text" x-model="check.criteria"
+                                                                    class="w-full text-xs bg-white border border-slate-200 rounded px-2 py-1"
+                                                                    placeholder="e.g. No visible defects">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </template>
+                                            </div>
+
+                                            <!-- Drop Insert (Dropdown to Add) -->
+                                            <div class="relative">
+                                                <div
+                                                    class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                    <i class="ph ph-plus-circle text-blue-500"></i>
+                                                </div>
+                                                <select
+                                                    @change="$store.bom.assignExistingCheck($event.target.value); $event.target.value='';"
+                                                    class="appearance-none block w-full pl-9 pr-8 py-2 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg cursor-pointer hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors">
+                                                    <option value="">Add Quality Checkpoint...</option>
+                                                    <option value="" disabled x-show="$store.bom.availableQualityChecks.length === 0">
+                                                        No quality checks in Quality tab
+                                                    </option>
+                                                    <template x-for="item in $store.bom.availableQualityChecks" :key="item.index">
+                                                        <option :value="item.index"
+                                                            x-text="(item.check.name || 'Untitled Check') + (item.check.type ? ' • ' + item.check.type : '')">
+                                                        </option>
+                                                    </template>
+                                                </select>
+                                                <div
+                                                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-blue-500">
+                                                    <i class="ph ph-caret-down"></i>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- No Selection State -->
+                    <template x-if="!$store.bom.selectedOp">
+                        <div class="flex-1 flex flex-col items-center justify-center text-slate-300">
+                            <i class="ph ph-hand-tap text-4xl mb-3"></i>
+                            <p class="text-sm">Select an operation to edit details</p>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- RIGHT COLUMN: Stage / Resource Library (Ultra Compact) -->
+                <div class="w-56 order-1 border-r border-slate-200 px-4 bg-white/50 backdrop-blur-sm flex flex-col">
+                    <div class="mb-4 pt-1">
+                        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Stages / Resources</h2>
+                        <div class="relative">
+                            <i class="ph ph-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+                            <input type="text" x-model="$store.bom.searchQuery" placeholder="Find stage/type"
+                                class="w-full pl-7 pr-2 py-1.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-400">
+                        </div>
+                    </div>
+
+                    <!-- Stage / Resource List (Compact) -->
+                    <div class="flex-1 overflow-y-auto space-y-1 custom-scrollbar pr-1">
+                        <template x-for="machine in $store.bom.filteredMachines" :key="machine.id">
+                            <div draggable="true" @dragstart="$store.bom.dragStart($event, machine)"
+                                @dblclick="$store.bom.addOperation(machine)"
+                                class="group flex items-center p-2 bg-white border border-slate-200 rounded-md cursor-grab hover:border-blue-400 hover:shadow-sm transition-all select-none">
+
+                                <!-- Icon Box -->
+                                <div
+                                    class="w-6 h-6 rounded flex items-center justify-center text-slate-400 bg-slate-50 group-hover:text-blue-600 group-hover:bg-blue-50 transition-colors mr-2 border border-slate-100">
+                                    <i :class="machine.icon || 'ph-gear'" class="ph text-xs"></i>
+                                </div>
+
+                                <!-- Text -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-xs text-slate-700 truncate" x-text="machine.display_name || machine.name">
+                                    </div>
+                                    <div class="text-[9px] font-bold uppercase tracking-wide text-slate-400"
+                                        x-text="machine.source === 'stage' ? 'Stage' : (machine.source === 'machine_category' ? 'Machine type' : 'Machine')">
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function notifyBom(message, type = 'info') {
+        const text = String(message || 'Updated');
+        if (typeof window.appNotify === 'function') {
+            window.appNotify(text, type);
+            return;
+        }
+        if (window.Toast && typeof window.Toast.show === 'function') {
+            const toastType = type === 'error' ? 'danger' : type;
+            window.Toast.show(text, toastType);
+            return;
+        }
+        window.alert(text);
+    }
+
+    function confirmBom(message, options = {}) {
+        if (typeof window.appConfirm === 'function') {
+            return window.appConfirm(message, options);
+        }
+        return Promise.resolve(window.confirm(message));
+    }
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.store('bom', {
+            currentTab: 'materials',
+            selectedOpId: null, // 🆕 Track active selection
+            searchQuery: '',
+            activeFilter: 'All',
+            draggedMachine: null,
+            isDragging: false,
+            isSaving: false,
+            lastSaveMessage: '',
+            lastSaveType: 'info',
+
+            data: Object.assign({
+                id: null,
+                productName: '',
+                status: 'draft',
+                batchSize: 1,
+                batchType: 'pcs',
+                components: [],
+                operations: [],
+                qualityChecks: []
+            }, {{ bom_data_json| safe }} || {}),
+
+        // Operations Library Data (stages first, then machine categories)
+        machineLibrary: [
+            {% for machine in machines %}
+    {
+        id: "{{ machine.id|escapejs }}",
+        ref_id: "{{ machine.ref_id|default:''|escapejs }}",
+        machine_id: "{{ machine.machine_id|default:''|escapejs }}",
+        default_machine_id: "{{ machine.default_machine_id|default:''|escapejs }}",
+        source: "{{ machine.source|default:'machine'|escapejs }}",
+        name: "{{ machine.name|escapejs }}",
+        display_name: "{{ machine.display_label|escapejs }}",
+        type: "{{ machine.type|default:machine.name|default:'Generic'|escapejs }}",
+        icon: "{{ machine.icon|default:'ph-gear-six'|escapejs }}",
+        is_quality_check: {{ machine.is_quality_check|default:False|yesno:"true,false" }}
+    } {% if not forloop.last %}, {% endif %}
+    {% endfor %}
+            ],
+        stageCatalog: {{ stage_catalog_json|safe }},
+
+    summary: {
+        rawMaterialCost: 0,
+            wastageCost: 0,
+                scrapValue: 0,
+                    totalCost: 0
+    },
+
+            get selectedOpIndex() {
+        return this.data.operations.findIndex(op => op.id === this.selectedOpId);
+    },
+
+            // Helper to get currently selected operation object (with unit fallback)
+            get selectedOp() {
+        let op = this.data.operations.find(op => op.id === this.selectedOpId);
+        if (op) {
+            if (!op.unit) op.unit = 'pcs';
+            if (!op.setup_time_unit) op.setup_time_unit = 'min';
+            if (!op.run_time_unit) op.run_time_unit = 'min';
+        }
+        return op;
+    },
+
+    get blockingSaveIssues() {
+        return this.validateBomForSave({ includeWarnings: false });
+    },
+
+    get readinessIssues() {
+        return this.validateBomForSave({ includeWarnings: true });
+    },
+
+    get readinessStatusLabel() {
+        return this.blockingSaveIssues.length ? 'BOM needs attention before save' : 'BOM ready to save';
+    },
+
+    get saveImpactSummary() {
+        const materialCount = (this.data.components || []).length;
+        const operationCount = (this.data.operations || []).length;
+        const status = this.data.status || 'draft';
+        const versionText = this.data.id && status === 'active'
+            ? 'Saving will create a new draft version; existing work orders keep their BOM snapshot.'
+            : 'Saving updates the draft route and material plan.';
+        return `${materialCount} material${materialCount === 1 ? '' : 's'} | ${operationCount} stage${operationCount === 1 ? '' : 's'} | ${versionText}`;
+    },
+
+    get selectedOperationStageImpact() {
+        const op = this.selectedOp;
+        if (!op) return '';
+        const matchedStage = this.resolveStageForOperation(op);
+        if (matchedStage) {
+            const stageLabel = matchedStage.name || this.normalizeStageName(op.name || op.stage_name);
+            return `Linked to Factory Setup stage: ${stageLabel}`;
+        }
+        const stageName = this.normalizeStageName(op.name || op.stage_name || op.type);
+        return stageName ? `New Factory Setup stage will be created: ${stageName}` : 'Stage name is required';
+    },
+
+    // 🆕 Get checks for selected op with original index for deletion reference
+    get selectedOpChecks() {
+        return this.data.qualityChecks
+            .map((check, index) => ({ ...check, _originalIndex: index })) // Map to preserve original index
+            .filter(check => check.operation_id === this.selectedOpId);
+    },
+
+    get availableOperationMaterials() {
+        return (this.data.components || [])
+            .filter(comp => (comp.name || '').trim())
+            .map(comp => ({
+                client_id: String(comp.client_id || ''),
+                name: comp.name,
+                qty: comp.qty,
+                unit: comp.unit
+            }))
+            .filter(comp => comp.client_id);
+    },
+
+    // Available checks for assignment (from Quality tab)
+    get availableQualityChecks() {
+        return this.data.qualityChecks
+            .map((check, index) => ({ check, index }))
+            .filter(item => !item.check.operation_id);
+    },
+
+    assignExistingCheck(index) {
+        if (index === '' || index === null || index === undefined) return;
+        const idx = Number(index);
+        if (!Number.isFinite(idx)) return;
+        const check = this.data.qualityChecks[idx];
+        if (!check) return;
+        check.operation_id = this.selectedOpId;
+    },
+
+    unassignQualityCheck(index) {
+        if (index === '' || index === null || index === undefined) return;
+        const idx = Number(index);
+        if (!Number.isFinite(idx)) return;
+        const check = this.data.qualityChecks[idx];
+        if (!check) return;
+        check.operation_id = '';
+    },
+
+    selectOperation(id) {
+        this.selectedOpId = id;
+        const selected = this.data.operations.find(op => op.id === this.selectedOpId);
+        if (selected && !Array.isArray(selected.material_client_ids)) {
+            selected.material_client_ids = [];
+        }
+    },
+
+            // 🆕 Computed Filtered Machines
+            get filteredMachines() {
+        return this.machineLibrary.filter(m => {
+            const machineLabel = `${m.display_name || m.name || ''} ${m.name || ''}`.toLowerCase();
+            const matchesSearch = machineLabel.includes(this.searchQuery.toLowerCase());
+            const matchesFilter = this.activeFilter === 'All' || m.type === this.activeFilter;
+            return matchesSearch && matchesFilter;
+        });
+    },
+
+    init() {
+        this.normalizeComponentFields();
+        this.normalizeOperationMaterialLinks();
+        this.calculateTotals();
+    },
+
+    buildClientId(prefix = 'tmp') {
+        return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    },
+
+    parseWastageValue(value) {
+        if (value === null || value === undefined || value === '') return 0;
+        if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+        const parsed = parseFloat(String(value).replace('%', '').trim());
+        return Number.isFinite(parsed) ? parsed : 0;
+    },
+
+    computeWastageQty(requiredQty, percent) {
+        const qty = parseFloat(requiredQty || 0);
+        if (!Number.isFinite(qty) || qty <= 0) return 0;
+        return (qty * this.parseWastageValue(percent)) / 100;
+    },
+
+    computeWastagePercent(requiredQty, wastageQty) {
+        const qty = parseFloat(requiredQty || 0);
+        if (!Number.isFinite(qty) || qty <= 0) return 0;
+        return (this.parseWastageValue(wastageQty) / qty) * 100;
+    },
+
+    normalizeWastageMode(mode, wastageValue) {
+        if (mode === 'percent' || mode === 'qty') return mode;
+        if (typeof wastageValue === 'string' && wastageValue.includes('%')) return 'percent';
+        return 'percent';
+    },
+
+    normalizeComponentFields() {
+        this.data.components = (this.data.components || []).map(comp => ({
+            ...comp,
+            id: comp.id || comp.component_id || null,
+            client_id: String(comp.client_id || comp.clientId || (comp.id ? `cmp-${comp.id}` : this.buildClientId('cmp'))),
+            qty: parseFloat(comp.qty || 0) || '',
+            wastage_percent: (() => {
+                const direct = this.parseWastageValue(comp.wastage_percent);
+                if (direct > 0) return direct;
+                const mode = this.normalizeWastageMode(comp.wastage_mode, comp.wastage);
+                return mode === 'percent' ? this.parseWastageValue(comp.wastage) : this.computeWastagePercent(comp.qty, comp.wastage_qty ?? comp.wastage);
+            })(),
+            wastage_qty: (() => {
+                const direct = this.parseWastageValue(comp.wastage_qty);
+                if (direct > 0) return direct;
+                const mode = this.normalizeWastageMode(comp.wastage_mode, comp.wastage);
+                return mode === 'qty' ? this.parseWastageValue(comp.wastage) : this.computeWastageQty(comp.qty, comp.wastage_percent ?? comp.wastage);
+            })(),
+            wastage_basis: (() => {
+                if (comp.wastage_basis === 'qty' || comp.wastage_basis === 'percent') return comp.wastage_basis;
+                return this.normalizeWastageMode(comp.wastage_mode, comp.wastage);
+            })()
+        }));
+    },
+
+    normalizeOperationMaterialLinks() {
+        this.data.operations = (this.data.operations || []).map(op => {
+            const refs = Array.isArray(op.material_client_ids)
+                ? op.material_client_ids
+                : (Array.isArray(op.material_component_ids)
+                    ? op.material_component_ids.map(id => `cmp-${id}`)
+                    : []);
+            return {
+                ...op,
+                setup_time_unit: this.normalizeOperationTimeUnit(op.setup_time_unit),
+                run_time_unit: this.normalizeOperationTimeUnit(op.run_time_unit),
+                material_client_ids: [...new Set(refs.map(ref => String(ref || '').trim()).filter(Boolean))]
+            };
+        });
+    },
+
+    normalizeStageName(value) {
+        return String(value || '').replace(/^\s*op\s*\d+\s*:\s*/i, '').trim();
+    },
+
+    findStageByName(stageName) {
+        const normalized = this.normalizeStageName(stageName).toLowerCase();
+        if (!normalized) return null;
+        return (this.stageCatalog || []).find(stage => this.normalizeStageName(stage.name).toLowerCase() === normalized) || null;
+    },
+
+    findStageById(stageId) {
+        const normalized = String(stageId || '').trim();
+        if (!normalized) return null;
+        return (this.stageCatalog || []).find(stage => String(stage.ref_id || stage.id || '').trim() === normalized) || null;
+    },
+
+    resolveStageForOperation(op) {
+        if (!op) return null;
+        const stageName = this.normalizeStageName(op.name || op.stage_name);
+        return this.findStageByName(stageName) || this.findStageById(op.stage_id);
+    },
+
+    syncSelectedOperationStage(value) {
+        const op = this.selectedOp;
+        if (!op) return;
+        const stageName = this.normalizeStageName(value);
+        op.stage_name = stageName || null;
+        const matchedStage = this.findStageByName(stageName);
+        if (matchedStage) {
+            op.stage_id = String(matchedStage.ref_id || matchedStage.id || '').trim() || null;
+            if (String(op.source || '').toLowerCase() === 'stage') {
+                op.machine_id = null;
+            }
+            op.default_machine_id = matchedStage.default_machine_id || matchedStage.machine_id || op.default_machine_id || null;
+            op.type = matchedStage.type || op.type || 'General';
+            op.quality_check = !!matchedStage.is_quality_check;
+        } else {
+            op.stage_id = null;
+        }
+    },
+
+    syncWastageFromPercent(comp) {
+        comp.wastage_basis = 'percent';
+        comp.wastage_percent = this.parseWastageValue(comp.wastage_percent);
+        comp.wastage_qty = this.computeWastageQty(comp.qty, comp.wastage_percent);
+        this.calculateTotals();
+    },
+
+    syncWastageFromQty(comp) {
+        comp.wastage_basis = 'qty';
+        comp.wastage_qty = this.parseWastageValue(comp.wastage_qty);
+        comp.wastage_percent = this.computeWastagePercent(comp.qty, comp.wastage_qty);
+        this.calculateTotals();
+    },
+
+    syncWastageForRequiredQty(comp) {
+        const basis = comp.wastage_basis === 'qty' ? 'qty' : 'percent';
+        if (basis === 'qty') {
+            comp.wastage_percent = this.computeWastagePercent(comp.qty, comp.wastage_qty);
+        } else {
+            comp.wastage_qty = this.computeWastageQty(comp.qty, comp.wastage_percent);
+        }
+        this.calculateTotals();
+    },
+
+    // Operations Logic
+    dragStart(event, machine) {
+        this.draggedMachine = machine;
+        event.dataTransfer.effectAllowed = 'copy';
+    },
+
+    handleDrop() {
+        this.isDragging = false;
+        if (this.draggedMachine) {
+            this.addOperation(this.draggedMachine);
+            this.draggedMachine = null;
+        }
+    },
+
+    addOperation(machine) {
+        const opOrder = (this.data.operations.length + 1) * 10;
+        const isStageSource = String(machine.source || '').toLowerCase() === 'stage';
+        const normalizedMachineId = isStageSource ? '' : String(machine.machine_id || machine.ref_id || machine.id || '');
+        const stageName = (machine.display_name || machine.name || machine.type || '').trim();
+        const newOp = {
+            id: Date.now(),
+            machine_id: /^\d+$/.test(normalizedMachineId) ? normalizedMachineId : null,
+            default_machine_id: machine.default_machine_id || null,
+            source: machine.source || (isStageSource ? 'stage' : 'machine_category'),
+            stage_id: isStageSource ? String(machine.ref_id || '').trim() : null,
+            stage_name: stageName || null,
+            name: 'Op ' + opOrder + ': ' + (stageName || 'Operation'),
+            type: machine.type,
+            setup_time: 15,
+            setup_time_unit: 'min',
+            run_time: 5,
+            run_time_unit: 'min',
+            unit: 'pcs',
+            quality_check: !!machine.is_quality_check,
+            material_client_ids: []
+        };
+        this.data.operations.push(newOp);
+        this.selectedOpId = newOp.id; // Auto-select new
+    },
+
+    deleteOperation(index) {
+        if (index > -1) {
+            const removed = this.data.operations.splice(index, 1)[0];
+            if (removed && removed.id) {
+                this.data.qualityChecks.forEach(check => {
+                    if (check.operation_id === removed.id) {
+                        check.operation_id = '';
+                    }
+                });
+            }
+            // Select previous or next if available
+            if (this.data.operations.length > 0) {
+                this.selectedOpId = this.data.operations[Math.max(0, index - 1)].id;
+            } else {
+                this.selectedOpId = null;
+            }
+        }
+    },
+
+    calculateTotalTime() {
+        return this.data.operations.reduce((total, op) => {
+            const setupMinutes = this.normalizeOperationTimeToMinutes(op.setup_time, op.setup_time_unit);
+            const runMinutes = this.normalizeOperationTimeToMinutes(op.run_time, op.run_time_unit);
+            const batchSize = parseFloat(this.data.batchSize || 0) || 0;
+            return total + setupMinutes + (runMinutes * batchSize);
+        }, 0);
+    },
+
+    normalizeOperationTimeUnit(unit) {
+        const normalized = String(unit || 'min').trim().toLowerCase();
+        if (['s', 'sec', 'second', 'seconds'].includes(normalized)) return 'sec';
+        if (['h', 'hr', 'hour', 'hours'].includes(normalized)) return 'hr';
+        return 'min';
+    },
+
+    normalizeOperationTimeToMinutes(value, unit) {
+        const amount = parseFloat(value || 0) || 0;
+        const normalizedUnit = this.normalizeOperationTimeUnit(unit);
+        if (normalizedUnit === 'sec') return amount / 60;
+        if (normalizedUnit === 'hr') return amount * 60;
+        return amount;
+    },
+
+    formatDuration(totalMinutes) {
+        const units = [
+            ['month', 30 * 24 * 60 * 60],
+            ['week', 7 * 24 * 60 * 60],
+            ['day', 24 * 60 * 60],
+            ['hour', 60 * 60],
+            ['minute', 60],
+            ['second', 1],
+        ];
+        let remaining = Math.max(0, Math.round((parseFloat(totalMinutes || 0) || 0) * 60));
+        if (remaining <= 0) return '0 seconds';
+
+        const parts = [];
+        units.forEach(([label, unitSeconds]) => {
+            if (remaining < unitSeconds) return;
+            const count = Math.floor(remaining / unitSeconds);
+            remaining %= unitSeconds;
+            parts.push(`${count} ${count === 1 ? label : `${label}s`}`);
+        });
+        return parts.length ? parts.join(' ') : '0 seconds';
+    },
+
+    addMaterial() {
+        this.data.components.push({
+            client_id: this.buildClientId('cmp'),
+            name: '',
+            qty: '',
+            unit: 'pcs',
+            wastage_percent: 0,
+            wastage_qty: 0,
+            wastage_basis: 'percent'
+        });
+    },
+
+    deleteMaterial(index) {
+        this.data.components.splice(index, 1);
+        this.calculateTotals();
+    },
+
+    // Quality Check Logic
+    addQualityCheck() {
+        this.data.qualityChecks.push({
+            operation_id: '',
+            name: '',
+            type: 'pass_fail',
+            criteria: '',
+            frequency: '100%'
+        });
+    },
+
+    deleteQualityCheck(index) {
+        this.data.qualityChecks.splice(index, 1);
+    },
+
+    calculateTotals() {
+        // Cost is intentionally removed from BOM UI.
+        this.summary.rawMaterialCost = 0;
+        this.summary.wastageCost = 0;
+        this.summary.scrapValue = 0;
+        this.summary.totalCost = 0;
+    },
+
+    setSaveStatus(message = '', type = 'info') {
+        this.lastSaveMessage = message;
+        this.lastSaveType = type;
+    },
+
+    formatCurrency(val) {
+        return '$' + parseFloat(val || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+
+    validateMaterials() {
+        for (let i = 0; i < (this.data.components || []).length; i++) {
+            const comp = this.data.components[i] || {};
+            const name = (comp.name || '').trim();
+            const qty = parseFloat(comp.qty);
+            if (!name) {
+                return `Material row ${i + 1} is missing a material name.`;
+            }
+            if (!Number.isFinite(qty) || qty <= 0) {
+                return `Material "${name}" must have a quantity greater than 0.`;
+            }
+        }
+        return '';
+    },
+
+    validateOperationForSave(op, index, options = {}) {
+        const includeWarnings = options.includeWarnings !== false;
+        const issues = [];
+        const stepLabel = `Operation ${index + 1}`;
+        const stageName = this.normalizeStageName(op.name || op.stage_name || op.type);
+        const setupMinutes = this.normalizeOperationTimeToMinutes(op.setup_time, op.setup_time_unit);
+        const runMinutes = this.normalizeOperationTimeToMinutes(op.run_time, op.run_time_unit);
+        const matchedStage = this.resolveStageForOperation(op);
+
+        if (!stageName) {
+            issues.push(`${stepLabel} is missing a stage name.`);
+        }
+        if (!Number.isFinite(setupMinutes) || setupMinutes < 0) {
+            issues.push(`${stepLabel} setup time cannot be negative.`);
+        }
+        if (!Number.isFinite(runMinutes) || runMinutes <= 0) {
+            issues.push(`${stepLabel} cycle time must be greater than 0.`);
+        }
+        if (includeWarnings && !matchedStage && stageName) {
+            issues.push(`${stepLabel} will create a new Factory Setup stage named "${stageName}" on save.`);
+        }
+        if (includeWarnings && !op.machine_id && !matchedStage?.machine_id && !(op.type || '').trim()) {
+            issues.push(`${stepLabel} has no machine or category, so planner capacity will be less precise.`);
+        }
+        return issues;
+    },
+
+    validateBomForSave(options = {}) {
+        const includeWarnings = options.includeWarnings === true;
+        const issues = [];
+        const productName = String(this.data.productName || '').trim();
+        const batchSize = parseFloat(this.data.batchSize || 0);
+
+        if (!productName) {
+            issues.push('Product name is required.');
+        }
+        if (!Number.isFinite(batchSize) || batchSize <= 0) {
+            issues.push('Batch size must be greater than 0.');
+        }
+
+        const materialError = this.validateMaterials();
+        if (materialError) {
+            issues.push(materialError);
+        } else if (includeWarnings && (this.data.components || []).length === 0) {
+            issues.push('No materials added yet. Material confirmation will be empty for work orders.');
+        }
+
+        const operations = this.data.operations || [];
+        operations.forEach((op, index) => {
+            issues.push(...this.validateOperationForSave(op || {}, index, { includeWarnings }));
+        });
+        if (includeWarnings && operations.length === 0) {
+            issues.push('No route stages added yet. Add stages before activating this BOM for planning.');
+        }
+        return issues;
+    },
+
+    buildOperationPayload(op) {
+        const stageName = this.normalizeStageName(op.name || op.stage_name);
+        const matchedStage = this.findStageByName(stageName) || this.findStageById(op.stage_id);
+        return {
+            ...op,
+            machine_id: op.machine_id || null,
+            stage_id: matchedStage ? String(matchedStage.ref_id || matchedStage.id || '').trim() : (op.stage_id || null),
+            stage_name: stageName || null,
+            type: matchedStage?.type || op.type,
+            quality_check: matchedStage ? !!matchedStage.is_quality_check : !!op.quality_check,
+            default_machine_id: matchedStage?.default_machine_id || matchedStage?.machine_id || op.default_machine_id || null,
+            setup_time_unit: this.normalizeOperationTimeUnit(op.setup_time_unit),
+            run_time_unit: this.normalizeOperationTimeUnit(op.run_time_unit),
+            material_client_ids: Array.isArray(op.material_client_ids)
+                ? op.material_client_ids.map(ref => String(ref || '').trim()).filter(Boolean)
+                : [],
+        };
+    },
+
+    async saveBOM() {
+        const saveIssues = this.validateBomForSave({ includeWarnings: false });
+        if (saveIssues.length) {
+            const message = saveIssues.join('\n');
+            this.setSaveStatus(saveIssues[0], 'error');
+            notifyBom(`Cannot save BOM:\n${message}`, 'error');
+            return;
+        }
+        this.isSaving = true;
+        this.setSaveStatus('', 'info');
+
+        const sanitizedMaterials = (this.data.components || []).map(comp => ({
+            ...comp,
+            client_id: String(comp.client_id || ''),
+            wastage_mode: comp.wastage_basis === 'qty' ? 'qty' : 'percent',
+            wastage_percent: this.parseWastageValue(comp.wastage_percent),
+            wastage_qty: this.parseWastageValue(comp.wastage_qty),
+            wastage: comp.wastage_basis === 'qty'
+                ? this.parseWastageValue(comp.wastage_qty)
+                : this.parseWastageValue(comp.wastage_percent),
+            cost: 0,
+            scrap: 0
+        }));
+
+        let attachmentData = null;
+        let attachmentName = null;
+        const attachmentInput = document.getElementById('fullBomAttachmentInput');
+        if (attachmentInput && attachmentInput.files && attachmentInput.files.length > 0) {
+            const file = attachmentInput.files[0];
+            const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
+            const lowerName = (file.name || '').toLowerCase();
+            const validExtension = allowedExtensions.some(ext => lowerName.endsWith(ext));
+            if (!allowedTypes.includes(file.type) && !validExtension) {
+                this.setSaveStatus('Attachment must be JPG, PNG, or PDF.', 'error');
+                notifyBom('Attachment must be JPG, PNG, or PDF.', 'error');
+                this.isSaving = false;
+                return;
+            }
+            attachmentData = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => resolve(e.target.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            attachmentName = file.name;
+        }
+
+        const bomData = {
+            bom_id: this.data.id,
+            product: this.data.productName,
+            batch: this.data.batchSize,
+            batch_type: this.data.batchType || 'pcs',
+            materials: sanitizedMaterials,
+            operations: (this.data.operations || []).map(op => this.buildOperationPayload(op)),
+            qualityChecks: this.data.qualityChecks,
+            attachment_data: attachmentData,
+            attachment_name: attachmentName
+        };
+
+        console.log("Saving BOM Payload:", bomData);
+
+        try {
+            const response = await fetch('/manufacturing/api/v1/boms/create_full_bom/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(bomData)
+            });
+
+            console.log("Save Response Status:", response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error("Save Error Response:", errorText);
+                this.setSaveStatus(`Save failed (${response.status})`, 'error');
+                notifyBom(`Server Error (${response.status}):\n${errorText}`, 'error');
+                return;
+            }
+
+            const result = await response.json();
+            console.log("Save Result:", result);
+
+            if (result.success) {
+                this.data.id = result.bom_id || this.data.id;
+                this.data.status = result.bom_status || this.data.status || 'draft';
+                if (result.bom_id) {
+                    const nextUrl = `/manufacturing/bom-builder/${result.bom_id}/`;
+                    if (window.location.pathname !== nextUrl) {
+                        window.history.replaceState({}, '', nextUrl);
+                    }
+                }
+                this.setSaveStatus(`Saved as ${this.data.status} • BOM #${this.data.id}`, 'success');
+                if (result.version_created) {
+                    notifyBom(
+                        result.message || "A new BOM version was created. Existing work orders keep their original BOM snapshot.",
+                        'warning'
+                    );
+                } else {
+                    notifyBom(result.message || "BOM configuration saved successfully.", 'success');
+                }
+                if (this.data.status !== 'active') {
+                    const activateNow = await confirmBom("BOM is saved as Draft. Activate it now?", {
+                        title: 'Activate BOM',
+                        confirmText: 'Activate',
+                        cancelText: 'Keep Draft'
+                    });
+                    if (activateNow) {
+                        await activateBOM();
+                    }
+                }
+            } else {
+                this.setSaveStatus(result.error || "Unknown logic error", 'error');
+                notifyBom("Error Saving BOM:\n" + (result.error || "Unknown logic error"), 'error');
+            }
+        } catch (error) {
+            console.error("Network or Logic Error:", error);
+            this.setSaveStatus(error.message || 'Save failed', 'error');
+            notifyBom("Save Failed: " + error.message, 'error');
+        } finally {
+            this.isSaving = false;
+        }
+    }
+        });
+    });
+
+    async function activateBOM() {
+        const bomStore = Alpine.store('bom');
+        const bomId = bomStore?.data?.id || null;
+        if (!bomId) {
+            notifyBom("No BOM to activate. Please save first.", 'warning');
+            return;
+        }
+        const confirmed = await confirmBom("Activate this BOM? It will be locked for production.", {
+            title: 'Activate BOM',
+            confirmText: 'Activate',
+            cancelText: 'Cancel'
+        });
+        if (!confirmed) return;
+        try {
+            const body = new URLSearchParams({
+                bom_id: bomId,
+                status: 'active'
+            });
+            const res = await fetch("{% url 'update_bom_status' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": "{{ csrf_token }}"
+                },
+                body
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (bomStore && bomStore.data) {
+                    bomStore.data.status = 'active';
+                }
+                notifyBom("BOM activated.", 'success');
+                window.location.reload();
+            } else {
+                notifyBom("Activation failed: " + (data.error || "Unknown error"), 'error');
+            }
+        } catch (e) {
+            notifyBom("Activation error: " + e.message, 'error');
+        }
+    }
+
+    function materialAutocomplete(component) {
+        return {
+            showDropdown: false,
+            searchResults: [],
+            selectedIndex: -1,
+            searchTimeout: null,
+
+            init() {
+                this.$watch('showDropdown', value => {
+                    if (!value) this.selectedIndex = -1;
+                });
+            },
+
+            handleInput(e) {
+                const query = e.target.value;
+                clearTimeout(this.searchTimeout);
+
+                if (!query || query.length < 1) {
+                    this.searchResults = [];
+                    this.showDropdown = false;
+                    return;
+                }
+
+                this.searchTimeout = setTimeout(() => {
+                    this.performSearch(query);
+                }, 300);
+            },
+
+            async performSearch(query) {
+                try {
+                    const response = await fetch(`/manufacturing/api/materials/search/?q=${encodeURIComponent(query)}`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+
+                    const materials = await response.json();
+
+                    // Transform results
+                    const results = materials.map(m => ({
+                        id: m.id,
+                        name: m.name,
+                        wastage_percent: 0,
+                        wastage_qty: 0,
+                        wastage_basis: 'percent',
+                        unit: m.unit || 'pcs',
+                        isNew: false
+                    }));
+
+                    // Add "Create New" if no exact match (case insensitive)
+                    const exactMatch = results.find(m => m.name.toLowerCase() === query.toLowerCase());
+                    if (!exactMatch && query.trim()) {
+                        results.push({
+                            name: query,
+                            wastage_percent: 0,
+                            wastage_qty: 0,
+                            wastage_basis: 'percent',
+                            unit: 'pcs',
+                            isNew: true
+                        });
+                    }
+
+                    this.searchResults = results;
+                    this.showDropdown = this.searchResults.length > 0;
+                } catch (error) {
+                    console.error('Search error:', error);
+                    this.searchResults = [];
+                    this.showDropdown = false;
+                }
+            },
+
+            selectItem(item) {
+                // Update Parent Component Data by mutating the 'component' reference
+                component.name = item.name;
+                component.wastage_percent = Alpine.store('bom').parseWastageValue(item.wastage_percent);
+                component.wastage_qty = Alpine.store('bom').parseWastageValue(item.wastage_qty);
+                component.wastage_basis = item.wastage_basis || 'percent';
+                if (item.unit) component.unit = item.unit;
+                Alpine.store('bom').syncWastageForRequiredQty(component);
+
+                // Trigger store recalculation
+                // We access the global store directly since we are inside a simplified component
+                Alpine.store('bom').calculateTotals();
+
+                this.showDropdown = false;
+                this.searchResults = [];
+            },
+
+            handleKeydown(e) {
+                if (!this.showDropdown) return;
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    this.selectedIndex = Math.min(this.selectedIndex + 1, this.searchResults.length - 1);
+                    this.scrollSelectedIntoView();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    this.selectedIndex = Math.max(this.selectedIndex - 1, 0);
+                    this.scrollSelectedIntoView();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (this.selectedIndex >= 0 && this.searchResults[this.selectedIndex]) {
+                        this.selectItem(this.searchResults[this.selectedIndex]);
+                    }
+                } else if (e.key === 'Escape') {
+                    this.showDropdown = false;
+                }
+            },
+
+            scrollSelectedIntoView() {
+                this.$nextTick(() => {
+                    const list = this.$refs.dropdownList;
+                    const selected = list.children[this.selectedIndex];
+                    if (selected) {
+                        selected.scrollIntoView({ block: 'nearest' });
+                    }
+                });
+            }
+        }
+    }
+</script>
+{% endblock %}

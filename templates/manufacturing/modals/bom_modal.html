@@ -1,0 +1,726 @@
+<!-- 📦 Add BOM Modal -->
+<div id="bomModal"
+  class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 flex backdrop-blur-sm">
+  <!-- Main Scrollable Content -->
+  <div class="flex-1 overflow-y-auto p-6" id="bomModalContent">
+
+    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+      🧾 <span id="modalTitle">Create Bill of Materials</span>
+    </h2>
+
+    <!-- TEST MODE BANNER -->
+    <div id="testModeBanner"
+      class="hidden bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold border border-yellow-300 shadow-sm uppercase tracking-wide mb-4 text-center w-full">
+      ⚠️ Test Simulation Mode (Read-Only)
+    </div>
+
+    <!-- Stepper Navigation -->
+    <div class="flex items-center justify-between px-6 py-4 bg-gray-50 rounded-xl border border-gray-200 relative mb-6">
+      <div class="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10"></div>
+      <div class="absolute top-1/2 left-0 h-1 bg-indigo-600 -z-10 transition-all duration-500" id="stepperProgress"
+        style="width: 0%"></div>
+
+      <!-- Step 1 -->
+      <div class="flex flex-col items-center cursor-pointer" onclick="goToBomStep(1)">
+        <div id="stepCircle1"
+          class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors">
+          1</div>
+        <span class="text-xs font-semibold mt-2 text-indigo-700">Materials</span>
+      </div>
+      <!-- Step 2 -->
+      <div class="flex flex-col items-center cursor-pointer" onclick="goToBomStep(2)">
+        <div id="stepCircle2"
+          class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors">
+          2</div>
+        <span class="text-xs font-semibold mt-2 text-gray-500">Operations</span>
+      </div>
+      <!-- Step 3 -->
+      <div class="flex flex-col items-center cursor-pointer" onclick="goToBomStep(3)">
+        <div id="stepCircle3"
+          class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors">
+          3</div>
+        <span class="text-xs font-semibold mt-2 text-gray-500">Quality Protocols</span>
+      </div>
+    </div>
+
+    <form id="createBOMForm" class="space-y-6">
+      {% csrf_token %}
+      <input type="hidden" id="simBomId" name="bom_id">
+
+      <!-- Product Info (Shared Header) -->
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+        <div class="md:col-span-5">
+          <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Product Name</label>
+          <input type="text" name="product_name" placeholder="E.g. Electric Cable 10mm"
+            class="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+        </div>
+        <div class="md:col-span-3">
+          <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">Version</label>
+          <input type="text" name="version" value="v1.0"
+            class="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+        </div>
+        <div class="md:col-span-4">
+          <label class="block text-xs font-bold text-indigo-600 uppercase tracking-wide mb-1">Base Batch Size</label>
+          <div class="flex gap-2">
+            <input type="number" name="base_quantity" value="100" min="1" step="1" required
+              class="w-2/3 bg-white border border-indigo-300 rounded-md px-3 py-2 text-sm font-bold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"
+              title="All component quantities are relative to this Base Quantity">
+            <select name="uom" class="w-1/3 bg-white border border-gray-300 rounded-md text-xs px-1">
+              <option value="pcs">Pcs</option>
+              <option value="kg">KG</option>
+              <option value="m">M</option>
+              <option value="l">L</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 1: MATERIALS -->
+      <div id="bomTab-materials" class="bom-tab-content block">
+        <div class="border rounded-lg overflow-hidden shadow-sm overflow-x-auto mb-4">
+          <table class="w-full text-sm text-left min-w-[800px]">
+            <thead class="bg-indigo-50 text-indigo-900 font-semibold border-b border-indigo-100">
+              <tr>
+                <th class="py-3 px-3 w-1/4">Material Info</th>
+                <th class="py-3 px-3 w-20 text-center">Unit</th>
+                <th class="py-3 px-3 w-24 text-center">Qty Required</th>
+                <th class="py-3 px-3 w-24 text-center">Unit Cost</th>
+                <th class="py-3 px-3 w-24 text-center text-red-600">Wastage Qty</th>
+                <th class="py-3 px-3 w-24 text-center text-green-600">Scrap Val/Unit</th>
+                <th class="py-3 px-3 w-24 text-center text-gray-600">Scrap Type</th>
+                <th class="py-3 px-3 w-10 text-center"></th>
+              </tr>
+            </thead>
+            <tbody id="bomRows" class="divide-y divide-gray-100 bg-white">
+              <!-- Dynamic Rows Here -->
+            </tbody>
+          </table>
+          <!-- Add Row Button -->
+          <button type="button"
+            class="w-full bg-gray-50 p-2 text-center border-t border-gray-200 cursor-pointer hover:bg-gray-100 transition text-sm font-medium text-indigo-600 block focus:outline-none focus:ring-2 focus:ring-indigo-500 relative z-10"
+            id="addRow" onclick="forceAddRow()">+ Add Another Material</button>
+        </div>
+      </div>
+
+      <!-- TAB 2: OPERATIONS -->
+      <div id="bomTab-operations" class="bom-tab-content hidden h-[500px] flex flex-col">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2 flex justify-between items-center">
+          <div>
+            <h3 class="text-xs font-bold text-blue-800 uppercase tracking-wide">Workflow Editor</h3>
+            <p class="text-[10px] text-blue-600 mb-0">Drag machines to map the process.</p>
+          </div>
+          <button type="button" class="text-xs text-blue-600 underline" onclick="clearWorkflow()">Reset</button>
+        </div>
+
+        <div class="flex-1 flex gap-4 overflow-hidden h-full">
+          <!-- Helper Tooltip -->
+          <div class="w-1/4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col">
+            <div class="p-2 bg-gray-100 border-b border-gray-200">
+              <h4 class="text-xs font-bold text-gray-500 uppercase">Tools</h4>
+            </div>
+            <div class="p-2 overflow-y-auto flex-1 space-y-2" id="toolboxList">
+              <!-- Quality Checkpoint -->
+              <div
+                class="bg-orange-50 border-2 border-orange-200 p-2 rounded-lg shadow-sm cursor-grab hover:border-orange-400 flex items-center gap-2 group"
+                draggable="true" data-type="quality" data-id="qc-node" data-name="Quality Checkpoint">
+                <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center">
+                  <i class="ph ph-shield-check text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-orange-800">Quality Checkpoint</p>
+                  <p class="text-[10px] text-orange-600">Trigger & Comment</p>
+                </div>
+              </div>
+
+              <!-- Machines -->
+              {% for machine in machines %}
+              <div
+                class="bg-white border border-gray-200 p-2 rounded shadow-sm cursor-grab hover:border-indigo-400 flex items-center gap-2 group toolbox-item"
+                draggable="true" data-type="machine" data-id="{{ machine.id }}" data-name="{{ machine.display_label }}"
+                data-cost="50.00">
+                <span class="text-lg">🏭</span>
+                <div>
+                  <p class="text-sm font-semibold text-gray-700">{{ machine.display_label }}</p>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Canvas -->
+          <div class="w-3/4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg relative"
+            id="workflowCanvasArea" ondrop="dropInModal(event)" ondragover="event.preventDefault()">
+            <!-- SVG Lines Layer -->
+            <svg id="workflowConnections" class="absolute inset-0 w-full h-full pointer-events-none z-0">
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                  <polygon points="0 0, 10 3.5, 0 7" fill="#9CA3AF" />
+                </marker>
+              </defs>
+            </svg>
+            <!-- Nodes Container -->
+            <div id="workflowCanvas" class="w-full h-full relative z-10"></div>
+            <!-- Empty State -->
+            <div id="workflowPlaceholder" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span class="text-gray-400 text-sm italic">Drag machines here to build flow</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: QUALITY -->
+      <div id="bomTab-quality" class="bom-tab-content hidden h-[500px] overflow-auto">
+        <div class="flex justify-between mb-4">
+          <h3 class="text-lg font-bold text-gray-700">Quality Standards</h3>
+          <button type="button" onclick="addQualityRow()"
+            class="text-indigo-600 hover:text-indigo-800 text-sm font-bold flex items-center gap-1">+ Add
+            Standard</button>
+        </div>
+        <table
+          class="w-full text-left border-collapse bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr class="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <th class="py-3 px-4">Test Method</th>
+              <th class="py-3 px-4">Parameter</th>
+              <th class="py-3 px-4 w-24">Target</th>
+              <th class="py-3 px-4 w-24">Tolerance</th>
+              <th class="py-3 px-4 w-20 text-center">Critical</th>
+              <th class="py-3 px-4 w-10"></th>
+            </tr>
+          </thead>
+          <tbody id="qualityRows" class="divide-y divide-gray-100"></tbody>
+        </table>
+      </div>
+    </form>
+  </div> <!-- End Main Content -->
+
+  <!-- GLOBAL FIXED FOOTER -->
+  <div
+    class="bg-white border-t border-gray-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 rounded-b-xl flex flex-col md:flex-row gap-4 items-center justify-between">
+
+    <!-- Cost Summary (Black Box Style) -->
+    <div class="bg-gray-900 text-white p-3 rounded-lg shadow-inner flex gap-6 text-center min-w-[300px]">
+      <div>
+        <p class="text-gray-400 text-[10px] uppercase font-bold tracking-wider">Net Total Cost</p>
+        <p class="text-xl font-bold mt-0.5 text-blue-300" id="dispNetCost">0.00 <span class="text-xs">LE</span></p>
+      </div>
+      <div class="border-l border-gray-700 pl-4">
+        <p class="text-gray-500 text-[10px] uppercase font-bold">Gross</p>
+        <p class="text-sm font-mono" id="dispGrossCost">0.00</p>
+      </div>
+      <div class="border-l border-gray-700 pl-4">
+        <p class="text-gray-500 text-[10px] uppercase font-bold">Scrap Rec.</p>
+        <p class="text-sm font-mono text-green-400" id="dispScrapRecovery">0.00</p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex gap-3">
+      <button type="button" onclick="closeBOMModal()"
+        class="px-4 py-2 text-gray-500 font-semibold hover:bg-gray-100 rounded-lg">Cancel</button>
+
+      <button type="button" id="btnBack" onclick="navStep(-1)"
+        class="hidden px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300">Back</button>
+
+      <button type="button" id="btnNext" onclick="navStep(1)"
+        class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md">Next Step
+        ></button>
+
+      <button type="button" id="btnSave" onclick="submitBOM()"
+        class="hidden px-6 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-lg">Save
+        Draft</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+  // -------- WIZARD NAVIGATION --------
+  var currentBomStep = currentBomStep || 1; // Use var to allow redeclaration or reuse
+  var TOTAL_BOM_STEPS = TOTAL_BOM_STEPS || 3;
+
+  function goToBomStep(step) {
+    currentBomStep = step;
+    updateBomWizardUI();
+  }
+
+  function navStep(dir) {
+    if (dir === 1 && currentBomStep < TOTAL_BOM_STEPS) {
+      currentBomStep++;
+    } else if (dir === -1 && currentBomStep > 1) {
+      currentBomStep--;
+    }
+    updateBomWizardUI();
+  }
+
+  function updateBomWizardUI() {
+    // Toggle Tabs
+    document.querySelectorAll('.bom-tab-content').forEach(el => el.classList.add('hidden'));
+    const map = { 1: 'bomTab-materials', 2: 'bomTab-operations', 3: 'bomTab-quality' };
+    document.getElementById(map[currentBomStep]).classList.remove('hidden');
+
+    // Update Stepper Visuals
+    for (let i = 1; i <= TOTAL_BOM_STEPS; i++) {
+      const circle = document.getElementById('stepCircle' + i);
+      const label = circle.nextElementSibling;
+      if (i < currentBomStep) {
+        circle.classList.remove('bg-gray-200', 'text-gray-500', 'bg-indigo-600', 'text-white');
+        circle.classList.add('bg-green-500', 'text-white');
+        circle.innerHTML = '✔';
+        label.classList.add('text-green-600');
+      } else if (i === currentBomStep) {
+        circle.classList.remove('bg-gray-200', 'text-gray-500', 'bg-green-500');
+        circle.classList.add('bg-indigo-600', 'text-white');
+        circle.innerText = i;
+        label.classList.remove('text-gray-500', 'text-green-600');
+        label.classList.add('text-indigo-600');
+      } else {
+        circle.className = "w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors";
+        circle.innerText = i;
+        label.className = "text-xs font-semibold mt-2 text-gray-500";
+      }
+    }
+
+    // Progress Bar
+    const pct = ((currentBomStep - 1) / (TOTAL_BOM_STEPS - 1)) * 100;
+    document.getElementById('stepperProgress').style.width = pct + '%';
+
+    // Buttons
+    const btnBack = document.getElementById('btnBack');
+    const btnNext = document.getElementById('btnNext');
+    const btnSave = document.getElementById('btnSave');
+
+    if (currentBomStep === 1) btnBack.classList.add('hidden'); else btnBack.classList.remove('hidden');
+
+    if (currentBomStep === TOTAL_BOM_STEPS) {
+      btnNext.classList.add('hidden');
+      btnSave.classList.remove('hidden');
+    } else {
+      btnNext.classList.remove('hidden');
+      btnSave.classList.add('hidden');
+    }
+  }
+
+  // -------- OPERATIONS DRAG & DROP ONLY (No Lines logic yet for simplicity) --------
+  function dropInModal(ev) {
+    ev.preventDefault();
+    const type = ev.dataTransfer.getData("type");
+
+    const id = ev.dataTransfer.getData("id");
+    const name = ev.dataTransfer.getData("name");
+    const costRate = parseFloat(ev.dataTransfer.getData("cost")) || 50;
+
+    document.getElementById('emptyMsg')?.remove();
+    document.getElementById('workflowPlaceholder')?.classList.add('hidden');
+
+    const container = document.getElementById('workflowCanvas');
+    const node = document.createElement('div');
+
+    // Handle Quality Checkpoint
+    if (type === 'quality') {
+      node.className = "bg-orange-50 p-3 rounded-lg shadow border-2 border-orange-200 w-3/4 relative group op-node mb-3";
+      node.dataset.machineId = '';
+      node.dataset.name = "Quality Check";
+      node.dataset.costRate = 0;
+      node.innerHTML = `
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-3">
+            <div class="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-bold step-idx">#</div>
+            <div>
+              <h5 class="text-sm font-bold text-orange-800">Quality Checkpoint</h5>
+              <p class="text-[10px] text-orange-600 mt-0.5">Trigger & Comment</p>
+            </div>
+          </div>
+          <button type="button" class="text-gray-300 hover:text-red-500" onclick="this.closest('.op-node').remove(); updateModalIndices(); calculateBOMTotal()">&times;</button>
+        </div>
+        <div class="mt-2 bg-white p-2 rounded border border-orange-100">
+          <textarea name="op_desc" class="w-full text-xs border-orange-100 rounded p-1.5 bg-orange-50/50 font-medium text-gray-700 focus:ring-1 focus:ring-orange-500 outline-none resize-none" rows="2" placeholder="e.g. Check for burrs"></textarea>
+        </div>
+        <div class="absolute -bottom-4 left-1/2 w-0.5 h-4 bg-orange-300 -z-10"></div>
+      `;
+    } else {
+      // Handle Machine
+      node.className = "bg-white p-3 rounded shadow border border-gray-200 w-3/4 relative group op-node";
+      node.dataset.machineId = id;
+      node.dataset.costRate = costRate;
+      node.innerHTML = `
+          <div class="flex justify-between items-center">
+              <div class="flex items-center gap-3">
+                  <div class="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold step-idx">#</div>
+                  <div>
+                      <h5 class="text-sm font-bold text-gray-700">${name}</h5>
+                      <div class="flex flex-wrap gap-2 mt-1">
+                          <label class="text-[10px] uppercase font-bold text-gray-400">Setup</label>
+                          <input type="number" name="op_setup" value="15" min="0" step="0.01" oninput="calculateBOMTotal()" class="w-14 text-xs border-gray-200 rounded p-1 bg-gray-50 text-center">
+                          <select name="op_setup_unit" onchange="calculateBOMTotal()" class="w-14 text-[10px] font-bold border-gray-200 rounded p-1 bg-gray-50 text-gray-500">
+                            <option value="sec">sec</option>
+                            <option value="min" selected>min</option>
+                            <option value="hr">hr</option>
+                          </select>
+                          <label class="text-[10px] uppercase font-bold text-gray-400">Item</label>
+                          <input type="number" name="op_run" value="5" min="0" step="0.01" oninput="calculateBOMTotal()" class="w-14 text-xs border-gray-200 rounded p-1 bg-gray-50 text-center">
+                          <select name="op_run_unit" onchange="calculateBOMTotal()" class="w-14 text-[10px] font-bold border-gray-200 rounded p-1 bg-gray-50 text-gray-500">
+                            <option value="sec">sec</option>
+                            <option value="min" selected>min</option>
+                            <option value="hr">hr</option>
+                          </select>
+                      </div>
+                  </div>
+              </div>
+              <button type="button" class="text-gray-300 hover:text-red-500" onclick="this.closest('.op-node').remove(); updateModalIndices(); calculateBOMTotal()">&times;</button>
+          </div>
+          <!-- Vertical Line -->
+          <div class="absolute -bottom-4 left-1/2 w-0.5 h-4 bg-gray-300 -z-10"></div>
+      `;
+    }
+
+    container.appendChild(node);
+    updateModalIndices();
+    calculateBOMTotal();
+  }
+
+  function updateModalIndices() {
+    document.querySelectorAll('.step-idx').forEach((el, idx) => el.innerText = idx + 1);
+  }
+
+  // -------- QUALITY ROWS --------
+  function addQualityRow() {
+    const tbody = document.getElementById('qualityRows');
+    const tr = document.createElement('tr');
+    tr.className = "group hover:bg-gray-50";
+    tr.innerHTML = `
+         <td class="p-2 px-4"><input name="qa_method[]" class="w-full text-sm border-0 bg-transparent border-b hover:bg-white px-2 focus:ring-0" placeholder="e.g. Visual"></td>
+         <td class="p-2 px-4"><input name="qa_param[]" class="w-full text-sm border-0 bg-transparent border-b hover:bg-white px-2 focus:ring-0" placeholder="Parameter"></td>
+         <td class="p-2 px-4"><input name="qa_target[]" class="w-full text-sm text-center border-0 bg-transparent border-b hover:bg-white px-2 focus:ring-0" placeholder="-"></td>
+         <td class="p-2 px-4"><input name="qa_tol[]" class="w-full text-sm text-center border-0 bg-transparent border-b hover:bg-white px-2 focus:ring-0" placeholder="±"></td>
+         <td class="p-2 px-4 text-center"><input type="checkbox" name="qa_critical[]" class="rounded text-red-600 focus:ring-red-500"></td>
+         <td class="p-2 px-4 text-center"><button type="button" onclick="this.closest('tr').remove()" class="text-gray-300 hover:text-red-500">&times;</button></td>
+      `;
+    tbody.appendChild(tr);
+  }
+
+  function normalizeBomOperationTimeToMinutes(value, unit) {
+    const amount = parseFloat(value) || 0;
+    const normalizedUnit = String(unit || 'min').toLowerCase();
+    if (normalizedUnit === 'sec') return amount / 60;
+    if (normalizedUnit === 'hr') return amount * 60;
+    return amount;
+  }
+
+  function getBomOperationInputMinutes(node, valueName, unitName) {
+    const value = node.querySelector(`[name="${valueName}"]`)?.value || 0;
+    const unit = node.querySelector(`[name="${unitName}"]`)?.value || 'min';
+    return normalizeBomOperationTimeToMinutes(value, unit);
+  }
+
+  // -------- COST CALCULATION --------
+  window.calculateBOMTotal = function () {
+    // 1. Materials & Scrap
+    let matCost = 0;
+    let totalScrap = 0;
+
+    document.querySelectorAll('#bomRows tr').forEach(row => {
+      const qty = parseFloat(row.querySelector('[name="quantities[]"]').value) || 0;
+      const uCost = parseFloat(row.querySelector('[name="costs[]"]').value) || 0;
+
+      const wastage = parseFloat(row.querySelector('[name="wastage[]"]').value) || 0;
+      const scrapVal = parseFloat(row.querySelector('[name="scrap_value[]"]').value) || 0;
+
+      matCost += (qty * uCost);
+      totalScrap += (wastage * scrapVal);
+    });
+
+    // 2. Operations
+    let opsCost = 0;
+    const baseQty = parseFloat(document.querySelector('[name="base_quantity"]').value) || 1;
+
+    document.querySelectorAll('.op-node').forEach(node => {
+      const setup = getBomOperationInputMinutes(node, 'op_setup', 'op_setup_unit');
+      const run = getBomOperationInputMinutes(node, 'op_run', 'op_run_unit');
+      const rate = parseFloat(node.dataset.costRate) || 50;
+
+      const totalMin = setup + (run * baseQty);
+      // Cost = (Min / 60) * Rate
+      opsCost += (totalMin / 60) * rate;
+    });
+
+    const gross = matCost + opsCost;
+    const net = gross - totalScrap;
+
+    // Update UI (Using Correct IDs)
+    const elNet = document.getElementById('dispNetCost');
+    const elGross = document.getElementById('dispGrossCost');
+    const elScrap = document.getElementById('dispScrapRecovery');
+
+    if (elNet) elNet.innerHTML = `${net.toFixed(2)} <span class="text-xs">LE</span>`;
+    if (elGross) elGross.innerText = gross.toFixed(2);
+    if (elScrap) elScrap.innerText = totalScrap.toFixed(2);
+  }
+
+  // Hook into existing inputs for recalculation
+  document.addEventListener('input', (e) => {
+    if (e.target.dataset.recalc ||
+      ['quantities[]', 'costs[]', 'base_quantity', 'wastage[]', 'scrap_value[]', 'op_setup', 'op_run', 'op_setup_unit', 'op_run_unit'].includes(e.target.name)) {
+      calculateBOMTotal();
+    }
+  });
+
+  // Init
+  updateBomWizardUI();
+
+
+  // -------- INLINE BOM SUBMISSION & UPDATED LOGIC --------
+  // Bypasses external cached JS to ensure validations run.
+
+  async function submitBOM() {
+    console.log("Submitting BOM (Inline)...");
+    const form = document.getElementById("createBOMForm");
+
+    // 1. Validate Base Quantity
+    const baseQtyInput = document.querySelector('[name="base_quantity"]');
+    const bomIdInput = document.getElementById("simBomId");
+    // DEBUG: Alert ID
+    // alert("DEBUG SUBMIT: BOM ID = " + (bomIdInput ? bomIdInput.value : "NULL")); 
+
+    const baseQty = parseFloat(baseQtyInput.value);
+    if (!baseQty || baseQty < 1) {
+      alert("⚠️ Base Batch Size must be at least 1.");
+      if (baseQtyInput) baseQtyInput.focus();
+      return;
+    }
+
+    // 2. Validate Rows (Materials) - At least one material usually required?
+    const rows = document.querySelectorAll("#bomRows tr");
+    if (rows.length === 0) {
+      alert("⚠️ Please add at least one material.");
+      switchBomTab('materials');
+      return;
+    }
+
+    let isValid = true;
+    for (const row of rows) {
+      const materialInput = row.querySelector('[name="materials[]"]');
+      const qtyInput = row.querySelector('[name="quantities[]"]');
+      const wastageInput = row.querySelector('[name="wastage[]"]');
+
+      const material = materialInput.value.trim();
+      const qty = parseFloat(qtyInput.value) || 0;
+      const wastage = parseFloat(wastageInput.value) || 0;
+
+      if (!material) {
+        alert("⚠️ Material Name is required.");
+        switchBomTab('materials');
+        materialInput.focus();
+        isValid = false; break;
+      }
+
+      if (qty <= 0) {
+        alert(`⚠️ Quantity for '${material}' must be greater than 0.`);
+        switchBomTab('materials');
+        qtyInput.focus();
+        isValid = false; break;
+      }
+
+      if (wastage >= qty) {
+        alert(`⚠️ Wastage (${wastage}) cannot be greater than or equal to Quantity (${qty}) for '${material}'.`);
+        switchBomTab('materials');
+        wastageInput.focus();
+        isValid = false; break;
+      }
+    }
+
+    if (!isValid) return;
+
+    // 3. Submit
+
+    // Collect Operations & Quality manually to append to FormData
+    // (Since we used custom structures, standard form submit might miss details if not hidden inputs)
+    // Actually, let's construct the JSON payload like we did in bom_builder.html to be safe and consistent
+
+    const product_name = document.querySelector('[name=product_name]').value;
+    const version = document.querySelector('[name=version]').value;
+    const components = [];
+    document.querySelectorAll('#bomRows tr').forEach(row => {
+      components.push({
+        name: row.querySelector('[name="materials[]"]').value,
+        qty: row.querySelector('[name="quantities[]"]').value,
+        unit: row.querySelector('[name="units[]"]').value,
+        cost: row.querySelector('[name="costs[]"]').value,
+        scrap_qty: row.querySelector('[name="wastage[]"]').value,
+        scrap_price: row.querySelector('[name="scrap_value[]"]').value
+      });
+    });
+
+    const operations = [];
+    document.querySelectorAll('.op-node').forEach(node => {
+      operations.push({
+        machine_id: node.dataset.machineId,
+        setup_time: node.querySelector('[name=op_setup]').value,
+        setup_time_unit: node.querySelector('[name=op_setup_unit]')?.value || 'min',
+        run_time: node.querySelector('[name=op_run]').value,
+        run_time_unit: node.querySelector('[name=op_run_unit]')?.value || 'min'
+      });
+    });
+
+    const criteria = [];
+    document.querySelectorAll('#qualityRows tr').forEach(row => {
+      criteria.push({
+        method: row.querySelector('[name="qa_method[]"]').value,
+        parameter: row.querySelector('[name="qa_param[]"]').value,
+        target_value: row.querySelector('[name="qa_target[]"]').value,
+        tolerance: row.querySelector('[name="qa_tol[]"]').value,
+        is_critical: row.querySelector('[name="qa_critical[]"]').checked
+      });
+    });
+
+    const payload = {
+      product_name, version, base_quantity: baseQty,
+      components, operations, criteria, status: 'draft'
+    };
+
+    try {
+      // Use the JSON API endpoint
+      const res = await fetch("{% url 'api_save_bom' %}", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        alert("✅ BOM Created Successfully!");
+        if (window.closeBOMModal) window.closeBOMModal();
+        if (window.refreshBOMs) window.refreshBOMs();
+        else location.reload();
+      } else {
+        alert("❌ Error: " + data.message);
+      }
+    } catch (err) {
+      alert("⚠️ Server error: " + err);
+    }
+  }
+
+  // Force add row function (kept from original)
+  function forceAddRow() {
+    console.log("Force Adding Row...");
+    const tbody = document.getElementById("bomRows");
+    if (!tbody) {
+      alert("Table body #bomRows not found!");
+      return;
+    }
+
+    // Create Row
+    const tr = document.createElement("tr");
+    tr.className = "bom-row group hover:bg-gray-50 transition";
+    tr.innerHTML = `
+          <td class="p-2">
+            <div class="flex flex-col gap-1">
+                <input name="materials[]" class="w-full border-b border-transparent focus:border-indigo-500 bg-transparent py-1 px-2 outline-none group-hover:bg-white rounded text-sm" placeholder="Material Name">
+                
+                <select name="sub_bom_ids[]" class="hidden w-full text-xs border border-indigo-200 rounded p-1 bg-indigo-50 text-indigo-700 font-medium mt-1 focus:ring-1 focus:ring-indigo-500">
+                   <option value="">-- Link Sub-Assembly --</option>
+                   {% for prod in active_products %}
+                   <option value="{{ prod.boms.first.id }}">{{ prod.name }} ({{ prod.boms.first.version }})</option>
+                   {% endfor %}
+                </select>
+
+                <select name="types[]" onchange="toggleSubBomSelector(this)" class="text-xs text-gray-400 mt-1 block w-full bg-transparent border-none p-0 focus:ring-0">
+                  <option value="raw">Raw Material</option>
+                  <option value="semi_finished">Semi-Finished</option>
+                </select>
+            </div>
+          </td>
+          <td class="p-2">
+            <select name="units[]" class="w-full text-center bg-gray-50 border border-gray-200 rounded py-1 px-1 text-xs focus:ring-1 focus:ring-indigo-500">
+              <option value="kg" selected>KG</option>
+              <option value="gm">Gram</option>
+              <option value="m">Meter</option>
+              <option value="cm">CM</option>
+              <option value="pcs">Pcs</option>
+              <option value="l">Liter</option>
+            </select>
+          </td>
+          <td class="p-2"><input name="quantities[]" type="number" step="0.001" min="0" value="1" oninput="if(window.calculateBOMTotal) window.calculateBOMTotal()" class="w-full text-center border border-gray-200 rounded py-1 px-2 focus:border-indigo-500 outline-none"></td>
+          <td class="p-2 relative">
+            <span class="absolute left-3 top-2 text-gray-400 text-xs">$</span>
+            <input name="costs[]" type="number" step="0.01" min="0" value="0.00" oninput="if(window.calculateBOMTotal) window.calculateBOMTotal()" class="w-full pl-5 text-right border border-gray-200 rounded py-1 px-2 focus:border-indigo-500 outline-none">
+          </td>
+          <td class="p-2"><input name="wastage[]" type="number" step="0.001" min="0" value="0" class="w-full text-center border border-red-200 bg-red-50 rounded py-1 px-2 focus:border-red-500 outline-none text-red-700"></td>
+          <td class="p-2"><input name="scrap_value[]" type="number" step="0.01" min="0" value="0" class="w-full text-center border border-green-200 bg-green-50 rounded py-1 px-2 focus:border-green-500 outline-none text-green-700"></td>
+          <td class="text-center p-2">
+            <button type="button" class="text-gray-400 hover:text-red-600 transition removeRow" onclick="this.closest('tr').remove(); if(window.calculateBOMTotal) window.calculateBOMTotal();" title="Remove Item">&times;</button>
+          </td>
+       `;
+    tbody.appendChild(tr);
+
+    if (window.calculateBOMTotal) window.calculateBOMTotal();
+  }
+
+  // Override Activate to ensure Check exists (kept from original)
+  window.activateBOM = async function () {
+    const bomId = document.getElementById("simBomId").value;
+
+    if (!confirm("🚀 Activate this BOM? It will be locked and ready for production.")) return;
+
+    try {
+      const res = await fetch("/manufacturing/update-bom-status/", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `bom_id=${bomId}&status=active`
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("✅ BOM Activated!");
+        if (window.closeBOMModal) window.closeBOMModal();
+        else document.getElementById("bomModal").classList.add("hidden");
+        if (window.refreshBOMs) window.refreshBOMs();
+        else location.reload();
+      } else {
+        alert("❌ " + data.error);
+      }
+    } catch (err) {
+      alert("Error activating: " + err);
+    }
+  }
+
+  // -------- UI TOGGLE FOR SUB-BOM --------
+  window.toggleSubBomSelector = function (selectElem) {
+    const parent = selectElem.closest('.flex'); // The wrapper div
+    const subBomSelect = parent.querySelector('select[name="sub_bom_ids[]"]');
+    const materialInput = parent.querySelector('input[name="materials[]"]');
+
+    if (selectElem.value === 'semi_finished') {
+      subBomSelect.classList.remove('hidden');
+      // Optional: Auto-fill material name if sub-bom selected
+      subBomSelect.onchange = function () {
+        if (this.options[this.selectedIndex].text) {
+          // Format: "Name (Version)" -> Just "Name"
+          const fullText = this.options[this.selectedIndex].text;
+          const name = fullText.split(' (')[0];
+          materialInput.value = name;
+        }
+      };
+    } else {
+      subBomSelect.classList.add('hidden');
+      subBomSelect.value = ""; // Reset
+    }
+  };
+
+  // -------- OPEN BOM MODAL WITH INITIALIZATION --------
+  window.openBOMModal = function () {
+    const modal = document.getElementById('bomModal');
+    modal.classList.remove('hidden');
+
+    // Add first row if table is empty
+    const tbody = document.getElementById('bomRows');
+    if (tbody && tbody.children.length === 0) {
+      forceAddRow();
+    }
+  };
+
+  window.closeBOMModal = function () {
+    document.getElementById('bomModal').classList.add('hidden');
+  };
+</script>

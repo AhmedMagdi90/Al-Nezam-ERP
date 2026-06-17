@@ -1,0 +1,108 @@
+<!-- Report Fault Modal -->
+<div id="reportFaultModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title-fault" role="dialog"
+    aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+        onclick="document.getElementById('reportFaultModal').classList.add('hidden')"></div>
+
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div
+                class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-slate-200">
+
+                <div class="bg-red-600 px-4 py-3 sm:px-6">
+                    <h3 class="text-base font-semibold leading-6 text-white flex items-center gap-2"
+                        id="modal-title-fault">
+                        <i class="ph ph-warning-octagon text-lg"></i>
+                        Report Machine Fault
+                    </h3>
+                </div>
+
+                <div class="px-4 py-5 sm:p-6 space-y-4">
+                    <div class="bg-red-50 rounded-lg p-3 border border-red-100 mb-4">
+                        <div class="text-xs text-red-600 font-bold uppercase tracking-wide mb-1">Target Machine</div>
+                        <div class="font-bold text-slate-800 flex items-center gap-2">
+                            <i class="ph ph-factory text-red-500"></i>
+                            <span id="faultModalMachineName">Machine Name</span>
+                        </div>
+                    </div>
+
+                    <form id="reportFaultForm">
+                        <input type="hidden" name="machine_id" id="faultModalMachineId">
+
+                        <div>
+                            <label for="faultDescription"
+                                class="block text-xs font-bold text-slate-700 uppercase mb-1">Description of
+                                Issue</label>
+                            <textarea id="faultDescription" name="description" rows="3" required
+                                class="block w-full rounded-lg border-slate-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                placeholder="Describe the fault, error code, or observed behavior..."></textarea>
+                        </div>
+
+                        <div class="mt-4">
+                            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Priority</label>
+                            <select name="priority"
+                                class="block w-full rounded-lg border-slate-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                <option value="urgent">Urgent (Line Stopped)</option>
+                                <option value="high">High (Quality Impact)</option>
+                                <option value="normal" selected>Normal (Maintenance Required)</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-slate-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="submitFaultReport()"
+                        class="inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:ml-3 sm:w-auto transition-all">
+                        Create Ticket
+                    </button>
+                    <button type="button" onclick="document.getElementById('reportFaultModal').classList.add('hidden')"
+                        class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openFaultModal(machineId, machineName) {
+        document.getElementById('faultModalMachineId').value = machineId;
+        document.getElementById('faultModalMachineName').innerText = machineName;
+        document.getElementById('reportFaultModal').classList.remove('hidden');
+    }
+
+    function submitFaultReport() {
+        const machineId = document.getElementById('faultModalMachineId').value;
+        const description = document.getElementById('faultDescription').value;
+
+        if (!description) {
+            alert("Please describe the issue.");
+            return;
+        }
+
+        const formData = new FormData(document.getElementById('reportFaultForm'));
+
+        fetch("/manufacturing/api/report-fault/", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Maintenance Ticket Created!");
+                    document.getElementById('reportFaultModal').classList.add('hidden');
+                    // Optional: Update UI to show machine is down
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("An error occurred.");
+            });
+    }
+</script>

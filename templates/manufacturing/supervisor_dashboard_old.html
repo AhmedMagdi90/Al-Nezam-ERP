@@ -1,0 +1,341 @@
+{% extends 'manufacturing/base_dashboard.html' %}
+{% load static %}
+
+{% block title %}Shop Floor Control{% endblock %}
+{% block subtitle %}Monitor machines and assign workers{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full space-y-6" x-data="supervisorDashboard()">
+
+    <!-- TAB 1: PLANNER BOARD (Overview) -->
+    <div x-show="activeTab === 'board'" class="space-y-6">
+        <!-- KPI Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div
+                class="glass-panel-premium p-6 rounded-2xl flex items-center justify-between hover-lift relative overflow-hidden group">
+                <div
+                    class="absolute right-0 top-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl -mr-6 -mt-6 transition-all group-hover:bg-blue-500/20">
+                </div>
+                <div>
+                    <div class="text-sm text-slate-500 font-semibold uppercase tracking-wider mb-1">Pending Orders</div>
+                    <div class="text-4xl font-bold text-slate-800 tracking-tight">{{ pending_orders.count }}</div>
+                </div>
+                <div
+                    class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-blue-100">
+                    <i class="ph ph-clipboard-text text-2xl"></i>
+                </div>
+            </div>
+
+            <div
+                class="glass-panel-premium p-6 rounded-2xl flex items-center justify-between hover-lift relative overflow-hidden group">
+                <div
+                    class="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl -mr-6 -mt-6 transition-all group-hover:bg-emerald-500/20">
+                </div>
+                <div>
+                    <div class="text-sm text-slate-500 font-semibold uppercase tracking-wider mb-1">Active Machines
+                    </div>
+                    <div class="text-4xl font-bold text-slate-800 tracking-tight">{{ machine_list.count }}</div>
+                </div>
+                <div
+                    class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-emerald-100">
+                    <i class="ph ph-engine text-2xl"></i>
+                </div>
+            </div>
+
+            <div class="glass-panel-premium p-6 rounded-2xl flex items-center justify-between hover-lift cursor-pointer hover:ring-2 hover:ring-orange-200 transition relative overflow-hidden group"
+                onclick="document.getElementById('approvals-section').scrollIntoView({ behavior: 'smooth' })">
+                <div
+                    class="absolute right-0 top-0 w-24 h-24 bg-orange-500/10 rounded-full blur-2xl -mr-6 -mt-6 transition-all group-hover:bg-orange-500/20">
+                </div>
+                <div>
+                    <div class="text-sm text-slate-500 font-semibold uppercase tracking-wider mb-1">Approvals</div>
+                    <div class="text-4xl font-bold text-slate-800 tracking-tight">{{ pending_logs_count|default:"0" }}
+                    </div>
+                </div>
+                <div
+                    class="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center shadow-sm ring-1 ring-orange-100">
+                    <i class="ph ph-stamp text-2xl"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Toggle & Title -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h3 class="text-xl font-bold text-slate-800 tracking-tight">Machine Status</h3>
+
+            <div class="flex items-center gap-3 bg-white p-1.5 rounded-xl shadow-sm border border-slate-200">
+                <!-- Filter Tabs -->
+                <div class="flex bg-slate-100/50 p-1 rounded-lg">
+                    <button @click="filter = 'all'" class="px-4 py-1.5 text-xs font-bold rounded-md transition-all"
+                        :class="filter === 'all' ? 'bg-white text-slate-800 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700'">
+                        All
+                    </button>
+                    <button @click="filter = 'active'" class="px-4 py-1.5 text-xs font-bold rounded-md transition-all"
+                        :class="filter === 'active' ? 'bg-emerald-50 text-emerald-700 shadow-sm ring-1 ring-emerald-100' : 'text-slate-500 hover:text-slate-700'">
+                        Active
+                    </button>
+                    <button @click="filter = 'maintenance'"
+                        class="px-4 py-1.5 text-xs font-bold rounded-md transition-all"
+                        :class="filter === 'maintenance' ? 'bg-red-50 text-red-700 shadow-sm ring-1 ring-red-100' : 'text-slate-500 hover:text-slate-700'">
+                        Issues
+                    </button>
+                </div>
+
+                <div class="w-px h-6 bg-slate-200 mx-1"></div>
+
+                <!-- Layout Toggle -->
+                <div class="flex gap-1">
+                    <button @click="viewMode = 'grid'"
+                        class="p-2 rounded-lg transition-all text-slate-400 hover:text-slate-600"
+                        :class="viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : ''">
+                        <i class="ph ph-squares-four text-lg"></i>
+                    </button>
+                    <button @click="viewMode = 'list'"
+                        class="p-2 rounded-lg transition-all text-slate-400 hover:text-slate-600"
+                        :class="viewMode === 'list' ? 'bg-blue-50 text-blue-600' : ''">
+                        <i class="ph ph-list-dashes text-lg"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Machine Grid (Real-time) -->
+        <div :class="viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'flex flex-col space-y-3'"
+            hx-get="{% url 'supervisor_dashboard' %}?partial=machine_grid" hx-trigger="every 10s" hx-swap="innerHTML">
+            {% include "manufacturing/partials/machine_grid.html" %}
+        </div>
+
+        <!-- 🔔 Pending Approvals Table -->
+        <div class="glass-panel-premium p-8 rounded-2xl mt-8" id="approvals-section">
+            <div class="flex items-center justify-between mb-8">
+                <h3 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                        <i class="ph ph-stamp text-xl"></i>
+                    </span>
+                    Production Log Approvals
+                </h3>
+                <span
+                    class="bg-orange-50 text-orange-700 text-xs font-bold px-4 py-1.5 rounded-full border border-orange-100 shadow-sm">
+                    {{ pending_logs.count|default:"0" }} Needs Review
+                </span>
+            </div>
+
+            <div class="overflow-x-auto rounded-xl border border-slate-100">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50/80">
+                        <tr class="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                            <th class="py-4 px-6 border-b border-slate-100">Worker</th>
+                            <th class="py-4 px-6 border-b border-slate-100">Item Details</th>
+                            <th class="py-4 px-6 border-b border-slate-100">Output</th>
+                            <th class="py-4 px-6 border-b border-slate-100">Timestamp</th>
+                            <th class="py-4 px-6 border-b border-slate-100 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm bg-white divide-y divide-slate-50">
+                        {% for log in pending_logs %}
+                        <tr class="group hover:bg-slate-50 transition-colors duration-150" id="log-row-{{ log.id }}">
+                            <td class="py-4 px-6">
+                                <div class="flex items-center gap-4">
+                                    <div
+                                        class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 ring-4 ring-white shadow-sm">
+                                        {{ log.worker.username|slice:":2"|upper }}</div>
+                                    <span class="font-semibold text-slate-700">{{ log.worker.username }}</span>
+                                </div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <div class="font-bold text-slate-800">{{ log.work_order.product_name }}</div>
+                                <div class="text-xs text-slate-400 font-mono mt-0.5">WO-{{ log.work_order.id }}</div>
+                            </td>
+                            <td class="py-4 px-6">
+                                <span class="font-bold text-slate-800 text-lg">{{ log.quantity }}</span>
+                                <span class="text-xs text-slate-400 ml-1">{{ log.work_order.bom.uom|default:"units"
+                                    }}</span>
+                            </td>
+                            <td class="py-4 px-6">
+                                <span class="text-slate-500 block">{{ log.created_at|date:"M d" }}</span>
+                                <span class="text-xs text-slate-400">{{ log.created_at|date:"H:i" }}</span>
+                            </td>
+                            <td class="py-4 px-6 text-right">
+                                <div
+                                    class="flex justify-end gap-2 opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <button onclick="approveLog('{{ log.id }}', 'approve')"
+                                        class="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white p-2.5 rounded-xl transition-all shadow-sm"
+                                        title="Approve">
+                                        <i class="ph ph-check text-lg"></i>
+                                    </button>
+                                    <button onclick="approveLog('{{ log.id }}', 'reject')"
+                                        class="bg-rose-50 text-rose-600 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl transition-all shadow-sm"
+                                        title="Reject">
+                                        <i class="ph ph-x text-lg"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="py-12 text-center text-slate-400">
+                                <div class="flex flex-col items-center gap-2">
+                                    <i class="ph ph-check-circle text-4xl text-slate-200"></i>
+                                    <span class="font-medium">All caught up! No pending logs.</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Production Timeline -->
+        <div class="mt-8">
+            {% include "manufacturing/partials/timeline.html" %}
+        </div>
+    </div>
+
+    <!-- TAB 2: WORK ORDERS (List View) -->
+    <div x-show="activeTab === 'orders'" class="glass-panel-premium p-6 rounded-2xl h-full overflow-y-auto">
+        <h3 class="text-lg font-bold text-slate-800 mb-4">Pending Work Orders</h3>
+        <div class="space-y-3">
+            {% for wo in pending_orders %}
+            <div
+                class="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:border-blue-200 transition">
+                <div>
+                    <h4 class="font-bold text-slate-700">{{ wo.product_name }}</h4>
+                    <div class="text-xs text-slate-400 mt-1">
+                        WO #{{ wo.id }} • Qty: {{ wo.quantity }} • Due: {{ wo.end_date|date:"M d" }}
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-md font-medium uppercase">{{
+                        wo.status }}</span>
+                    <button onclick="editWO('{{ wo.id }}')" class="text-blue-600 hover:bg-blue-50 p-2 rounded-full">
+                        <i class="ph ph-pencil-simple"></i>
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-12 text-slate-400">
+                <i class="ph ph-clipboard-text text-4xl mb-3 block opacity-50"></i>
+                No pending orders found.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- TAB 3: RESOURCES (Workers) -->
+    <div x-show="activeTab === 'resources'" class="glass-panel-premium p-6 rounded-2xl h-full overflow-y-auto">
+        <h3 class="text-lg font-bold text-slate-800 mb-6">Team Resources</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for user in users %}
+            <div
+                class="p-4 bg-white border border-slate-100 rounded-xl flex items-center gap-4 hover:shadow-sm transition">
+                <div
+                    class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-lg font-bold text-slate-600">
+                    {{ user.username|slice:":2"|upper }}</div>
+                <div>
+                    <h4 class="font-bold text-slate-700">{{ user.first_name|default:user.username }}</h4>
+                    <span class="text-xs text-slate-400 capitalize">{{ user.profile.role.name|default:"Worker" }}</span>
+                </div>
+                <div class="ml-auto">
+                    <span
+                        class="w-3 h-3 rounded-full bg-green-500 block border-2 border-white shadow-sm ring-1 ring-green-100"></span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<script src="{% static 'js/manufacturing/timeline.js' %}"></script>
+<script>
+    // Alpine.js Component
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('supervisorDashboard', () => ({
+            // activeTab: inherited from appShell
+            viewMode: 'grid', // 'grid' or 'list'
+            filter: 'all', // 'all', 'active', 'maintenance'
+
+            shouldShowMachine(status, hasJob) {
+                if (this.filter === 'all') return true;
+                if (this.filter === 'active') return hasJob === true;
+                if (this.filter === 'maintenance') return status === 'maintenance';
+                return true;
+            },
+
+            init() {
+                // Auto-refresh every 30s
+                setInterval(() => {
+                    // HTMX or reload
+                    // window.location.reload(); 
+                }, 30000);
+            }
+        }))
+    });
+
+    // Edit Work Order (Navigate to Planner/Editor)
+    function editWO(woId) {
+        document.getElementById('edit_wo_id').value = woId;
+        document.getElementById('edit_wo_display_id').textContent = woId;
+
+        const form = document.getElementById('editStatusForm');
+        // Replace '0' dummy ID with actual WO ID in URL
+        form.action = "{% url 'update_work_order' wo_id=0 %}".replace('0', woId);
+
+        document.getElementById('editWOModal').showModal();
+    }
+
+    function openAssignModal(woId) {
+        document.getElementById('assign_wo_id').value = woId;
+        // Fix form action URL dynamic replacement
+        const form = document.getElementById('assignForm');
+        // Ensure the dummy ID 0 or 999999 matches what is in the template action
+        // Template uses wo_id=0, so we replace '0'
+        form.action = "{% url 'update_work_order' wo_id=0 %}".replace('0', woId);
+
+        document.getElementById('assignWorkerModal').showModal();
+    }
+
+    function setMachineStatus(id, status) {
+        const formData = new FormData();
+        formData.append('machine_id', id);
+        formData.append('status', status);
+
+        fetch("{% url 'maintenance_dashboard' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        }).then(res => {
+            if (res.ok) window.location.reload();
+            else alert("Failed to update status");
+        });
+    }
+
+    function approveLog(logId, action) {
+        if (!confirm(`Are you sure you want to ${action} this log?`)) return;
+
+        const formData = new FormData();
+        formData.append('action', action);
+
+        fetch(`/manufacturing/approve-log/${logId}/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+            body: formData
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Animate removal
+                    const row = document.getElementById(`log-row-${logId}`);
+                    if (row) {
+                        row.style.opacity = '0';
+                        setTimeout(() => row.remove(), 300);
+                    }
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(err => alert("Network Error"));
+    }
+</script>
+{% endblock %}

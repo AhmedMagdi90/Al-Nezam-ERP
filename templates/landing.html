@@ -1,0 +1,803 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nezam - Manufacturing Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --ink: #0f172a;
+            --muted: #556070;
+            --brand: #0f766e;
+            --brand-dark: #0b5b55;
+            --accent: #f59e0b;
+            --bg: #f7f6f1;
+            --surface: #ffffff;
+            --line: rgba(15, 23, 42, 0.12);
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "IBM Plex Sans", sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            font-family: "Space Grotesk", sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        .text-muted {
+            color: var(--muted);
+        }
+
+        .brand-mark {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(135deg, #0f766e 0%, #115e59 45%, #f59e0b 100%);
+            color: #fff;
+            font-weight: 700;
+            font-size: 18px;
+            box-shadow: 0 12px 24px rgba(15, 118, 110, 0.25);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(15, 118, 110, 0.12);
+            color: var(--brand);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid rgba(15, 118, 110, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(120deg, var(--brand), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-weight: 600;
+            transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, color 200ms ease;
+        }
+
+        .btn-primary {
+            background: var(--ink);
+            color: #fff;
+            box-shadow: 0 18px 30px rgba(15, 23, 42, 0.22);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-accent {
+            background: var(--brand);
+            color: #fff;
+            box-shadow: 0 18px 30px rgba(15, 118, 110, 0.22);
+        }
+
+        .btn-accent:hover {
+            background: var(--brand-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-ghost {
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--ink);
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(14px);
+        }
+
+        .feature-card {
+            border-radius: 18px;
+            background: #fff;
+            border: 1px solid var(--line);
+            padding: 20px;
+            box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+            transition: transform 200ms ease, box-shadow 200ms ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 22px 50px rgba(15, 23, 42, 0.14);
+        }
+
+        .step-index {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            background: rgba(245, 158, 11, 0.14);
+            color: #9a5b08;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .bg-grid {
+            background-image: radial-gradient(rgba(15, 118, 110, 0.15) 1px, transparent 1px);
+            background-size: 22px 22px;
+        }
+
+        .blob-teal {
+            background: radial-gradient(circle at 30% 30%, rgba(15, 118, 110, 0.3), transparent 60%);
+        }
+
+        .blob-amber {
+            background: radial-gradient(circle at 70% 40%, rgba(245, 158, 11, 0.25), transparent 65%);
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
+        }
+
+        .animate-rise {
+            animation: rise 700ms ease-out both;
+        }
+
+        .delay-1 {
+            animation-delay: 120ms;
+        }
+
+        .delay-2 {
+            animation-delay: 240ms;
+        }
+
+        .float {
+            animation: float 7s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="brand-mark">N</div>
+                    <div class="text-lg font-semibold">Nezam</div>
+                </div>
+                <div class="hidden md:flex items-center gap-6 text-sm font-medium text-muted">
+                    <a href="#product" class="hover:text-black">Product</a>
+                    <a href="#subscription-estimator" class="hover:text-black">Estimator</a>
+                    <a href="#how-it-works" class="hover:text-black">How it works</a>
+                    <a href="#workflow" class="hover:text-black">Workflow</a>
+                    <a href="#faq" class="hover:text-black">FAQ</a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="{% url 'login' %}" class="text-sm font-semibold text-muted hover:text-black">Log In</a>
+                    <a href="{% url 'login' %}?tab=register" class="btn btn-accent text-sm">Create Company</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="relative overflow-hidden">
+        <div class="absolute inset-0 bg-grid opacity-40"></div>
+        <div class="absolute -top-40 -right-40 w-[520px] h-[520px] rounded-full blob-teal blur-3xl"></div>
+        <div class="absolute -bottom-48 -left-40 w-[560px] h-[560px] rounded-full blob-amber blur-3xl"></div>
+
+        <div class="max-w-7xl mx-auto px-6 lg:px-8 pt-20 pb-24 relative">
+            <div class="grid lg:grid-cols-[1.1fr,0.9fr] gap-12 items-center">
+                <div class="space-y-6 animate-rise">
+                    <span class="pill">Manufacturing ERP for fast teams</span>
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
+                        Plan, build, and ship with a single system of record
+                    </h1>
+                    <p class="text-lg text-muted max-w-xl">
+                        Nezam connects BOMs, work orders, and shop floor output in real time. Replace
+                        spreadsheets with a live production cockpit that your planner, supervisor, and workers can
+                        trust.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="{% url 'login' %}?tab=register" class="btn btn-primary">Create Your Company</a>
+                        <a href="{% url 'login' %}" class="btn btn-ghost">Log In</a>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-6 text-sm text-muted">
+                        <span>Manual billing with estimate-first onboarding</span>
+                        <span>Guided onboarding in 7 days</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6">
+                        <div class="card p-4">
+                            <div class="text-2xl font-semibold">18%</div>
+                            <div class="text-xs text-muted uppercase tracking-wide">OEE lift</div>
+                        </div>
+                        <div class="card p-4">
+                            <div class="text-2xl font-semibold">24h</div>
+                            <div class="text-xs text-muted uppercase tracking-wide">Setup time</div>
+                        </div>
+                        <div class="card p-4">
+                            <div class="text-2xl font-semibold">1 view</div>
+                            <div class="text-xs text-muted uppercase tracking-wide">Live cost</div>
+                        </div>
+                        <div class="card p-4">
+                            <div class="text-2xl font-semibold">4 roles</div>
+                            <div class="text-xs text-muted uppercase tracking-wide">Aligned</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6 animate-rise delay-1">
+                    <div class="card glass-card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xl font-semibold">Company setup plan</h3>
+                            <span class="text-xs text-muted">About 10 minutes</span>
+                        </div>
+                        <div class="space-y-4 text-sm">
+                            <div class="flex gap-3">
+                                <div class="step-index">01</div>
+                                <div>
+                                    <div class="font-semibold">Create company profile</div>
+                                    <div class="text-muted">Name, industry, timezone, and default shifts.</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="step-index">02</div>
+                                <div>
+                                    <div class="font-semibold">Add machines and products</div>
+                                    <div class="text-muted">Define capacity, stages, and product list.</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="step-index">03</div>
+                                <div>
+                                    <div class="font-semibold">Build BOM and routing</div>
+                                    <div class="text-muted">Materials, operations, and QC requirements.</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="step-index">04</div>
+                                <div>
+                                    <div class="font-semibold">Launch your first work order</div>
+                                    <div class="text-muted">Assign machines and start production.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                            <a href="{% url 'register_company' %}" class="btn btn-accent w-full">Start Free Setup</a>
+                            <a href="#how-it-works" class="btn btn-ghost w-full">See the Steps</a>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 float">
+                        <div class="text-xs uppercase tracking-wide text-muted">Dashboard preview</div>
+                        <div class="mt-4 grid grid-cols-2 gap-4">
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                                <div class="text-xs text-muted uppercase">Active WOs</div>
+                                <div class="text-2xl font-semibold">12</div>
+                            </div>
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                                <div class="text-xs text-muted uppercase">Material usage</div>
+                                <div class="text-2xl font-semibold">94%</div>
+                            </div>
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                                <div class="text-xs text-muted uppercase">Planned vs actual</div>
+                                <div class="text-2xl font-semibold">+3.5%</div>
+                            </div>
+                            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50">
+                                <div class="text-xs text-muted uppercase">Alerts</div>
+                                <div class="text-2xl font-semibold">2</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="product" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
+                <div>
+                    <span class="pill">Product</span>
+                    <h2 class="text-3xl sm:text-4xl font-bold mt-4">Everything you need to run production</h2>
+                    <p class="text-muted max-w-2xl mt-3">
+                        From planning to execution, each module is connected so every role sees the same truth.
+                        No duplicate data, no missing handoffs.
+                    </p>
+                </div>
+                <a href="#how-it-works" class="btn btn-ghost">See onboarding</a>
+            </div>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="feature-card">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-11 h-11 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center text-xs font-bold">
+                            BOM
+                        </div>
+                        <h3 class="text-lg font-semibold">BOM and Routing</h3>
+                    </div>
+                    <p class="text-muted text-sm">Versioned BOMs, operations, and acceptance criteria in one flow.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center text-xs font-bold">
+                            WO
+                        </div>
+                        <h3 class="text-lg font-semibold">Work Orders</h3>
+                    </div>
+                    <p class="text-muted text-sm">Create, schedule, and track WOs with clear progress and ownership.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold">
+                            PLAN
+                        </div>
+                        <h3 class="text-lg font-semibold">Live Scheduling</h3>
+                    </div>
+                    <p class="text-muted text-sm">Drag and drop scheduling with instant impact on capacity.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-11 h-11 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center text-xs font-bold">
+                            SF
+                        </div>
+                        <h3 class="text-lg font-semibold">Shop Floor Output</h3>
+                    </div>
+                    <p class="text-muted text-sm">Workers log output and materials each shift from a kiosk view.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center text-xs font-bold">
+                            QC
+                        </div>
+                        <h3 class="text-lg font-semibold">Quality and Compliance</h3>
+                    </div>
+                    <p class="text-muted text-sm">Track inspections, scrap, and rework with full traceability.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center text-xs font-bold">
+                            MX
+                        </div>
+                        <h3 class="text-lg font-semibold">Maintenance and Alerts</h3>
+                    </div>
+                    <p class="text-muted text-sm">Machine health, downtime alerts, and planned maintenance in one view.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="subscription-estimator" class="py-20">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid lg:grid-cols-[0.95fr,1.05fr] gap-10 items-start">
+                <div class="space-y-5">
+                    <span class="pill">Subscription estimator</span>
+                    <h2 class="text-3xl sm:text-4xl font-bold">Let customers estimate the subscription before you quote manually</h2>
+                    <p class="text-muted max-w-xl">
+                        Billing is manual for the first release. This estimator gives customers a planning number for
+                        monthly and annual subscription cost before your team confirms the final proposal.
+                    </p>
+                    <div class="card p-6 space-y-4">
+                        <div>
+                            <div class="text-sm font-semibold">What is included in the estimate</div>
+                            <div class="text-sm text-muted mt-1">Base platform access, live environment, and user seats above the included pack.</div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">What is quoted manually</div>
+                            <div class="text-sm text-muted mt-1">Custom onboarding, enterprise support, and any special customer requirements.</div>
+                        </div>
+                        <div>
+                            <div class="text-sm font-semibold">Next step</div>
+                            <div class="text-sm text-muted mt-1">After the customer likes the estimate, they can create the company and your team confirms the subscription manually.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card p-8" data-subscription-estimator="true">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                        <div>
+                            <div class="text-sm uppercase tracking-[0.18em] text-muted font-semibold">Estimate only</div>
+                            <h3 class="text-2xl font-semibold mt-2">Subscription Calculator</h3>
+                        </div>
+                        <div class="text-sm text-muted max-w-xs">
+                            Final price is confirmed manually by the Nezam team.
+                        </div>
+                    </div>
+
+                    <div class="grid sm:grid-cols-2 gap-4">
+                        <label class="block">
+                            <span class="text-sm font-semibold">Active Users</span>
+                            <input id="subscriptionUsers" type="number" min="1" value="12" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                        </label>
+                        <label class="block">
+                            <span class="text-sm font-semibold">Need Test Environment?</span>
+                            <select id="subscriptionEnvironment" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                                <option value="live">Live Only</option>
+                                <option value="live_test">Live + Test</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm font-semibold">Onboarding Support</span>
+                            <select id="subscriptionOnboarding" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                                <option value="self">Self Setup</option>
+                                <option value="guided">Guided Setup</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm font-semibold">Billing Preference</span>
+                            <select id="subscriptionBilling" class="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-300">
+                                <option value="monthly">Monthly Estimate</option>
+                                <option value="annual">Annual Estimate</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="grid sm:grid-cols-3 gap-4 mt-8">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="text-xs uppercase tracking-[0.16em] text-muted">Monthly</div>
+                            <div id="subscriptionMonthly" class="text-3xl font-bold mt-2">$0</div>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="text-xs uppercase tracking-[0.16em] text-muted">Annual</div>
+                            <div id="subscriptionAnnual" class="text-3xl font-bold mt-2">$0</div>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="text-xs uppercase tracking-[0.16em] text-muted">One-Time Setup</div>
+                            <div id="subscriptionSetup" class="text-3xl font-bold mt-2">$0</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 rounded-2xl border border-dashed border-slate-300 p-5 bg-white">
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <div class="text-sm font-semibold">Displayed estimate</div>
+                                <div class="text-sm text-muted">This switches between monthly and annual based on customer preference.</div>
+                            </div>
+                            <div id="subscriptionDisplay" class="text-3xl font-bold gradient-text">$0</div>
+                        </div>
+                        <div class="mt-5 grid sm:grid-cols-2 gap-3 text-sm">
+                            <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                                <span class="text-muted">Included users</span>
+                                <span id="subscriptionIncludedUsers" class="font-semibold">0</span>
+                            </div>
+                            <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                                <span class="text-muted">Extra users billed</span>
+                                <span id="subscriptionExtraUsers" class="font-semibold">0</span>
+                            </div>
+                            <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                                <span class="text-muted">Environment uplift</span>
+                                <span id="subscriptionEnvironmentFee" class="font-semibold">$0</span>
+                            </div>
+                            <div class="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3">
+                                <span class="text-muted">Annual savings</span>
+                                <span id="subscriptionAnnualSavings" class="font-semibold">$0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                        <a href="{% url 'login' %}?tab=register" class="btn btn-primary w-full sm:w-auto">Create Company</a>
+                        <a href="mailto:{{ subscription_estimator_config.quoteEmail }}?subject=Nezam%20Subscription%20Estimate" class="btn btn-ghost w-full sm:w-auto">Request Manual Quote</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="py-20">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid lg:grid-cols-[1.05fr,0.95fr] gap-12 items-center">
+                <div>
+                    <span class="pill">How it works</span>
+                    <h2 class="text-3xl sm:text-4xl font-bold mt-4">Create a new company and go live fast</h2>
+                    <p class="text-muted max-w-xl mt-3">
+                        Follow a guided setup designed for manufacturing teams. Each step is short and practical.
+                    </p>
+                    <div class="mt-8 grid sm:grid-cols-2 gap-6">
+                        <div class="card p-6">
+                            <div class="text-sm font-semibold">Step 1</div>
+                            <div class="text-lg font-semibold mt-2">Company and shifts</div>
+                            <p class="text-muted text-sm mt-2">Create your company, define shifts, and set your timezone.</p>
+                        </div>
+                        <div class="card p-6">
+                            <div class="text-sm font-semibold">Step 2</div>
+                            <div class="text-lg font-semibold mt-2">Machines and stages</div>
+                            <p class="text-muted text-sm mt-2">Add machines, stages, and default production lines.</p>
+                        </div>
+                        <div class="card p-6">
+                            <div class="text-sm font-semibold">Step 3</div>
+                            <div class="text-lg font-semibold mt-2">Products and BOMs</div>
+                            <p class="text-muted text-sm mt-2">Define your products, materials, and BOM routing.</p>
+                        </div>
+                        <div class="card p-6">
+                            <div class="text-sm font-semibold">Step 4</div>
+                            <div class="text-lg font-semibold mt-2">Start production</div>
+                            <p class="text-muted text-sm mt-2">Create a WO, assign machines, and start work.</p>
+                        </div>
+                    </div>
+                    <div class="mt-8 flex flex-col sm:flex-row gap-3">
+                        <a href="{% url 'register_company' %}" class="btn btn-primary">Create Company Now</a>
+                        <a href="{% url 'login' %}" class="btn btn-ghost">Already have an account</a>
+                    </div>
+                </div>
+                <div class="card p-8">
+                    <h3 class="text-xl font-semibold">What you will get on day one</h3>
+                    <div class="mt-6 space-y-4 text-sm">
+                        <div class="flex items-start gap-3">
+                            <div class="step-index">A</div>
+                            <div>
+                                <div class="font-semibold">Planner dashboard</div>
+                                <div class="text-muted">Work order board, cost visibility, and schedule impact.</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="step-index">B</div>
+                            <div>
+                                <div class="font-semibold">Supervisor control</div>
+                                <div class="text-muted">Assign machines and workers with clear pending queues.</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="step-index">C</div>
+                            <div>
+                                <div class="font-semibold">Worker station</div>
+                                <div class="text-muted">Simple interface for output, materials, and shift updates.</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="step-index">D</div>
+                            <div>
+                                <div class="font-semibold">Live notifications</div>
+                                <div class="text-muted">Supervisors and planners stay informed in real time.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-6 text-sm text-muted">Need help? Contact support@kemet-erp.com</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="workflow" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid lg:grid-cols-[1fr,1fr] gap-12 items-center">
+                <div>
+                    <span class="pill">Workflow</span>
+                    <h2 class="text-3xl sm:text-4xl font-bold mt-4">One connected flow from planner to worker</h2>
+                    <p class="text-muted max-w-xl mt-3">
+                        Plan, execute, and confirm every stage with clear approvals and notifications.
+                    </p>
+                    <div class="mt-8 grid sm:grid-cols-3 gap-6">
+                        <div class="card p-5">
+                            <div class="text-sm uppercase text-muted">Planner</div>
+                            <div class="text-lg font-semibold mt-2">Create BOM and WO</div>
+                            <p class="text-muted text-sm mt-2">Define stages, quantities, and target dates.</p>
+                        </div>
+                        <div class="card p-5">
+                            <div class="text-sm uppercase text-muted">Supervisor</div>
+                            <div class="text-lg font-semibold mt-2">Assign machine and worker</div>
+                            <p class="text-muted text-sm mt-2">See pending orders and allocate resources.</p>
+                        </div>
+                        <div class="card p-5">
+                            <div class="text-sm uppercase text-muted">Worker</div>
+                            <div class="text-lg font-semibold mt-2">Log output and materials</div>
+                            <p class="text-muted text-sm mt-2">Close or update progress each shift.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card p-8">
+                    <div class="text-xs uppercase tracking-wide text-muted">Notification loop</div>
+                    <div class="mt-4 space-y-4 text-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="pill">Worker update</span>
+                            <span class="text-muted">-></span>
+                            <span class="pill">Supervisor approval</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="pill">Supervisor approval</span>
+                            <span class="text-muted">-></span>
+                            <span class="pill">Planner next stage</span>
+                        </div>
+                        <p class="text-muted">No more manual follow ups or missed handoffs. Each role sees the next action.</p>
+                    </div>
+                    <div class="mt-6">
+                        <a href="{% url 'register_company' %}" class="btn btn-accent w-full">Start your workflow</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="py-20">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="text-center max-w-2xl mx-auto">
+                <span class="pill">FAQ</span>
+                <h2 class="text-3xl sm:text-4xl font-bold mt-4">Questions from new teams</h2>
+                <p class="text-muted mt-3">Quick answers to help you decide and start a new company.</p>
+            </div>
+            <div class="mt-12 grid md:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold">How do I create a new company?</h3>
+                    <p class="text-muted text-sm mt-2">Click Create Company, fill the company profile, and follow the guided steps.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold">Can I invite my team later?</h3>
+                    <p class="text-muted text-sm mt-2">Yes. You can add supervisors and workers anytime from the onboarding flow.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold">Do I need to enter all BOMs first?</h3>
+                    <p class="text-muted text-sm mt-2">Start with one product. You can add or import more BOMs after go live.</p>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold">What if I need help?</h3>
+                    <p class="text-muted text-sm mt-2">Email support@kemet-erp.com and our onboarding team will help.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-20">
+        <div class="max-w-6xl mx-auto px-6 lg:px-8">
+            <div class="card p-10 bg-white">
+                <div class="grid lg:grid-cols-[1.1fr,0.9fr] gap-8 items-center">
+                    <div>
+                        <h2 class="text-3xl sm:text-4xl font-bold">Ready to launch your company?</h2>
+                        <p class="text-muted mt-3">Create your account, build your first BOM, and start production this week.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <a href="{% url 'register_company' %}" class="btn btn-primary">Create Company</a>
+                        <a href="{% url 'login' %}" class="btn btn-ghost">Log In</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer id="contact" class="bg-slate-900 text-slate-300 py-12">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div>
+                    <div class="text-xl font-semibold text-white">Nezam</div>
+                    <p class="text-sm text-slate-400 mt-2">Manufacturing control for teams that move fast.</p>
+                </div>
+                <div class="text-sm text-slate-400">
+                    <div>Support: support@kemet-erp.com</div>
+                    <div>Sales: sales@kemet-erp.com</div>
+                </div>
+            </div>
+            <div class="mt-8 text-xs text-slate-500">&copy; 2026 Nezam. All rights reserved.</div>
+        </div>
+    </footer>
+    {{ subscription_estimator_config|json_script:"subscription-estimator-config" }}
+    <script>
+        (function () {
+            const root = document.querySelector('[data-subscription-estimator="true"]');
+            if (!root) return;
+
+            const rawConfigNode = document.getElementById('subscription-estimator-config');
+            const subscriptionCalculatorConfig = Object.freeze(JSON.parse(rawConfigNode.textContent));
+
+            const usersInput = document.getElementById('subscriptionUsers');
+            const environmentInput = document.getElementById('subscriptionEnvironment');
+            const onboardingInput = document.getElementById('subscriptionOnboarding');
+            const billingInput = document.getElementById('subscriptionBilling');
+
+            const monthlyOutput = document.getElementById('subscriptionMonthly');
+            const annualOutput = document.getElementById('subscriptionAnnual');
+            const setupOutput = document.getElementById('subscriptionSetup');
+            const displayOutput = document.getElementById('subscriptionDisplay');
+            const includedUsersOutput = document.getElementById('subscriptionIncludedUsers');
+            const extraUsersOutput = document.getElementById('subscriptionExtraUsers');
+            const environmentFeeOutput = document.getElementById('subscriptionEnvironmentFee');
+            const annualSavingsOutput = document.getElementById('subscriptionAnnualSavings');
+
+            const moneyFormatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: subscriptionCalculatorConfig.currency,
+                maximumFractionDigits: 0,
+            });
+
+            function formatMoney(value) {
+                return moneyFormatter.format(Math.max(0, Number(value) || 0));
+            }
+
+            function updateEstimate() {
+                const activeUsers = Math.max(1, parseInt(usersInput.value || '1', 10));
+                const extraUsers = Math.max(0, activeUsers - subscriptionCalculatorConfig.includedUsers);
+                const environmentFee = environmentInput.value === 'live_test'
+                    ? subscriptionCalculatorConfig.testEnvironmentMonthly
+                    : 0;
+                const setupFee = onboardingInput.value === 'guided'
+                    ? subscriptionCalculatorConfig.guidedOnboardingOneTime
+                    : 0;
+
+                const monthly = subscriptionCalculatorConfig.baseMonthly
+                    + (extraUsers * subscriptionCalculatorConfig.extraUserMonthly)
+                    + environmentFee;
+                const annualBeforeDiscount = monthly * 12;
+                const annual = annualBeforeDiscount * (1 - subscriptionCalculatorConfig.annualDiscountRate);
+                const annualSavings = annualBeforeDiscount - annual;
+                const displayValue = billingInput.value === 'annual' ? annual : monthly;
+
+                monthlyOutput.textContent = formatMoney(monthly);
+                annualOutput.textContent = formatMoney(annual);
+                setupOutput.textContent = formatMoney(setupFee);
+                displayOutput.textContent = formatMoney(displayValue);
+                includedUsersOutput.textContent = String(subscriptionCalculatorConfig.includedUsers);
+                extraUsersOutput.textContent = String(extraUsers);
+                environmentFeeOutput.textContent = formatMoney(environmentFee);
+                annualSavingsOutput.textContent = formatMoney(annualSavings);
+            }
+
+            [usersInput, environmentInput, onboardingInput, billingInput].forEach((element) => {
+                element.addEventListener('input', updateEstimate);
+                element.addEventListener('change', updateEstimate);
+            });
+
+            updateEstimate();
+            window.subscriptionCalculatorConfig = subscriptionCalculatorConfig;
+        })();
+    </script>
+</body>
+
+</html>

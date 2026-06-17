@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 520" role="img" aria-label="Nezam manufacturing logo concept">
+  <defs>
+    <linearGradient id="bg2" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#f6faff"/>
+      <stop offset="100%" stop-color="#f0f6ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="520" fill="url(#bg2)"/>
+  <path d="M260 108 L286 138 L330 132 L340 176 L382 192 L372 236 L398 268 L372 300 L382 344 L340 360 L330 404 L286 398 L260 428 L234 398 L190 404 L180 360 L138 344 L148 300 L122 268 L148 236 L138 192 L180 176 L190 132 L234 138 Z" fill="#1c355c"/>
+  <circle cx="260" cy="268" r="78" fill="#f4f8ff"/>
+  <circle cx="260" cy="165" r="9" fill="#7f90a9"/>
+  <circle cx="351" cy="217" r="9" fill="#7f90a9"/>
+  <circle cx="351" cy="319" r="9" fill="#7f90a9"/>
+  <circle cx="260" cy="370" r="9" fill="#7f90a9"/>
+  <circle cx="169" cy="319" r="9" fill="#7f90a9"/>
+  <circle cx="169" cy="217" r="9" fill="#7f90a9"/>
+  <path d="M205 345 L220 220" stroke="#2563eb" stroke-width="30" stroke-linecap="round" fill="none"/>
+  <path d="M220 220 L275 337" stroke="#3b82f6" stroke-width="27" stroke-linecap="round" fill="none"/>
+  <path d="M275 337 L315 220" stroke="#0ea5e9" stroke-width="30" stroke-linecap="round" fill="none"/>
+  <path d="M286 320 L324 356 L418 266" stroke="#f59e0b" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <ellipse cx="274" cy="314" rx="10" ry="14" fill="#06b6d4"/>
+  <circle cx="264" cy="304" r="5" fill="#06b6d4"/>
+  <circle cx="276" cy="298" r="5" fill="#06b6d4"/>
+  <circle cx="288" cy="300" r="5" fill="#06b6d4"/>
+  <text x="520" y="300" font-family="Segoe UI, Arial, sans-serif" font-size="182" font-weight="700" fill="#0f1d3a">Nezam</text>
+</svg>

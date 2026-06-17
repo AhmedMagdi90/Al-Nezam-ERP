@@ -1,0 +1,85 @@
+<!-- 📤 GENERIC UPLOAD MODAL -->
+<div id="uploadModal"
+    class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-fade-in">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl transform scale-100 transition-all">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span class="bg-emerald-100 text-emerald-600 p-2 rounded-lg">📊</span>
+                <span id="uploadModalTitle">Upload Data</span>
+            </h3>
+            <button onclick="closeUploadModal()" class="text-slate-400 hover:text-slate-600 transition">
+                ✕
+            </button>
+        </div>
+
+        <form action="{% url 'handle_bulk_import' %}" method="post" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="import_type" id="uploadImportType" value="">
+
+            <!-- File Drop Zone -->
+            <div class="relative group">
+                <div
+                    class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-emerald-500 hover:bg-emerald-50 transition cursor-pointer relative bg-slate-50">
+                    <input type="file" name="file" required accept=".xlsx,.xls,.csv"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        onchange="updateFileName(this)">
+
+                    <div class="space-y-2 pointer-events-none">
+                        <div class="text-4xl">📁</div>
+                        <p class="text-sm font-bold text-slate-600">Click to Browse or Drag File</p>
+                        <p class="text-xs text-slate-400" id="fileNameDisplay">Supports: .xlsx, .csv</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Template Download Link -->
+            <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-center gap-3">
+                <span class="text-xl">💡</span>
+                <div>
+                    <p class="text-xs text-blue-800 font-bold">Need a template?</p>
+                    <a id="downloadTemplateLink" href="#" class="text-xs text-blue-600 hover:underline">
+                        Download Excel Template
+                    </a>
+                </div>
+            </div>
+
+            <div class="pt-2 flex gap-3">
+                <button type="button" onclick="closeUploadModal()"
+                    class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-600 font-bold hover:bg-slate-200 transition">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition shadow-lg shadow-emerald-200">
+                    Upload
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openUploadModal(type, title, templateFilename) {
+        document.getElementById('uploadModal').classList.remove('hidden');
+        document.getElementById('uploadImportType').value = type;
+        document.getElementById('uploadModalTitle').textContent = title;
+
+        // Update Template Link
+        const link = document.getElementById('downloadTemplateLink');
+        link.href = `/manufacturing/download-template/${templateFilename}/`;
+
+        // Reset File Input
+        document.getElementById('fileNameDisplay').textContent = "Supports: .xlsx, .csv";
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadModal').classList.add('hidden');
+    }
+
+    function updateFileName(input) {
+        if (input.files && input.files.length > 0) {
+            document.getElementById('fileNameDisplay').textContent = "Selected: " + input.files[0].name;
+            document.getElementById('fileNameDisplay').classList.add('text-emerald-600', 'font-bold');
+        }
+    }
+</script>

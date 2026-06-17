@@ -1,0 +1,150 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% load static tenant_i18n %}
+
+{% block title %}{% tenant_trans "Report Production" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8">
+    <div class="mb-8">
+        <a href="{% url 'shop_floor' %}" class="text-blue-600 flex items-center gap-2 font-bold hover:underline mb-4">
+            <i class="ph ph-arrow-left"></i> {% tenant_trans "Back to Station" %}
+        </a>
+        <h1 class="text-3xl font-black text-slate-800">{% tenant_trans "Submit Production Result" %}</h1>
+        <p class="text-slate-500 font-medium">{% tenant_trans "Reporting progress for WO" %} #{{ active_wo.id }}: {{ active_wo.product_name
+            }}</p>
+    </div>
+
+    <form method="POST" class="space-y-8">
+        {% csrf_token %}
+
+        <!-- Output Section -->
+        <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl shadow-slate-200/50">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                    <i class="ph ph-check-circle text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800">{% tenant_trans "Finished Quantity" %}</h2>
+            </div>
+
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-500 mb-2">{% tenant_trans "Quantity Produced" %}</label>
+                        {{ form.quantity }}
+                        <div class="mt-2 text-xs text-slate-400">{% tenant_trans "Target for this WO" %}: {{ active_wo.quantity }} {% tenant_trans "units" %}
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-500 mb-2">{% tenant_trans "Shift" %}</label>
+                        {{ form.shift }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-slate-500 mb-2">{% tenant_trans "Conditions / Material Notes" %}</label>
+                    {{ form.note }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Material Consumption Section -->
+        <div class="bg-slate-50 rounded-3xl p-8 border border-slate-200">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                    <i class="ph ph-package text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800">{% tenant_trans "Material Consumption" %}</h2>
+            </div>
+
+            <div class="space-y-4" id="material-list">
+                <p class="text-sm text-slate-500 mb-4">{% tenant_trans "Enter only the materials used from the floor stock." %}</p>
+
+                <div
+                    class="grid grid-cols-[1fr_100px_40px] items-center gap-4 bg-white p-4 rounded-xl border border-slate-100 shadow-sm font-bold text-xs uppercase text-slate-400 mb-2">
+                    <div>{% tenant_trans "Material Name" %}</div>
+                    <div>{% tenant_trans "Qty Used" %}</div>
+                    <div></div>
+                </div>
+
+                <!-- Template material row -->
+                <div class="space-y-3" id="material-rows-container">
+                    <!-- Dynamic material rows will be added here or just pre-fill with some defaults -->
+                </div>
+
+                <button type="button" onclick="addMaterialRow()"
+                    class="w-full py-4 border-2 border-dashed border-slate-300 rounded-2xl text-slate-400 font-bold hover:border-blue-400 hover:text-blue-500 transition-all flex items-center justify-center gap-2">
+                    <i class="ph ph-plus-circle text-xl"></i> {% tenant_trans "Add Material Usage" %}
+                </button>
+            </div>
+        </div>
+
+        <button type="submit"
+            class="w-full py-6 bg-slate-800 hover:bg-slate-900 text-white rounded-3xl font-black text-xl shadow-2xl shadow-slate-400/50 transition-all hover:-translate-y-1">
+            {% tenant_trans "Submit to Supervisor" %}
+        </button>
+    </form>
+</div>
+
+<!-- Row Template (Hidden) -->
+<template id="material-row-template">
+    <div class="grid grid-cols-[1fr_100px_40px] items-center gap-4 animate-fade-in-up">
+        <select name="material_id[]"
+            class="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-700 bg-white">
+            <option value="">{% tenant_trans "Select Material..." %}</option>
+            {% for mat in materials %}
+            <option value="{{ mat.id }}">{{ mat.name }} ({{ mat.unit }})</option>
+            {% endfor %}
+        </select>
+        <input type="number" step="0.001" name="material_qty[]" placeholder="0.0"
+            class="w-full p-3 border border-slate-200 rounded-xl font-bold bg-white">
+        <button type="button" onclick="this.parentElement.remove()"
+            class="text-slate-300 hover:text-red-500 transition-colors">
+            <i class="ph ph-trash text-xl"></i>
+        </button>
+    </div>
+</template>
+
+<script>
+    function addMaterialRow() {
+        const container = document.getElementById('material-rows-container');
+        const template = document.getElementById('material-row-template');
+        const clone = template.content.cloneNode(true);
+        container.appendChild(clone);
+    }
+
+    // Auto-add first row
+    document.addEventListener('DOMContentLoaded', () => {
+        addMaterialRow();
+    });
+</script>
+
+<style>
+    /* Premium input styles override */
+    input,
+    select,
+    textarea {
+        outline: none;
+        /* @apply outline-none ring-0; */
+    }
+
+    #id_quantity,
+    #id_shift,
+    #id_note,
+    #id_work_order {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background-color: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    #id_quantity:focus,
+    #id_shift:focus,
+    #id_note:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+</style>
+{% endblock %}

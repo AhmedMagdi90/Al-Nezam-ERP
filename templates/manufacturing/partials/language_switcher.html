@@ -1,0 +1,20 @@
+﻿{% load i18n tenant_i18n %}
+<form action="{% url 'set_language' %}" method="post" class="language-switcher-form shrink-0 m-0 flex items-center">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+    {% get_current_language as CURRENT_LANGUAGE %}
+    <label for="{{ language_switcher_id|default:'language-switcher' }}" class="sr-only">{% tenant_trans "Language" %}</label>
+    <div class="language-switcher-shell app-top-nav-action relative inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 whitespace-nowrap h-10"
+        dir="ltr">
+        <i class="ph ph-translate text-slate-400 text-sm"></i>
+        <select id="{{ language_switcher_id|default:'language-switcher' }}"
+            name="language"
+            onchange="this.form.submit()"
+            dir="ltr"
+            class="language-switcher-select bg-transparent text-sm font-black tracking-[0.12em] text-slate-700 outline-none appearance-none pr-7 pl-0 p-0 m-0 leading-none h-5">
+            <option value="en" {% if CURRENT_LANGUAGE == 'en' %}selected{% endif %}>EN</option>
+            <option value="ar" {% if CURRENT_LANGUAGE == 'ar' %}selected{% endif %}>AR</option>
+        </select>
+        <i class="ph ph-caret-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+    </div>
+</form>

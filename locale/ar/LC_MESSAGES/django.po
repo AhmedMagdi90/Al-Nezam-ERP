@@ -1,0 +1,2473 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Kemet ERP 1.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-01-01 13:30+0300\n"
+"PO-Revision-Date: 2026-01-01 13:35+0300\n"
+"Last-Translator: Antigen <ai@kemet.com>\n"
+"Language-Team: Arabic\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+
+msgid "1. Current task"
+msgstr "١. المهمة الحالية"
+
+msgid "1. Review pending work"
+msgstr "١. مراجعة العمل المعلق"
+
+msgid "1. Review queue"
+msgstr "١. مراجعة قائمة الانتظار"
+
+msgid "1. Review ticket"
+msgstr "١. مراجعة البلاغ"
+
+msgid "1. What needs assignment"
+msgstr "١. ما يحتاج إلى تعيين"
+
+msgid "2. Assign machine and time"
+msgstr "٢. تعيين الماكينة والوقت"
+
+msgid "2. Check evidence"
+msgstr "٢. فحص الدليل"
+
+msgid "2. Report quantity"
+msgstr "٢. تسجيل الكمية"
+
+msgid "2. Restore machine"
+msgstr "٢. إعادة الماكينة للعمل"
+
+msgid "2. What is waiting to start"
+msgstr "٢. ما ينتظر بدء التشغيل"
+
+msgid "3. Release and resolve"
+msgstr "٣. الإفراج والحل"
+
+msgid "3. Release or escalate"
+msgstr "٣. الإفراج أو التصعيد"
+
+msgid "3. Reopen execution"
+msgstr "٣. إعادة فتح التنفيذ"
+
+msgid "3. Request support"
+msgstr "٣. طلب دعم"
+
+msgid "3. What is in progress"
+msgstr "٣. ما هو قيد التشغيل"
+
+msgid "4. Monitor execution"
+msgstr "٤. متابعة التنفيذ"
+
+msgid "4. Move next"
+msgstr "٤. الانتقال للتالي"
+
+msgid "4. What is blocked"
+msgstr "٤. ما هو متوقف"
+
+msgid "A-Z"
+msgstr "أ-ي"
+
+msgid "Access"
+msgstr "الصلاحيات"
+
+msgid "Action"
+msgstr "الإجراء"
+
+msgid "Actions"
+msgstr "الإجراءات"
+
+msgid "Activated"
+msgstr "تم التفعيل"
+
+msgid "Active"
+msgstr "نشط"
+
+msgid "Active Lines"
+msgstr "خطوط نشطة"
+
+msgid "Active only"
+msgstr "النشط فقط"
+
+msgid "Actual"
+msgstr "الفعلي"
+
+msgid "Actual Material"
+msgstr "المواد الفعلية"
+
+msgid "Actual Output"
+msgstr "الإنتاج الفعلي"
+
+msgid "Actual Time (hours)"
+msgstr "الوقت الفعلي (ساعات)"
+
+msgid "Actual vs Planned"
+msgstr "الفعلي مقابل المخطط"
+
+msgid "Actual vs Target"
+msgstr "معدل التنفيذ الحالي"
+
+msgid "Add"
+msgstr "إضافة"
+
+msgid "Add Department"
+msgstr "إضافة قسم"
+
+msgid "Add Machine"
+msgstr "إضافة ماكينة"
+
+msgid "Add machines in Factory Setup"
+msgstr "أضف الماكينات من إعدادات المصنع"
+
+msgid "Add Material"
+msgstr "إضافة مادة"
+
+msgid "Add Material Usage"
+msgstr "إضافة استخدام مادة"
+
+msgid "Add Member"
+msgstr "إضافة عضو"
+
+msgid "Add Stage"
+msgstr "إضافة مرحلة"
+
+msgid "Add the first admin email"
+msgstr "أضف بريد أول مسؤول"
+
+msgid "Admin / Planner"
+msgstr "مسؤول / مخطط"
+
+msgid "Admin Account"
+msgstr "حساب المدير"
+
+msgid "Admin Only"
+msgstr "للمسؤول فقط"
+
+msgid "Admins can set a new temporary password for another user. Use the personal password form for your own account."
+msgstr "يمكن للمسؤولين تعيين كلمة مرور مؤقتة جديدة لمستخدم آخر. استخدم نموذج كلمة المرور الشخصية لحسابك."
+
+msgid "Alerts"
+msgstr "تنبيهات"
+
+msgid "All"
+msgstr "الكل"
+
+msgid "All Actions"
+msgstr "كل الإجراءات"
+
+msgid "All caught up"
+msgstr "لا توجد مهام معلقة"
+
+msgid "All departments are assigned automatically."
+msgstr "يتم تعيين كل الأقسام تلقائيا."
+
+msgid "All departments created in this scope will be assigned to this planner by default."
+msgstr "كل الأقسام المنشأة في هذا النطاق ستعين لهذا المخطط افتراضيا."
+
+msgid "All Jobs"
+msgstr "اجمالي أوامر الشغل"
+
+msgid "All Machines"
+msgstr "كل الماكينات"
+
+msgid "All Models"
+msgstr "كل النماذج"
+
+msgid "All orders scheduled"
+msgstr "كل الأوامر مدرجة"
+
+msgid "All Products"
+msgstr "كل المنتجات"
+
+msgid "All Stages"
+msgstr "مراحل الانتاج"
+
+msgid "All Users"
+msgstr "كل المستخدمين"
+
+msgid "All Work Orders"
+msgstr "كل أوامر الشغل"
+
+msgid "Analytics"
+msgstr "التحليلات"
+
+msgid "Apply Filters"
+msgstr "تصفية"
+
+msgid "Apply scope filters first, then export only the result set you need."
+msgstr "طبق فلاتر النطاق أولا ثم صدر النتائج المطلوبة فقط."
+
+msgid "Approval"
+msgstr "قيد الموافقة"
+
+msgid "Approvals"
+msgstr "الموافقات"
+
+msgid "Approve"
+msgstr "موافقة"
+
+msgid "Approve cleanly so production can continue"
+msgstr "اعتمد بوضوح حتى يستمر الإنتاج"
+
+msgid "Approve Receipt"
+msgstr "اعتماد الاستلام"
+
+msgid "Approve when clear, raise issues when blocked"
+msgstr "اعتمد عند الوضوح وارفع المشكلة عند التعطل"
+
+msgid "Approved"
+msgstr "معتمد"
+
+msgid "Approved Output"
+msgstr "الإنتاج المعتمد"
+
+msgid "Arabic"
+msgstr "العربية"
+
+msgid "Arabic (Egypt)"
+msgstr "العربية (مصر)"
+
+msgid "Arabic Translation"
+msgstr "الترجمة العربية"
+
+msgid "are required"
+msgstr "مطلوبة"
+
+msgid "are required."
+msgstr "مطلوبة."
+
+msgid "Are you sure?"
+msgstr "هل أنت متأكد؟"
+
+msgid "Assign"
+msgstr "تعيين"
+
+msgid "Assign it during onboarding"
+msgstr "عينه أثناء إضافة العضو"
+
+msgid "Assign Machine"
+msgstr "تعيين ماكينة"
+
+msgid "Assign the standard operating shift for this employee."
+msgstr "عين وردية التشغيل القياسية لهذا الموظف."
+
+msgid "Assign Worker"
+msgstr "تعيين عامل"
+
+msgid "Assign Workers"
+msgstr "تعيين عمال"
+
+msgid "Assign, repair, and document ownership"
+msgstr "عين المسؤولية وأصلح وسجل الملكية"
+
+msgid "Assigned"
+msgstr "تم تعيينه"
+
+msgid "Assigned / Waiting"
+msgstr "معينة"
+
+msgid "Assigned / Waiting Start"
+msgstr "معين / ينتظر البدء"
+
+msgid "Assigned Jobs"
+msgstr "أوامر الشغل المعينة"
+
+msgid "Assigned Machine"
+msgstr "الآلة المعينة"
+
+msgid "Assignment"
+msgstr "التعيين"
+
+msgid "Assignments"
+msgstr "التعيينات"
+
+msgid "Audit CSV"
+msgstr "ملف تدقيق CSV"
+
+msgid "Audit Events"
+msgstr "أحداث التدقيق"
+
+msgid "Audit Trail"
+msgstr "سجل التدقيق"
+
+msgid "Auto"
+msgstr "تلقائي"
+
+msgid "Auto Assign"
+msgstr "تعيين تلقائي"
+
+msgid "Auto Close On"
+msgstr "الإغلاق التلقائي مفعل"
+
+msgid "Auto-assign Workers"
+msgstr "تعيين العمال تلقائيا"
+
+msgid "Automatic Fault Lockdown"
+msgstr "إيقاف تلقائي عند العطل"
+
+msgid "Automation and logistics"
+msgstr "الأتمتة والعمليات"
+
+msgid "Available qty"
+msgstr "الكمية المتاحة"
+
+msgid "average from start to end"
+msgstr "متوسط من البداية إلى النهاية"
+
+msgid "Awaiting execution"
+msgstr "بانتظار التنفيذ"
+
+msgid "Back To Intake"
+msgstr "العودة إلى الوارد"
+
+msgid "Back to Maintenance"
+msgstr "العودة إلى الصيانة"
+
+msgid "Back to Quality"
+msgstr "العودة إلى الجودة"
+
+msgid "Back to Reports"
+msgstr "العودة للتقارير"
+
+msgid "Back to Station"
+msgstr "العودة للمحطة"
+
+msgid "Base Quantity:"
+msgstr "الكمية الأساسية:"
+
+msgid "Based on skills and availability"
+msgstr "حسب المهارات والتوافر"
+
+msgid "Batch"
+msgstr "دفعة"
+
+msgid "Behind, overdue, or blocked WOs"
+msgstr "أوامر شغل متأخرة أو متجاوزة أو متوقفة"
+
+msgid "BI"
+msgstr "ذكاء الأعمال"
+
+msgid "BI Dashboard"
+msgstr "لوحة ذكاء الأعمال"
+
+msgid "Bill of Materials"
+msgstr "قائمة المواد (BOM)"
+
+msgid "Bills of Materials"
+msgstr "قوائم المكونات"
+
+msgid "BOM changes"
+msgstr "تغييرات قائمة المكونات"
+
+msgid "BOM Material Requests"
+msgstr "طلبات مواد قائمة المكونات"
+
+msgid "BOM OK"
+msgstr "قائمة المكونات متاحة"
+
+msgid "BOM-planned versus consumed material across routed tasks."
+msgstr "مقارنة المواد المخططة في قائمة المكونات مع المستهلكة عبر المهام."
+
+msgid "Broken"
+msgstr "غير متاحة"
+
+msgid "Broken/Faulty"
+msgstr "بها عطل"
+
+msgid "Bulk Import"
+msgstr "استيراد مجمع"
+
+msgid "Bulk Upload"
+msgstr "رفع ملف مجمع"
+
+msgid "Cairo"
+msgstr "القاهرة"
+
+msgid "Calculating BOM Requirements..."
+msgstr "جاري حساب متطلبات قائمة المكونات..."
+
+msgid "Calendar"
+msgstr "عرض تقويم الانتاج"
+
+msgid "Can start now"
+msgstr "يمكن البدء الآن"
+
+msgid "Cancel"
+msgstr "إلغاء"
+
+msgid "Capacity Utilization"
+msgstr "سعة التشغيل"
+
+msgid "Category"
+msgstr "الفئة"
+
+msgid "Changes made here are applied to the shop floor immediately"
+msgstr "التغييرات هنا تطبق فورا على أرضية التشغيل"
+
+msgid "Check analytics"
+msgstr "راجع التحليلات"
+
+msgid "Check new demand, unscheduled orders, and incoming route decisions first."
+msgstr "راجع الطلبات الجديدة والأوامر غير المدرجة وقرارات المسار الواردة أولا."
+
+msgid "Check planning queue"
+msgstr "راجع قائمة التخطيط"
+
+msgid "Check Status"
+msgstr "فحص الحالة"
+
+msgid "Choose the company code"
+msgstr "اختر كود الشركة"
+
+msgid "Choose whether new work orders run stage by stage or allow parallel execution."
+msgstr "اختر ما إذا كانت أوامر الشغل الجديدة تعمل مرحلة بمرحلة أو تسمح بالتنفيذ المتوازي."
+
+msgid "Clear completion requests, exception items, and anything blocking the next stage."
+msgstr "أنهِ طلبات الإكمال والاستثناءات وأي شيء يمنع المرحلة التالية."
+
+msgid "Clear Preset"
+msgstr "مسح الإعداد"
+
+msgid "Click \"Timeline\" to load the Gantt chart..."
+msgstr "انقر على \"الجدول الزمني\" لتحميل مخطط جانت..."
+
+msgid "Close"
+msgstr "إغلاق"
+
+msgid "Close Mode"
+msgstr "وضع الإغلاق"
+
+msgid "Close settings"
+msgstr "إغلاق الإعدادات"
+
+msgid "Close WO"
+msgstr "إغلاق أمر الشغل"
+
+msgid "Closed By"
+msgstr "أغلق بواسطة"
+
+msgid "Code"
+msgstr "الكود"
+
+msgid "Combined efficiency score"
+msgstr "مؤشر الكفاءة المجمع"
+
+msgid "Company"
+msgstr "الشركة"
+
+msgid "Company and locale"
+msgstr "الشركة واللغة"
+
+msgid "Company code is required before continuing."
+msgstr "كود الشركة مطلوب قبل المتابعة."
+
+msgid "Company Details"
+msgstr "تفاصيل الشركة"
+
+msgid "Company name is required before continuing."
+msgstr "اسم الشركة مطلوب قبل المتابعة."
+
+msgid "Compare production time and material consumption by Work Order."
+msgstr "قارن وقت الإنتاج واستهلاك المواد حسب أمر الشغل."
+
+msgid "Compare quantity, timing, and consumption by work order when production outcome needs explanation."
+msgstr "قارن الكمية والتوقيت والاستهلاك حسب أمر الشغل عند الحاجة لتفسير نتيجة الإنتاج."
+
+msgid "Completed"
+msgstr "تام"
+
+msgid "Completed WOs waiting final close"
+msgstr "أوامر شغل مكتملة تنتظر الإغلاق النهائي"
+
+msgid "Components:"
+msgstr "المكونات:"
+
+msgid "Conditions / Material Notes"
+msgstr "الشروط / ملاحظات المواد"
+
+msgid "Confirm"
+msgstr "تأكيد"
+
+msgid "Confirm action"
+msgstr "تأكيد الإجراء"
+
+msgid "Confirm Assignment"
+msgstr "تأكيد التعيين"
+
+msgid "Confirm final received and scrap quantities before planner close."
+msgstr "أكد الكمية المستلمة النهائية والهالك قبل إغلاق المخطط."
+
+msgid "Confirm New Password"
+msgstr "تأكيد كلمة المرور الجديدة"
+
+msgid "Confirm Primary Password"
+msgstr "تأكيد كلمة المرور الأساسية"
+
+msgid "Confirm the highlighted job"
+msgstr "أكد المهمة المحددة"
+
+msgid "Context"
+msgstr "السياق"
+
+msgid "Control Tower"
+msgstr "برج التحكم"
+
+msgid "Cookies are required to sign in. Enable cookies for <strong>%(host)s</strong> and try again."
+msgstr "ملفات تعريف الارتباط مطلوبة لتسجيل الدخول. فعّل ملفات تعريف الارتباط للمضيف <strong>%(host)s</strong> ثم حاول مرة أخرى."
+
+msgid "Coverage"
+msgstr "التغطية"
+
+msgid "Create a new order to get started"
+msgstr "أنشئ طلبًا جديدًا للبدء"
+
+msgid "Create BOM"
+msgstr "إنشاء قائمة مواد"
+
+msgid "Create lanes here, then assign them during onboarding."
+msgstr "أنشئ الأقسام هنا ثم عينها أثناء إضافة الأعضاء."
+
+msgid "Create New Machine"
+msgstr "إنشاء ماكينة جديدة"
+
+msgid "Create New Stage"
+msgstr "إنشاء مرحلة جديدة"
+
+msgid "Create New Work Order"
+msgstr "إنشاء أمر شغل جديد"
+
+msgid "Create Team Member"
+msgstr "إنشاء عضو فريق"
+
+msgid "Create the account, assign department access, and finish security setup in three guided steps."
+msgstr "أنشئ الحساب وعين صلاحيات القسم وأكمل إعداد الأمان في ثلاث خطوات موجهة."
+
+msgid "Create the department here"
+msgstr "أنشئ القسم هنا"
+
+msgid "Create Work Order"
+msgstr "انشاء امر شغل"
+
+msgid "Create Workspace"
+msgstr "إنشاء مساحة العمل"
+
+msgid "Created"
+msgstr "تاريخ الإنشاء"
+
+msgid "Current execution rate"
+msgstr "معدل التنفيذ الحالي"
+
+msgid "Customer"
+msgstr "العميل"
+
+msgid "Customer edits this column."
+msgstr "يعدل العميل هذا العمود."
+
+msgid "Cycle Time"
+msgstr "زمن الدورة"
+
+msgid "Daily Flow"
+msgstr "التدفق اليومي"
+
+msgid "Dashboards"
+msgstr "لوحات المتابعة"
+
+msgid "Date"
+msgstr "التاريخ"
+
+msgid "Day"
+msgstr "يوم"
+
+msgid "Decision View"
+msgstr "عرض القرار"
+
+msgid "Default"
+msgstr "افتراضي"
+
+msgid "Default Operation Flow"
+msgstr "تدفق التشغيل الافتراضي"
+
+msgid "Default system departments stay available for each app scope."
+msgstr "تبقى أقسام النظام الافتراضية متاحة لكل نطاق."
+
+msgid "Define operational scope once so the right dashboards and queues are visible immediately."
+msgstr "حدد نطاق التشغيل مرة واحدة حتى تظهر اللوحات والقوائم المناسبة فورا."
+
+msgid "Define your production workflow by adding stages"
+msgstr "حدّد سير الإنتاج بإضافة المراحل"
+
+msgid "Department Directory"
+msgstr "دليل الأقسام"
+
+msgid "Department directory"
+msgstr "دليل الأقسام"
+
+msgid "Details"
+msgstr "التفاصيل"
+
+msgid "Dimensional Issue"
+msgstr "مشكلة أبعاد"
+
+msgid "Dispatch Readiness"
+msgstr "جاهزية التسليم للتشغيل"
+
+msgid "Do not change English source text. That column is the matching key used during upload."
+msgstr "لا تغير النص الإنجليزي. هذا العمود هو مفتاح المطابقة المستخدم أثناء الرفع."
+
+msgid "Done"
+msgstr "تم"
+
+msgid "Download one sheet with English, Arabic, and screen hints. Edit it offline, then upload it back and the company UI updates from that file."
+msgstr "نزل ملفا واحدا يحتوي الإنجليزية والعربية وملاحظات الشاشة. عدله خارج النظام ثم ارفعه مرة أخرى لتحديث واجهة الشركة من الملف."
+
+msgid "Download the current translation workbook"
+msgstr "تنزيل ملف الترجمة الحالي"
+
+msgid "Download translation sheet"
+msgstr "تنزيل ملف الترجمة"
+
+msgid "Draft Preview"
+msgstr "معاينة مسودة"
+
+msgid "Due"
+msgstr "مستحق"
+
+msgid "e.g. Machining, Dispatch, Line 2"
+msgstr "مثال: تشغيل، تسليم، خط ٢"
+
+msgid "Each Arabic value becomes a company translation override and appears immediately after upload."
+msgstr "تصبح كل قيمة عربية ترجمة مخصصة للشركة وتظهر فورا بعد الرفع."
+
+msgid "Edit"
+msgstr "تعديل"
+
+msgid "Edit Details"
+msgstr "تعديل التفاصيل"
+
+msgid "Edit Machine"
+msgstr "تعديل خواص الماكينة"
+
+msgid "Edit only the Arabic translation column"
+msgstr "عدل عمود الترجمة العربية فقط"
+
+msgid "Edit Order"
+msgstr "تعديل الطلب"
+
+msgid "Edit Team Member"
+msgstr "تعديل عضو الفريق"
+
+msgid "Editable Target"
+msgstr "الهدف القابل للتعديل"
+
+msgid "Efficiency %"
+msgstr "نسبة الكفاءة"
+
+msgid "Email"
+msgstr "البريد الإلكتروني"
+
+msgid "Employee Access"
+msgstr "صلاحيات الموظف"
+
+msgid "Enable worker mode"
+msgstr "تفعيل وضع العامل"
+
+msgid "English"
+msgstr "الإنجليزية"
+
+msgid "English (United States)"
+msgstr "الإنجليزية (الولايات المتحدة)"
+
+msgid "English Source"
+msgstr "النص الإنجليزي"
+
+msgid "Enter at least one: work email or phone. Username preview:"
+msgstr "أدخل واحدا على الأقل: بريد العمل أو الهاتف. معاينة اسم المستخدم:"
+
+msgid "Enter only the materials used from the floor stock."
+msgstr "أدخل فقط المواد المستخدمة من مخزون أرضية التشغيل."
+
+msgid "Enter only what this stage used"
+msgstr "أدخل فقط ما استخدمته هذه المرحلة"
+
+msgid "Enter the factory or business name that will appear on work orders, reports, and user accounts."
+msgstr "أدخل اسم المصنع أو النشاط الذي سيظهر في أوامر الشغل والتقارير وحسابات المستخدمين."
+
+msgid "Enter your username"
+msgstr "أدخل اسم المستخدم"
+
+msgid "Equipment Effectiveness %"
+msgstr "فعالية المعدات الاجمالية %"
+
+msgid "Escalate faults or approvals fast"
+msgstr "صعد الأعطال أو الاعتمادات بسرعة"
+
+msgid "Evening"
+msgstr "مسائي"
+
+msgid "Event"
+msgstr "الحدث"
+
+msgid "Exact UI source text used for matching."
+msgstr "نص الواجهة الأصلي المستخدم للمطابقة."
+
+msgid "Excel download and upload"
+msgstr "تنزيل ورفع Excel"
+
+msgid "Excel file *"
+msgstr "ملف Excel *"
+
+msgid "Excel includes all known UI text, current Arabic value, and a short screen hint so the customer can translate outside the system."
+msgstr "يتضمن Excel كل نصوص الواجهة المعروفة والقيمة العربية الحالية وملاحظة قصيرة عن مكان النص حتى يترجم العميل خارج النظام."
+
+msgid "Execution In Progress"
+msgstr "قيد التشغيل"
+
+msgid "Execution Work Orders"
+msgstr "أوامر الشغل"
+
+msgid "Export CSV"
+msgstr "تصدير CSV"
+
+msgid "Factory Setup"
+msgstr "اعدادات المصنع"
+
+msgid "Factory setup loaded in safe mode due to an internal data error:"
+msgstr "تم تحميل إعدادات المصنع في الوضع الآمن بسبب خطأ داخلي في البيانات:"
+
+msgid "Faults"
+msgstr "الأعطال"
+
+msgid "Fields marked with"
+msgstr "الحقول المحددة بعلامة"
+
+msgid "Filter"
+msgstr "تصفية"
+
+msgid "Filter by"
+msgstr "تصفية حسب"
+
+msgid "Final"
+msgstr "نهائي"
+
+msgid "Final routed output compared with the planned batch quantity."
+msgstr "الإنتاج النهائي للمسار مقارنة بكمية الدفعة المخططة."
+
+msgid "Final stage done"
+msgstr "تمت المرحلة النهائية"
+
+msgid "Find pending inspections first"
+msgstr "ابدأ بالفحوصات المعلقة"
+
+msgid "Finish registration guide"
+msgstr "إنهاء دليل التسجيل"
+
+msgid "Finished Goods Receipt"
+msgstr "استلام المنتج النهائي"
+
+msgid "Finished Quantity"
+msgstr "الكمية المنتهية"
+
+msgid "First Name"
+msgstr "الاسم الأول"
+
+msgid "Flow Mode"
+msgstr "وضع التدفق"
+
+msgid "Focus"
+msgstr "وضع التركيز"
+
+msgid "Follow who changed what, when it happened, and which work order or machine was affected."
+msgstr "تابع من غير ماذا ومتى حدث ذلك وأي أمر شغل أو ماكينة تأثرت."
+
+msgid "Follow-up Queue"
+msgstr "قائمة المتابعة"
+
+msgid "Force Refresh"
+msgstr "تحديث قسري"
+
+msgid "From"
+msgstr "من"
+
+msgid "Future slot"
+msgstr "موعد لاحق"
+
+msgid "Gantt"
+msgstr "عرض الجدول الزمني"
+
+msgid "General"
+msgstr "عام"
+
+msgid "General Info"
+msgstr "بيانات عامة"
+
+msgid "Generated"
+msgstr "تم الإنشاء"
+
+msgid "German (Germany)"
+msgstr "الألمانية (ألمانيا)"
+
+msgid "Get started by adding your first machine to the factory"
+msgstr "ابدأ بإضافة أول ماكينة في الورشة"
+
+msgid "Guide"
+msgstr "الدليل"
+
+msgid "Halt production on active faults"
+msgstr "إيقاف الإنتاج عند وجود أعطال نشطة"
+
+msgid "Handle approvals"
+msgstr "إدارة الاعتمادات"
+
+msgid "Hide"
+msgstr "إخفاء"
+
+msgid "Hide Pending WOs"
+msgstr "إخفاء أوامر الشغل المعلقة"
+
+msgid "History"
+msgstr "سجل الصيانات"
+
+msgid "How it works"
+msgstr "كيف يعمل"
+
+msgid "How to use this module"
+msgstr "كيفية استخدام هذا القسم"
+
+msgid "Identity"
+msgstr "الهوية"
+
+msgid "Idle only"
+msgstr "الخامل فقط"
+
+msgid "Import machines, stages, products, employees, or work orders in one step."
+msgstr "استورد الماكينات والمراحل والمنتجات والموظفين أو أوامر العمل دفعة واحدة."
+
+msgid "Import Scope"
+msgstr "نطاق الاستيراد"
+
+msgid "In Progress"
+msgstr "قيد التنفيذ"
+
+msgid "In Review"
+msgstr "قيد المراجعة"
+
+msgid "Inactive"
+msgstr "بها عطل"
+
+msgid "Inactive user"
+msgstr "غير نشط"
+
+msgid "Inbox"
+msgstr "قائمة الوارد"
+
+msgid "Inspection Queue"
+msgstr "قائمة انتظار الفحص"
+
+msgid "Instructions"
+msgstr "التعليمات"
+
+msgid "Internal page/component reference for support teams."
+msgstr "مرجع داخلي للصفحة أو المكون لفريق الدعم."
+
+msgid "IP"
+msgstr "عنوان IP"
+
+msgid "Jobs"
+msgstr "عدد أوامر الشغل"
+
+msgid "Kanban"
+msgstr "عرض بحالة الانتاج"
+
+msgid "Keep at least one contact method on the account: email or phone."
+msgstr "احتفظ بطريقة تواصل واحدة على الأقل في الحساب: بريد أو هاتف."
+
+msgid "Lang"
+msgstr "اللغة"
+
+msgid "Language"
+msgstr "اللغة"
+
+msgid "Largest Time Risk"
+msgstr "أكبر خطر زمني"
+
+msgid "Last Name"
+msgstr "اسم العائلة"
+
+msgid "Later"
+msgstr "أقرب فترة متاحة"
+
+msgid "Latest"
+msgstr "الأحدث"
+
+msgid "Latest Manufacturing Events"
+msgstr "أحدث أحداث الإنتاج"
+
+msgid "Latest Match"
+msgstr "أحدث نتيجة مطابقة"
+
+msgid "Latest Quality Alerts"
+msgstr "اخر اشعارات الجودة"
+
+msgid "Launch Production"
+msgstr "إطلاق الإنتاج 🚀"
+
+msgid "Leave unused BOM materials blank. You can add extra non-BOM materials below."
+msgstr "اترك مواد قائمة المكونات غير المستخدمة فارغة. يمكنك إضافة مواد إضافية خارج القائمة بالأسفل."
+
+msgid "List"
+msgstr "عرض قائمة اوامر الشغل"
+
+msgid "Live"
+msgstr "مباشر"
+
+msgid "Live variance view for routed work orders, staged output, and material draw."
+msgstr "عرض مباشر للفروقات في أوامر الشغل الموجهة وإنتاج المراحل وسحب المواد."
+
+msgid "Locale"
+msgstr "اللغة والمنطقة"
+
+msgid "Log Output"
+msgstr "تسجيل الإنتاج"
+
+msgid "Log output before switching"
+msgstr "سجل الإنتاج قبل الانتقال"
+
+msgid "Log Production"
+msgstr "تسجيل الإنتاج"
+
+msgid "Login"
+msgstr "تسجيل الدخول"
+
+msgid "Logo"
+msgstr "الشعار"
+
+msgid "logs waiting for review"
+msgstr "سجلات تنتظر المراجعة"
+
+msgid "Loss"
+msgstr "فاقد"
+
+msgid "Machine"
+msgstr "الماكينة"
+
+msgid "Machine / Stage"
+msgstr "الماكينة / المرحلة"
+
+msgid "Machine assignment"
+msgstr "تعيين الماكينة"
+
+msgid "Machine Category"
+msgstr "فئة الماكينة"
+
+msgid "Machine Code"
+msgstr "كود الماكينة"
+
+msgid "Machine Fault"
+msgstr "عطل ماكينة"
+
+msgid "Machine Image"
+msgstr "صورة الماكينة"
+
+msgid "Machine Name"
+msgstr "اسم الماكينة"
+
+msgid "Machine Scope"
+msgstr "نطاق الماكينة"
+
+msgid "Machine Status"
+msgstr "حالة الماكينة"
+
+msgid "Machines"
+msgstr "الماكينات"
+
+msgid "Machines Affected"
+msgstr "الماكينات المتأثرة"
+
+msgid "Maintenance"
+msgstr "الصيانة"
+
+msgid "Maintenance Control"
+msgstr "نظام الصيانة"
+
+msgid "Maintenance Control Hub"
+msgstr "نظام الصيانة"
+
+msgid "Maintenance History"
+msgstr "سجل الصيانات"
+
+msgid "Maintenance Overview"
+msgstr "نظرة عامة على الصيانة"
+
+msgid "Maintenance Settings"
+msgstr "إعدادات الصيانة"
+
+msgid "Maintenance Supervisor Queue"
+msgstr "قائمة مشرف الصيانة"
+
+msgid "Maintenance workflow hub"
+msgstr "مركز سير عمل الصيانة"
+
+msgid "Maintenance Workspace"
+msgstr "مساحة الصيانة"
+
+msgid "Manage lanes, roles, and onboarding assignment from one board."
+msgstr "إدارة المسارات والأدوار وتعيينات الانضمام من لوحة واحدة."
+
+msgid "Manual Only"
+msgstr "يدوي فقط"
+
+msgid "Manufacturing"
+msgstr "الانتاج"
+
+msgid "Manufacturing Execution System"
+msgstr "نظام تنفيذ التصنيع الذكي"
+
+msgid "Manufacturing Status Mix"
+msgstr "توزيع حالات الإنتاج"
+
+msgid "Manufacturing Suite"
+msgstr "نظام التصنيع"
+
+msgid "manufacturing trace records"
+msgstr "سجلات تتبع الإنتاج"
+
+msgid "Material"
+msgstr "المادة"
+
+msgid "Material and receipt control"
+msgstr "إدارة المواد والاستلام"
+
+msgid "Material Consumption"
+msgstr "استهلاك المواد"
+
+msgid "Material Defect"
+msgstr "عيب في المادة"
+
+msgid "Material Delta"
+msgstr "فرق المواد"
+
+msgid "Material Efficiency"
+msgstr "كفاءة المواد"
+
+msgid "Material Efficiency %"
+msgstr "نسبة كفاءة المواد"
+
+msgid "Material Hotspot"
+msgstr "أعلى نقطة استهلاك مواد"
+
+msgid "Material Name"
+msgstr "اسم المادة"
+
+msgid "Material Ready"
+msgstr "المواد جاهزة"
+
+msgid "Material Shortage"
+msgstr "نقص مواد"
+
+msgid "Material shortage"
+msgstr "نقص مواد"
+
+msgid "Material Variance"
+msgstr "فروقات المواد"
+
+msgid "Materials Consumed"
+msgstr "المواد المستهلكة"
+
+msgid "Materials ready"
+msgstr "المواد جاهزة"
+
+msgid "Member Identity"
+msgstr "هوية العضو"
+
+msgid "Members & departments"
+msgstr "الأعضاء والأقسام"
+
+msgid "Mid"
+msgstr "متوسط"
+
+msgid "Monitor live schedule"
+msgstr "راقب جدول العمل المباشر"
+
+msgid "Monitor open work, schedule adherence, output, and planner closure volume."
+msgstr "راقب الأعمال المفتوحة والالتزام بالجدول والإنتاج وحجم إغلاقات المخطط."
+
+msgid "Month"
+msgstr "شهر"
+
+msgid "Morning"
+msgstr "صباحي"
+
+msgid "N/A"
+msgstr "غير متاح"
+
+msgid "Name"
+msgstr "الاسم"
+
+msgid "Needs Assignment"
+msgstr "أوامر شغل غير معينة"
+
+msgid "Needs maintenance follow-up"
+msgstr "يحتاج متابعة صيانة"
+
+msgid "New Company"
+msgstr "شركة جديدة"
+
+msgid "New Order"
+msgstr "أمر جديد"
+
+msgid "New Password"
+msgstr "كلمة مرور جديدة"
+
+msgid "New Work Order"
+msgstr "أمر عمل جديد"
+
+msgid "Next"
+msgstr "التالي"
+
+msgid "Night"
+msgstr "ليلي"
+
+msgid "No assigned jobs"
+msgstr "لا توجد مهام معينة"
+
+msgid "No assigned work orders are waiting to start."
+msgstr "لا توجد أوامر شغل معينة تنتظر البدء."
+
+msgid "No audit logs found for current filters."
+msgstr "لا توجد سجلات تدقيق للفلاتر الحالية."
+
+msgid "No Bills of Materials"
+msgstr "لا توجد قوائم مواد"
+
+msgid "No BOM decisions."
+msgstr "لا توجد قرارات لقائمة المكونات."
+
+msgid "No BOM material requests waiting."
+msgstr "لا توجد طلبات مواد قائمة مكونات منتظرة."
+
+msgid "No BOM materials were found for this task. Add extra materials below if needed."
+msgstr "لم يتم العثور على مواد قائمة مكونات لهذه المهمة. أضف مواد إضافية بالأسفل عند الحاجة."
+
+msgid "No closure actions."
+msgstr "لا توجد إجراءات إغلاق."
+
+msgid "No department required."
+msgstr "لا يلزم قسم."
+
+msgid "No departments available yet."
+msgstr "لا توجد أقسام متاحة بعد."
+
+msgid "No dispatch items."
+msgstr "لا توجد عناصر جاهزة للتسليم للتشغيل."
+
+msgid "No finished goods receipts waiting."
+msgstr "لا توجد استلامات منتج نهائي منتظرة."
+
+msgid "No follow-up items."
+msgstr "لا توجد عناصر متابعة."
+
+msgid "No holidays added."
+msgstr "لم تتم إضافة إجازات."
+
+msgid "No job selected"
+msgstr "لم يتم اختيار مهمة"
+
+msgid "No jobs in this category."
+msgstr "لا توجد مهام في هذه الفئة."
+
+msgid "No machine assignment actions."
+msgstr "لا توجد إجراءات تعيين ماكينة."
+
+msgid "No Machines Configured"
+msgstr "لا توجد ماكينات مضافة"
+
+msgid "No machines found"
+msgstr "لا توجد ماكينات"
+
+msgid "No material data available."
+msgstr "لا توجد بيانات مواد متاحة."
+
+msgid "No material overruns detected."
+msgstr "لا توجد تجاوزات في المواد."
+
+msgid "No operation data available."
+msgstr "لا توجد بيانات تشغيل متاحة."
+
+msgid "No pending inspections"
+msgstr "لا توجد فحوصات معلقة"
+
+msgid "No product mix is available yet."
+msgstr "لا يوجد توزيع منتجات متاح بعد."
+
+msgid "No production approvals."
+msgstr "لا توجد اعتمادات إنتاج."
+
+msgid "No Production Stages"
+msgstr "لا توجد مراحل إنتاج"
+
+msgid "No recent manufacturing events are available."
+msgstr "لا توجد أحداث إنتاج حديثة."
+
+msgid "No shift assigned"
+msgstr "لا توجد وردية معينة"
+
+msgid "No stages defined"
+msgstr "لا توجد مراحل محددة"
+
+msgid "No store material actions."
+msgstr "لا توجد إجراءات مواد من المخزن."
+
+msgid "No tasks"
+msgstr "لا توجد مهام"
+
+msgid "No time overruns detected."
+msgstr "لا توجد تجاوزات زمنية."
+
+msgid "No translation rows available yet."
+msgstr "لا توجد صفوف ترجمة متاحة بعد."
+
+msgid "No unassigned orders."
+msgstr "لا توجد أوامر غير معينة."
+
+msgid "No work is due for dispatch right now."
+msgstr "لا توجد أعمال مستحقة للتسليم للتشغيل حاليا."
+
+msgid "No work orders are available for BI reporting yet."
+msgstr "لا توجد أوامر شغل متاحة لتقارير ذكاء الأعمال بعد."
+
+msgid "No work orders are running right now."
+msgstr "لا توجد أوامر شغل قيد التشغيل حاليا."
+
+msgid "No work orders are waiting for worker assignment."
+msgstr "لا توجد أوامر شغل تنتظر تعيين عامل."
+
+msgid "No work orders found"
+msgstr "لا توجد أوامر عمل"
+
+msgid "No work orders found for current filters."
+msgstr "لا توجد أوامر شغل للفلاتر الحالية."
+
+msgid "No work orders waiting for assignment"
+msgstr "لا توجد أوامر شغل تنتظر التعيين"
+
+msgid "Note"
+msgstr "ملاحظة"
+
+msgid "Note: ready in one week, one item missing, alternative sent..."
+msgstr "ملاحظة: جاهز خلال أسبوع، صنف واحد ناقص، تم إرسال بديل..."
+
+msgid "Notifications"
+msgstr "الإشعارات"
+
+msgid "Off"
+msgstr "إيقاف"
+
+msgid "On"
+msgstr "تشغيل"
+
+msgid "On Plan"
+msgstr "حسب الخطة"
+
+msgid "Online"
+msgstr "متصل"
+
+msgid "Open"
+msgstr "فتح"
+
+msgid "Open assignment board"
+msgstr "فتح لوحة التعيين"
+
+msgid "Open assignments"
+msgstr "فتح التعيينات"
+
+msgid "Open Bulk Upload"
+msgstr "فتح الرفع الجماعي"
+
+msgid "Open Decision"
+msgstr "فتح القرار"
+
+msgid "Open filters"
+msgstr "فتح الفلاتر"
+
+msgid "Open Floor"
+msgstr "فتح أرضية التشغيل"
+
+msgid "Open Full Queue"
+msgstr "كل اوامر الشغل"
+
+msgid "Open intake"
+msgstr "فتح التخطيط"
+
+msgid "Open Job"
+msgstr "فتح المهمة"
+
+msgid "Open Machine Scope"
+msgstr "فتح نطاق الماكينة"
+
+msgid "Open subscription estimator"
+msgstr "فتح حاسبة الاشتراك"
+
+msgid "Open the next inspection, record evidence, and submit cleanly before moving to the next item."
+msgstr "افتح الفحص التالي وسجل الدليل وأرسل النتيجة بوضوح قبل الانتقال للعنصر التالي."
+
+msgid "Open WO Scope"
+msgstr "فتح نطاق أمر الشغل"
+
+msgid "Open Worker Station"
+msgstr "شاشة العامل"
+
+msgid "Open WOs"
+msgstr "اوامر الشغل المفتوحة"
+
+msgid "Opened"
+msgstr "مفتوح"
+
+msgid "Opened Job"
+msgstr "مهمة مفتوحة"
+
+msgid "Operation-level planned versus actual runtime."
+msgstr "وقت التشغيل المخطط مقابل الفعلي على مستوى العملية."
+
+msgid "Operational"
+msgstr "جاهزة للعمل"
+
+msgid "Operations:"
+msgstr "العمليات:"
+
+msgid "Operator Error"
+msgstr "خطأ عامل التشغيل"
+
+msgid "Operator Guide"
+msgstr "دليل العامل"
+
+msgid "Order"
+msgstr "الترتيب"
+
+msgid "Orders"
+msgstr "أوامر العمل"
+
+msgid "Other"
+msgstr "أخرى"
+
+msgid "Output"
+msgstr "الإنتاج"
+
+msgid "Overall"
+msgstr "إجمالي"
+
+msgid "Overall %"
+msgstr "النسبة الإجمالية"
+
+msgid "Overall Efficiency"
+msgstr "الكفاءة الإجمالية"
+
+msgid "Overall equipment effect"
+msgstr "فعالية المعدات الإجمالية"
+
+msgid "Overall Equipment Effectiveness"
+msgstr "فعالية المعدات الاجمالية"
+
+msgid "Overdue"
+msgstr "متأخر"
+
+msgid "Owner email is required before continuing."
+msgstr "بريد المالك مطلوب قبل المتابعة."
+
+msgid "Parallel"
+msgstr "متوازي"
+
+msgid "Partially OK"
+msgstr "متاح جزئيا"
+
+msgid "Password"
+msgstr "كلمة المرور"
+
+msgid "Password is required before continuing."
+msgstr "كلمة المرور مطلوبة قبل المتابعة."
+
+msgid "Passwords do not match yet."
+msgstr "كلمتا المرور غير متطابقتين بعد."
+
+msgid "Passwords match."
+msgstr "كلمتا المرور متطابقتان."
+
+msgid "PDF Summary"
+msgstr "ملخص PDF"
+
+msgid "Pending"
+msgstr "قيد الانتظار"
+
+msgid "Pending Approval"
+msgstr "قيد الموافقة"
+
+msgid "Pending Approvals"
+msgstr "اعتمادات معلقة"
+
+msgid "Pending for Later"
+msgstr "مؤجل لوقت لاحق"
+
+msgid "Pending Inspection"
+msgstr "قيد الفحص"
+
+msgid "Pending Inspections"
+msgstr "قيد الفحص"
+
+msgid "Pending Later"
+msgstr "أقرب فترة متاحة"
+
+msgid "Pending Production Approvals"
+msgstr "موافقات الإنتاج المعلقة"
+
+msgid "Pending QC Queue"
+msgstr "قائمة انتظار الجودة"
+
+msgid "Pending queue hidden"
+msgstr "قائمة المعلق مخفية"
+
+msgid "Pending queue visible"
+msgstr "قائمة المعلق ظاهرة"
+
+msgid "Pending WOs"
+msgstr "اوامر الشغل قيد التنفيذ"
+
+msgid "Performance"
+msgstr "الأداء"
+
+msgid "Phone"
+msgstr "الهاتف"
+
+msgid "Pick the next ready item only after the current state is complete and visible."
+msgstr "اختر العنصر الجاهز التالي فقط بعد اكتمال الحالة الحالية ووضوحها."
+
+msgid "Pick the question before the export"
+msgstr "اختر السؤال قبل التصدير"
+
+msgid "Plan"
+msgstr "تخطيط"
+
+msgid "Planned"
+msgstr "مخطط"
+
+msgid "Planned Material"
+msgstr "المواد المخططة"
+
+msgid "Planned Time (hours)"
+msgstr "الوقت المخطط (ساعات)"
+
+msgid "Planner"
+msgstr "المخطط"
+
+msgid "Planner action center"
+msgstr "مركز إجراءات المخطط"
+
+msgid "Planner Analytics"
+msgstr "تحليلات المخطط"
+
+msgid "Planner close actions are handled in the Planner Closure Queue on the schedule rail."
+msgstr "تدار إجراءات إغلاق المخطط من قائمة إغلاق المخطط في جانب الجدول."
+
+msgid "Planner closure"
+msgstr "إغلاق المخطط"
+
+msgid "Planner Closure Queue"
+msgstr "قائمة إغلاق المخطط"
+
+msgid "Planner gets full coverage automatically."
+msgstr "يحصل المخطط على تغطية كاملة تلقائيا."
+
+msgid "Planner Intake"
+msgstr "التخطيط"
+
+msgid "Planner notifications"
+msgstr "إشعارات المخطط"
+
+msgid "Planner read-only view"
+msgstr "عرض المخطط للقراءة فقط"
+
+msgid "Planner receives full coverage."
+msgstr "يحصل المخطط على تغطية كاملة."
+
+msgid "Planner Settings"
+msgstr "إعدادات المخطط"
+
+msgid "Planner Workspace"
+msgstr "مساحة المخطط"
+
+msgid "Planning"
+msgstr "التخطيط"
+
+msgid "Planning Analytics"
+msgstr "تحليلات التخطيط"
+
+msgid "Please wait..."
+msgstr "يرجى الانتظار..."
+
+msgid "PNG / JPG"
+msgstr "PNG / JPG"
+
+msgid "Predictive Maintenance"
+msgstr "الصيانة التنبؤية"
+
+msgid "Preview"
+msgstr "معاينة"
+
+msgid "Primary access ready"
+msgstr "الصلاحية الأساسية جاهزة"
+
+msgid "Primary Password"
+msgstr "كلمة المرور الأساسية"
+
+msgid "Print / Save PDF"
+msgstr "طباعة / حفظ PDF"
+
+msgid "Prioritize blocked equipment, assign technicians quickly, and only hold tickets open when more action is required."
+msgstr "رتب أولوية المعدات المتوقفة وعين الفنيين بسرعة واترك البلاغ مفتوحا فقط عند الحاجة لإجراء إضافي."
+
+msgid "Prioritize open inspections, keep assignments moving, and clear anything blocking release."
+msgstr "رتب أولوية الفحوصات المفتوحة وحرك التعيينات وأنهِ أي عائق يمنع الإفراج."
+
+msgid "Product"
+msgstr "المنتج"
+
+msgid "Production approvals"
+msgstr "اعتمادات الإنتاج"
+
+msgid "Production Efficiency"
+msgstr "كفاءة الإنتاج"
+
+msgid "Production Schedule"
+msgstr "جدول الإنتاج"
+
+msgid "Production Stages"
+msgstr "مراحل الإنتاج"
+
+msgid "Production Timeline"
+msgstr "الجدول الزمني للإنتاج"
+
+msgid "Production Variance"
+msgstr "فروقات الإنتاج"
+
+msgid "Profile"
+msgstr "الملف"
+
+msgid "QC Pending"
+msgstr "أوامر شغل مع ادارة الجودة"
+
+msgid "Qty"
+msgstr "الكمية"
+
+msgid "Qty ready"
+msgstr "الكمية الجاهزة"
+
+msgid "Qty Used"
+msgstr "الكمية المستخدمة"
+
+msgid "Quality"
+msgstr "الجودة"
+
+msgid "Quality Alerts"
+msgstr "اشعارات الجودة"
+
+msgid "Quality Control"
+msgstr "مراقبة الجودة"
+
+msgid "Quality Control Hub"
+msgstr "مركز مراقبة الجودة"
+
+msgid "Quality Module"
+msgstr "نظام الجودة"
+
+msgid "Quality Overview"
+msgstr "نظرة عامة على الجودة"
+
+msgid "Quality Settings"
+msgstr "إعدادات الجودة"
+
+msgid "Quality Supervisor"
+msgstr "مشرف الجودة"
+
+msgid "Quality Supervisor Queue"
+msgstr "قائمة مشرف الجودة"
+
+msgid "Quality Worker"
+msgstr "عامل الجودة"
+
+msgid "Quality Worker Queue"
+msgstr "قائمة عامل الجودة"
+
+msgid "Quality workflow hub"
+msgstr "مركز سير عمل الجودة"
+
+msgid "Quality Workspace"
+msgstr "مساحة الجودة"
+
+msgid "Quantity"
+msgstr "الكمية"
+
+msgid "quantity approved by supervisors"
+msgstr "الكمية المعتمدة بواسطة المشرفين"
+
+msgid "Quantity Produced"
+msgstr "الكمية المنتجة"
+
+msgid "Quantity Scrapped"
+msgstr "كمية الهالك"
+
+msgid "Quantity to Submit"
+msgstr "الكمية المراد إرسالها"
+
+msgid "Queue"
+msgstr "قائمة الانتظار"
+
+msgid "Quick Assign"
+msgstr "تعيين سريع لأوامر الشغل"
+
+msgid "Quick assign"
+msgstr "تعيين سريع لأوامر الشغل"
+
+msgid "Quick Views"
+msgstr "عروض سريعة"
+
+msgid "Read manufacturing KPIs, schedule adherence, and operational volume in one BI view."
+msgstr "اعرض مؤشرات الإنتاج والالتزام بالجدول وحجم التشغيل في لوحة ذكاء أعمال واحدة."
+
+msgid "Read-only visibility for planner users. Focus on machine health, queue pressure, and which issues can block execution."
+msgstr "عرض قراءة فقط للمخططين يركز على حالة الماكينات وضغط القوائم والمشكلات التي قد توقف التنفيذ."
+
+msgid "Read-only visibility for planner users. Focus on pending inspections, affected machines, and approval load."
+msgstr "عرض قراءة فقط للمخططين يركز على الفحوصات المعلقة والماكينات المتأثرة وضغط الاعتمادات."
+
+msgid "Ready"
+msgstr "جاهز للتشغيل"
+
+msgid "Ready to Activate"
+msgstr "جاهز للتفعيل"
+
+msgid "Ready to Dispatch"
+msgstr "جاهز للتسليم للتشغيل"
+
+msgid "Ready to Start"
+msgstr "جاهز للتشغيل"
+
+msgid "Ready To Start"
+msgstr "جاهز للتشغيل"
+
+msgid "Reason for Scrap"
+msgstr "سبب الهالك"
+
+msgid "Reassign"
+msgstr "إعادة تعيين"
+
+msgid "Receipt"
+msgstr "استلام"
+
+msgid "Receipt note"
+msgstr "ملاحظة الاستلام"
+
+msgid "Received qty"
+msgstr "الكمية المستلمة"
+
+msgid "Recent Audit Signal"
+msgstr "آخر مؤشر تدقيق"
+
+msgid "Record defective parts for"
+msgstr "تسجيل الأجزاء المعيبة لـ"
+
+msgid "Record good and scrap quantities while the job is still in front of you."
+msgstr "سجل الكميات الجيدة والهالك أثناء وجود المهمة أمامك."
+
+msgid "Reduce manual setup time for large factories."
+msgstr "قلل وقت الإعداد اليدوي للمصانع الكبيرة."
+
+msgid "Refresh"
+msgstr "تحديث"
+
+msgid "Registration opens a guided setup wizard first so you can add machines, stages, BOMs, work orders, and team members before planning begins."
+msgstr "يفتح التسجيل معالج إعداد موجه أولا لإضافة الماكينات والمراحل وقوائم المكونات وأوامر الشغل وأعضاء الفريق قبل بدء التخطيط."
+
+msgid "Registration opens a setup flow first so planner does not start empty."
+msgstr "يفتح التسجيل مسار إعداد أولا حتى لا يبدأ المخطط بدون بيانات."
+
+msgid "Reject"
+msgstr "رفض"
+
+msgid "Remaining allowed now"
+msgstr "المتبقي المسموح الآن"
+
+msgid "Remember me"
+msgstr "تذكرني"
+
+msgid "Remove only custom departments"
+msgstr "احذف الأقسام المخصصة فقط"
+
+msgid "Reply BOM OK, partially OK, or shortage before the planner routes work."
+msgstr "رد بأن قائمة المكونات متاحة أو متاحة جزئيا أو بها نقص قبل أن يوجه المخطط العمل."
+
+msgid "Report Fault"
+msgstr "ابلاغ بعطل"
+
+msgid "Report filter anchor"
+msgstr "مرجع فلتر التقرير"
+
+msgid "Report Production"
+msgstr "تسجيل الإنتاج"
+
+msgid "Report Scrap"
+msgstr "تسجيل هالك"
+
+msgid "Report Workspace"
+msgstr "مساحة التقارير"
+
+msgid "Reported"
+msgstr "تم التسجيل"
+
+msgid "Reporting progress for WO"
+msgstr "تسجيل تقدم أمر الشغل"
+
+msgid "Reports"
+msgstr "التقارير"
+
+msgid "Reports Center"
+msgstr "التقارير"
+
+msgid "Required"
+msgstr "مطلوب"
+
+msgid "Reset"
+msgstr "اعادة ضبط"
+
+msgid "Reset Member Password"
+msgstr "إعادة ضبط كلمة مرور العضو"
+
+msgid "Resolve faults"
+msgstr "حل الأعطال"
+
+msgid "Resources"
+msgstr "الموارد"
+
+msgid "Results are capped to the latest 200 rows."
+msgstr "النتائج محددة بآخر ٢٠٠ صف."
+
+msgid "Return"
+msgstr "رجوع"
+
+msgid "Return to the queue after completion"
+msgstr "العودة إلى قائمة الانتظار بعد الإكمال"
+
+msgid "Return to work quickly"
+msgstr "العودة للعمل بسرعة"
+
+msgid "Review"
+msgstr "مراجعة"
+
+msgid "Review open work orders and keep the line moving into execution."
+msgstr "راجع أوامر الشغل المفتوحة وحافظ على حركة الخط نحو التنفيذ."
+
+msgid "Review work order audit activity for planner and admin accountability."
+msgstr "راجع نشاط تدقيق أوامر الشغل لمساءلة المخطط والمسؤول."
+
+msgid "Role"
+msgstr "الدور"
+
+msgid "Roles and permissions"
+msgstr "الأدوار والصلاحيات"
+
+msgid "Rows"
+msgstr "الصفوف"
+
+msgid "Run"
+msgstr "تشغيل"
+
+msgid "Run maintenance in order: review new tickets, assign ownership, confirm completion, then watch SLA risk and machine health."
+msgstr "نفذ الصيانة بالترتيب: راجع البلاغات الجديدة، عين المسؤولية، أكد الإكمال، ثم راقب مخاطر مستوى الخدمة وصحة الماكينات."
+
+msgid "Run the quality loop in order: review queue, assign or override, approve results, then watch SLA risk."
+msgstr "نفذ دورة الجودة بالترتيب: راجع القائمة، عين أو عدل، اعتمد النتائج، ثم راقب مخاطر مستوى الخدمة."
+
+msgid "Running"
+msgstr "قيد التشغيل"
+
+msgid "Save"
+msgstr "حفظ"
+
+msgid "Save Machine"
+msgstr "حفظ الماكينة"
+
+msgid "Save shifts"
+msgstr "حفظ الورديات"
+
+msgid "Save system"
+msgstr "حفظ النظام"
+
+msgid "Save weekly"
+msgstr "حفظ الأسبوع"
+
+msgid "Schedule"
+msgstr "جدول العمل"
+
+msgid "Schedule Adherence"
+msgstr "نسبة الالتزام بالخطة الانتاجية"
+
+msgid "Schedule Filters"
+msgstr "عوامل تصفية الجدول"
+
+msgid "Scheduled"
+msgstr "مدرج للانتاج"
+
+msgid "Scheduled for"
+msgstr "مدرج في"
+
+msgid "Scheduled now"
+msgstr "مدرج الآن"
+
+msgid "Scrap qty"
+msgstr "كمية الهالك"
+
+msgid "Screen Hint"
+msgstr "ملاحظة الشاشة"
+
+msgid "Search"
+msgstr "بحث"
+
+msgid "Search source, Arabic, or hint..."
+msgstr "بحث في النص أو العربية أو الملاحظة..."
+
+msgid "Search WO / product / machine"
+msgstr "بحث في أمر الشغل / المنتج / الماكينة"
+
+msgid "Search WO, Worker, Machine..."
+msgstr "بحث في أمر الشغل أو العامل أو الماكينة..."
+
+msgid "Search work orders, products, machines, or machine code..."
+msgstr "بحث في اوامر الشغل, المنتجات, المكن او اكواد المكن"
+
+msgid "Search..."
+msgstr "بحث..."
+
+msgid "Section 01"
+msgstr "القسم ٠١"
+
+msgid "Section 02"
+msgstr "القسم ٠٢"
+
+msgid "Section 03"
+msgstr "القسم ٠٣"
+
+msgid "Security"
+msgstr "الأمان"
+
+msgid "Security Reset"
+msgstr "إعادة ضبط الأمان"
+
+msgid "Security Setup"
+msgstr "إعداد الأمان"
+
+msgid "Select a job from the queue to begin your shift."
+msgstr "اختر مهمة من القائمة لبدء ورديتك."
+
+msgid "Select Material..."
+msgstr "اختر المادة..."
+
+msgid "Select role"
+msgstr "اختر الدور"
+
+msgid "Selected"
+msgstr "محدد"
+
+msgid "Send"
+msgstr "إرسال"
+
+msgid "Series"
+msgstr "تسلسلي"
+
+msgid "Set a strong admin password"
+msgstr "حدد كلمة مرور قوية للمسؤول"
+
+msgid "Set the initial password and confirm it before creating the account."
+msgstr "حدد كلمة المرور الأولية وأكدها قبل إنشاء الحساب."
+
+msgid "Settings"
+msgstr "الإعدادات"
+
+msgid "Setup first"
+msgstr "الإعداد أولا"
+
+msgid "Sheet"
+msgstr "الورقة"
+
+msgid "Sheet Columns"
+msgstr "أعمدة الملف"
+
+msgid "Shift"
+msgstr "الوردية"
+
+msgid "Shift here only when issues are blocking execution or release."
+msgstr "انتقل هنا فقط عندما تمنع المشكلات التنفيذ أو الإفراج."
+
+msgid "Shift Mode"
+msgstr "نظام الورديات"
+
+msgid "Shift OEE"
+msgstr "معدل تنفيذ الخاص بالوردية"
+
+msgid "Shift Planner"
+msgstr "مخطط الورديات"
+
+msgid "Shift setup"
+msgstr "إعداد الورديات"
+
+msgid "Shift times and calendar"
+msgstr "أوقات الورديات والتقويم"
+
+msgid "Shop-floor work sequence"
+msgstr "تسلسل عمل أرضية التشغيل"
+
+msgid "Short description of where the text appears."
+msgstr "وصف قصير لمكان ظهور النص."
+
+msgid "Shortage"
+msgstr "نقص"
+
+msgid "Show"
+msgstr "إظهار"
+
+msgid "Show every job"
+msgstr "عرض كل مهمة"
+
+msgid "Show Pending WOs"
+msgstr "اظهار اوامر الشغل المعلقة"
+
+msgid "Sign In"
+msgstr "دخول"
+
+msgid "Sign Out"
+msgstr "خروج"
+
+msgid "Simulate Order"
+msgstr "محاكاة أمر"
+
+msgid "SLA"
+msgstr "مستوى الخدمة"
+
+msgid "SLA Risk"
+msgstr "خطر مستوى الخدمة"
+
+msgid "Smart machine downtime forecasting"
+msgstr "توقع ذكي لتوقف الماكينات"
+
+msgid "Smart Search"
+msgstr "بحث ذكي"
+
+msgid "Smart search"
+msgstr "بحث ذكي"
+
+msgid "Smart search WO, product, machine..."
+msgstr "بحث ذكي عن أمر عمل أو منتج أو آلة..."
+
+msgid "Snap"
+msgstr "ربط"
+
+msgid "Snapshot Date"
+msgstr "تاريخ اللقطة"
+
+msgid "Stage"
+msgstr "المرحلة"
+
+msgid "Stage Name"
+msgstr "اسم المرحلة"
+
+msgid "Start blocked"
+msgstr "البدء متوقف"
+
+msgid "Start Demo"
+msgstr "بدء التجربة"
+
+msgid "Start Free Trial"
+msgstr "ابدأ النسخة التجريبية المجانية"
+
+msgid "Start here when workers or machines still need a decision."
+msgstr "ابدأ هنا عندما يحتاج العمال أو الماكينات إلى قرار."
+
+msgid "Start Job"
+msgstr "بدء المهمة"
+
+msgid "Start with the highest-risk machine issue"
+msgstr "ابدأ بمشكلة الماكينة الأعلى خطرا"
+
+msgid "Start with the person’s name and at least one contact method: work email or phone."
+msgstr "ابدأ باسم الشخص وطريقة تواصل واحدة على الأقل: بريد العمل أو الهاتف."
+
+msgid "Start with your company name"
+msgstr "ابدأ باسم شركتك"
+
+msgid "Started"
+msgstr "بدأ"
+
+msgid "Started now"
+msgstr "بدأ الآن"
+
+msgid "Starts"
+msgstr "يبدأ"
+
+msgid "State"
+msgstr "الحالة"
+
+msgid "Station Ready"
+msgstr "المحطة جاهزة"
+
+msgid "Status"
+msgstr "الحالة"
+
+msgid "Status / Completed"
+msgstr "الحالة / المكتمل"
+
+msgid "Stay in schedule"
+msgstr "ابق داخل الجدول"
+
+msgid "Std"
+msgstr "قياسي"
+
+msgid "Step 1 of 8"
+msgstr "الخطوة ١ من ٨"
+
+msgid "Step 2 of 8"
+msgstr "الخطوة ٢ من ٨"
+
+msgid "Step 3 of 8"
+msgstr "الخطوة ٣ من ٨"
+
+msgid "Step 4 of 8"
+msgstr "الخطوة ٤ من ٨"
+
+msgid "Store"
+msgstr "المخزن"
+
+msgid "Store access is limited to material checks and finished-goods receipt queues."
+msgstr "صلاحية المخزن محدودة بفحص المواد وقوائم استلام المنتج النهائي."
+
+msgid "Store keeper access is controlled by the Store role."
+msgstr "صلاحية أمين المخزن يتم التحكم بها من دور المخزن."
+
+msgid "Store keeper does not need department coverage."
+msgstr "أمين المخزن لا يحتاج إلى تغطية أقسام."
+
+msgid "Store material responses"
+msgstr "ردود المخزن على المواد"
+
+msgid "Store Workspace"
+msgstr "مساحة المخزن"
+
+msgid "Strength"
+msgstr "القوة"
+
+msgid "Submission Error"
+msgstr "خطأ في الإرسال"
+
+msgid "Submit Batch"
+msgstr "إرسال الدفعة"
+
+msgid "Submit Production Result"
+msgstr "إرسال نتيجة الإنتاج"
+
+msgid "Submit to Supervisor"
+msgstr "إرسال إلى المشرف"
+
+msgid "Supervisor"
+msgstr "مشرف"
+
+msgid "Supervisor Guide"
+msgstr "دليل المشرف"
+
+msgid "Supervisor handoff status"
+msgstr "حالة تسليم المشرف"
+
+msgid "Supervisor review"
+msgstr "مراجعة المشرف"
+
+msgid "Supervisor Workspace"
+msgstr "المشرف"
+
+msgid "Support"
+msgstr "الدعم"
+
+msgid "Switch views here. Export tools stay separate on the right."
+msgstr "بدل طرق العرض من هنا. أدوات التصدير منفصلة في اليمين."
+
+msgid "Sync with global maintenance hub"
+msgstr "مزامنة مع مركز الصيانة العام"
+
+msgid "System"
+msgstr "النظام"
+
+msgid "System Online"
+msgstr "النظام متصل"
+
+msgid "System rules"
+msgstr "قواعد النظام"
+
+msgid "Tap to open"
+msgstr "اضغط للفتح"
+
+msgid "Target"
+msgstr "المعدل المستهدف"
+
+msgid "Target for this WO"
+msgstr "الهدف لأمر الشغل هذا"
+
+msgid "Target Model"
+msgstr "النموذج المستهدف"
+
+msgid "Team"
+msgstr "الفريق"
+
+msgid "Team access"
+msgstr "صلاحيات الفريق"
+
+msgid "Team Settings"
+msgstr "إعدادات الفريق"
+
+msgid "Technician Task Queue"
+msgstr "قائمة مهام الفني"
+
+msgid "Template Location"
+msgstr "مكان القالب"
+
+msgid "The file contains English source text, current Arabic, and a short hint telling where the text appears in the system."
+msgstr "يحتوي الملف على النص الإنجليزي والعربية الحالية وملاحظة قصيرة توضح مكان ظهور النص في النظام."
+
+msgid "The selected department is stored on the member profile."
+msgstr "يتم حفظ القسم المحدد في ملف العضو."
+
+msgid "This account will control setup, users, billing requests, and first planner access."
+msgstr "هذا الحساب سيدير الإعداد والمستخدمين وطلبات الفوترة وأول دخول للمخطط."
+
+msgid "This is the short sign-in code your team will use to enter the correct workspace."
+msgstr "هذا هو كود الدخول القصير الذي سيستخدمه فريقك للدخول إلى مساحة العمل الصحيحة."
+
+msgid "This is what the customer receives in Excel."
+msgstr "هذا ما يستلمه العميل في Excel."
+
+msgid "This job can be started now. Opened state is only a preview until you activate it."
+msgstr "يمكن بدء هذه المهمة الآن. حالة مفتوح هي معاينة فقط حتى تقوم بتفعيلها."
+
+msgid "This job is assigned to you, but it should stay pending until its scheduled time."
+msgstr "هذه المهمة معينة لك، لكنها يجب أن تبقى معلقة حتى موعدها المدرج."
+
+msgid "This job is scheduled now and can be activated at any time."
+msgstr "هذه المهمة مدرجة الآن ويمكن تفعيلها في أي وقت."
+
+msgid "This keeps the default planner state focused on the next decision instead of every available control."
+msgstr "هذا يحافظ على تركيز شاشة المخطط الافتراضية على القرار التالي بدلا من عرض كل عناصر التحكم."
+
+msgid "This list feeds the add-member assignment dropdown."
+msgstr "هذه القائمة تغذي اختيارات التعيين عند إضافة عضو."
+
+msgid "Time"
+msgstr "الوقت"
+
+msgid "Time Delta"
+msgstr "فرق الوقت"
+
+msgid "Time Efficiency"
+msgstr "كفاءة الوقت"
+
+msgid "Time Efficiency %"
+msgstr "نسبة كفاءة الوقت"
+
+msgid "Time Scale"
+msgstr "طريقة العرض"
+
+msgid "Time scale"
+msgstr "طريقة العرض"
+
+msgid "Time Variance"
+msgstr "فروقات الوقت"
+
+msgid "Time/material signal coverage"
+msgstr "تغطية مؤشرات الوقت والمواد"
+
+msgid "Timeline"
+msgstr "الجدول الزمني"
+
+msgid "To"
+msgstr "إلى"
+
+msgid "Today"
+msgstr "اليوم"
+
+msgid "Toggle snap"
+msgstr "تبديل الربط"
+
+msgid "Top Products and Audit Volume"
+msgstr "أهم المنتجات وحجم التدقيق"
+
+msgid "Total"
+msgstr "الإجمالي"
+
+msgid "Total Qty"
+msgstr "عدد"
+
+msgid "Total Required"
+msgstr "إجمالي المطلوب"
+
+msgid "Total Work Order Efficiency"
+msgstr "إجمالي كفاءة أمر الشغل"
+
+msgid "Traceability"
+msgstr "التتبع"
+
+msgid "Track Usage"
+msgstr "تتبع الاستخدام"
+
+msgid "Translate"
+msgstr "الترجمة"
+
+msgid "Translation Handoff"
+msgstr "تسليم الترجمة"
+
+msgid "Trouble Ticket Integration"
+msgstr "ربط بلاغات الأعطال"
+
+msgid "Trust"
+msgstr "الثقة"
+
+msgid "Unassigned"
+msgstr "غير معينة"
+
+msgid "Unassigned Queue"
+msgstr "قائمة اوامر الشغل الغير معينة"
+
+msgid "Under Maintenance"
+msgstr "تحت صيانة"
+
+msgid "Unit"
+msgstr "الوحدة"
+
+msgid "Units"
+msgstr "وحدات"
+
+msgid "units"
+msgstr "وحدات"
+
+msgid "Unspecified"
+msgstr "غير محدد"
+
+msgid "upcoming"
+msgstr "قادم"
+
+msgid "Upcoming"
+msgstr "قادم"
+
+msgid "Update"
+msgstr "تحديث"
+
+msgid "Update Machine"
+msgstr "تحديث الماكينة"
+
+msgid "Update output for"
+msgstr "تحديث الإنتاج لـ"
+
+msgid "Update role, department, and employee shift from one place."
+msgstr "حدث الدور والقسم ووردية الموظف من مكان واحد."
+
+msgid "Updated"
+msgstr "تم التحديث"
+
+msgid "Upload CSV/Excel files using the guided importer."
+msgstr "ارفع ملفات CSV أو Excel باستخدام أداة الاستيراد الموجهة."
+
+msgid "Upload edited sheet"
+msgstr "رفع الملف المعدل"
+
+msgid "Upload the edited workbook back"
+msgstr "ارفع ملف العمل المعدل مرة أخرى"
+
+msgid "Upload the same file after editing the Arabic column. English source should stay unchanged so import can match the correct text."
+msgstr "ارفع نفس الملف بعد تعديل عمود العربية. يجب عدم تغيير النص الإنجليزي حتى يستطيع الاستيراد مطابقة النص الصحيح."
+
+msgid "Urgent Issues"
+msgstr "مشاكل ملحة"
+
+msgid "Use a strong first password now, then rotate it later if your operating policy requires first-login reset."
+msgstr "استخدم كلمة مرور أولية قوية الآن ثم غيرها لاحقا إذا كانت سياسة التشغيل تتطلب إعادة ضبط عند أول دخول."
+
+msgid "Use a strong password for the first admin account. After this, setup moves to production data."
+msgstr "استخدم كلمة مرور قوية لأول حساب مسؤول. بعد ذلك ينتقل الإعداد إلى بيانات الإنتاج."
+
+msgid "Use Actual vs Planned for production performance and consumption."
+msgstr "استخدم الفعلي مقابل المخطط لأداء الإنتاج والاستهلاك."
+
+msgid "Use Audit Trail for accountability, approvals, and operational history."
+msgstr "استخدم سجل التدقيق للمساءلة والاعتمادات والتاريخ التشغيلي."
+
+msgid "Use checklist, notes, and quantities together"
+msgstr "استخدم قائمة الفحص والملاحظات والكميات معا"
+
+msgid "Use company code, username, and password to open the correct workspace."
+msgstr "استخدم كود الشركة واسم المستخدم وكلمة المرور لفتح مساحة العمل الصحيحة."
+
+msgid "Use supervisor or quality actions only when the job cannot continue cleanly."
+msgstr "استخدم إجراءات المشرف أو الجودة فقط عندما لا يمكن أن تستمر المهمة بوضوح."
+
+msgid "Use the active card and status pill first. Everything else is secondary."
+msgstr "استخدم البطاقة النشطة وشارة الحالة أولا. كل شيء آخر ثانوي."
+
+msgid "Use the planner in four moves"
+msgstr "استخدم المخطط في أربع خطوات"
+
+msgid "Use the queue rail, timeline, and smart search to place work with less switching."
+msgstr "استخدم جانب القائمة والجدول الزمني والبحث الذكي لوضع العمل بأقل تنقل."
+
+msgid "Use the schedule view when execution is live and timing needs attention."
+msgstr "استخدم عرض الجدول عندما يكون التنفيذ مباشرا والتوقيت يحتاج متابعة."
+
+msgid "Use the supervisor in four moves"
+msgstr "استخدم المشرف في أربع خطوات"
+
+msgid "User"
+msgstr "المستخدم"
+
+msgid "User / Worker"
+msgstr "المستخدم / العامل"
+
+msgid "Username"
+msgstr "اسم المستخدم"
+
+msgid "Validate rows before applying changes."
+msgstr "راجع الصفوف وتحقق منها قبل تطبيق التغييرات."
+
+msgid "Variance"
+msgstr "الفروقات"
+
+msgid "Variance Matrix"
+msgstr "مصفوفة الفروقات"
+
+msgid "Variance sheet for staged execution, material draw, and final output."
+msgstr "ورقة فروقات لتنفيذ المراحل وسحب المواد والإنتاج النهائي."
+
+msgid "Verify adherence, watch issue counts, and only then move into deeper controls."
+msgstr "تحقق من الالتزام وراقب عدد المشكلات ثم انتقل إلى التحكم التفصيلي."
+
+msgid "Version"
+msgstr "الإصدار"
+
+msgid "View"
+msgstr "عرض"
+
+msgid "View Checklist"
+msgstr "عرض قائمة الفحص"
+
+msgid "View Only"
+msgstr "عرض فقط"
+
+msgid "Visible WOs"
+msgstr "أوامر الشغل الظاهرة"
+
+msgid "Waiting"
+msgstr "انتظار"
+
+msgid "Waiting for Approval"
+msgstr "ينتظر الاعتماد"
+
+msgid "Waiting for approval"
+msgstr "ينتظر الاعتماد"
+
+msgid "Waiting for Start Time"
+msgstr "ينتظر وقت البدء"
+
+msgid "Waiting QC"
+msgstr "ينتظر الجودة"
+
+msgid "Waiting Start"
+msgstr "ينتظر البدء"
+
+msgid "Watch"
+msgstr "متابعة"
+
+msgid "Week"
+msgstr "اسبوع"
+
+msgid "Weekly Recurring"
+msgstr "تكرار أسبوعي"
+
+msgid "What the Excel file contains"
+msgstr "محتوى ملف Excel"
+
+msgid "WO"
+msgstr "أمر شغل"
+
+msgid "WO BOM"
+msgstr "قائمة مكونات أمر الشغل"
+
+msgid "WO Scope"
+msgstr "نطاق أمر الشغل"
+
+msgid "WO, event, model..."
+msgstr "أمر شغل، حدث، نموذج..."
+
+msgid "Work Email"
+msgstr "بريد العمل"
+
+msgid "Work from the selected ticket, record the resolution clearly, and submit only when the machine can be returned cleanly."
+msgstr "اعمل من البلاغ المحدد وسجل الحل بوضوح وأرسل فقط عندما يمكن إرجاع الماكينة للعمل بشكل واضح."
+
+msgid "Work Order"
+msgstr "أمر شغل"
+
+msgid "Work Order / Product"
+msgstr "امر الشغل\\ المنتج"
+
+msgid "Work order / Product"
+msgstr "امر الشغل\\ المنتج"
+
+msgid "Work Order Efficiency"
+msgstr "كفاءة أمر الشغل"
+
+msgid "Work Order Efficiency Grid"
+msgstr "جدول كفاءة أوامر الشغل"
+
+msgid "Work Order Efficiency Report"
+msgstr "تقرير كفاءة أمر الشغل"
+
+msgid "Work Order Log"
+msgstr "سجل أمر العمل"
+
+msgid "Work Order Sheet"
+msgstr "ورقة أمر الشغل"
+
+msgid "Work Orders"
+msgstr "اوامر الشغل"
+
+msgid "Worker"
+msgstr "عامل"
+
+msgid "Worker Station"
+msgstr "شاشة العامل"
+
+msgid "Workflow"
+msgstr "سير العمل"
+
+msgid "Working Hours"
+msgstr "ساعات العمل"
+
+msgid "WOs blocked by shortage"
+msgstr "أوامر شغل متوقفة بسبب نقص"
+
+msgid "WOs cleared for materials"
+msgstr "أوامر شغل جاهزة من ناحية المواد"
+
+msgid "XLSX export"
+msgstr "تصدير XLSX"
+
+msgid "Yearly Dates"
+msgstr "تواريخ سنوية"
+
+msgid "You have requested completion for this task. Please wait for the supervisor to approve or reject the log."
+msgstr "طلبت إكمال هذه المهمة. يرجى انتظار المشرف لاعتماد السجل أو رفضه."
+
+msgid "Z-A"
+msgstr "ي-أ"
+
+msgid "Zone"
+msgstr "المنطقة الزمنية"

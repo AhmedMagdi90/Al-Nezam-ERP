@@ -1,0 +1,65 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% block sidebar %}{% endblock %}
+{% block app_header %}{% endblock %}
+
+{% block title %}Alpine Test{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <h1 class="text-2xl font-bold mb-4">Alpine.js Diagnostic Test</h1>
+
+    <!-- Test 1: Simple counter -->
+    <div x-data="{ count: 0 }" class="mb-8 p-4 border rounded">
+        <h2 class="font-bold mb-2">Test 1: Simple Counter</h2>
+        <button @click="count++" class="bg-blue-500 text-white px-4 py-2 rounded">
+            Clicked <span x-text="count"></span> times
+        </button>
+    </div>
+
+    <!-- Test 2: Modal toggle -->
+    <div x-data="{ open: false }" class="mb-8 p-4 border rounded">
+        <h2 class="font-bold mb-2">Test 2: Modal Toggle</h2>
+        <button @click="open = !open" class="bg-green-500 text-white px-4 py-2 rounded">
+            Toggle Modal
+        </button>
+        <div x-show="open" class="mt-4 p-4 bg-gray-100 rounded">
+            Modal is open! <button @click="open = false"
+                class="ml-4 bg-red-500 text-white px-2 py-1 rounded">Close</button>
+        </div>
+    </div>
+
+    <!-- Test 3: Array manipulation (like materialRows) -->
+    <div x-data="{ items: [] }" class="mb-8 p-4 border rounded">
+        <h2 class="font-bold mb-2">Test 3: Array Manipulation</h2>
+        <button @click="items.push({ id: Date.now() })" class="bg-purple-500 text-white px-4 py-2 rounded">
+            Add Item
+        </button>
+        <div class="mt-4">
+            <p>Items count: <span x-text="items.length"></span></p>
+            <template x-for="item in items" :key="item.id">
+                <div class="p-2 bg-gray-100 mt-2 rounded">
+                    Item ID: <span x-text="item.id"></span>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Test 4: Check if Alpine is loaded -->
+    <div class="p-4 border rounded bg-yellow-50">
+        <h2 class="font-bold mb-2">Test 4: Alpine Status</h2>
+        <p>Open browser console and type: <code class="bg-gray-200 px-2 py-1">typeof Alpine</code></p>
+        <p>Expected result: "object"</p>
+    </div>
+</div>
+
+<script>
+    console.log('=== Alpine.js Diagnostic ===');
+    console.log('Alpine loaded:', typeof Alpine !== 'undefined');
+    console.log('Alpine version:', typeof Alpine !== 'undefined' ? Alpine.version : 'N/A');
+
+    // Try to access Alpine after it initializes
+    document.addEventListener('alpine:init', () => {
+        console.log('Alpine initialized successfully!');
+    });
+</script>
+{% endblock %}

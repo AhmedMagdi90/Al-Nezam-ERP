@@ -1,0 +1,711 @@
+{% load static %}
+<!-- Timeline Partial - Compact Controls -->
+
+<!-- Header Removed for Clean Integration -->
+
+<!-- FORCE LAYER CSS to fix Z-Index Issues -->
+<style>
+    /* CUSTOM VIS.JS OVERRIDES */
+    .vis-time-axis .vis-grid.vis-vertical {
+        border-left: 1px dashed #e2e8f0;
+        opacity: 0.5;
+    }
+
+    .vis-item {
+        border-color: transparent !important;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .vis-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .vis-item.vis-selected {
+        box-shadow: 0 0 0 3px #3b82f6, 0 6px 12px rgba(59, 130, 246, 0.2);
+        z-index: 100 !important;
+    }
+
+    .vis-item .vis-item-content {
+        padding: 6px 10px;
+    }
+
+    /* Custom Scrollbar for Timeline */
+    #timelineScrollWrapper::-webkit-scrollbar {
+        height: 12px;
+        /* Thicker for visibility */
+        width: 12px;
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+        border: 2px solid #f1f5f9;
+        /* Padding effect */
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Late Order Styling */
+    .late-order {
+        border: 2px solid #dc2626 !important;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1) !important;
+    }
+
+    .late-order:hover {
+        border-color: #b91c1c !important;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+    }
+</style>
+
+
+<!-- Timeline Content Wrapper -->
+<div class="flex-1 flex flex-col min-h-0">
+
+    <!-- Ultra-Compact Controls - Single Row -->
+    <div class="flex items-center gap-2 py-1 flex-shrink-0">
+
+
+        <!-- Search Icon Button -->
+        <button
+            class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-white hover:border-blue-500 transition-all text-slate-600 hover:text-blue-600"
+            onclick="document.getElementById('timelineSearch').classList.toggle('hidden')" title="Search">
+            <i class="ph ph-magnifying-glass text-sm"></i>
+        </button>
+
+        <!-- Hidden Search Input (toggleable) -->
+        <input type="text" id="timelineSearch" placeholder="Search Machine/WO"
+            class="hidden pl-3 pr-3 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-48">
+
+        <!-- Status Filter Dropdown -->
+        <select id="timelineFilter" onchange="filterTimeline()"
+            class="pl-3 pr-8 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-600 font-medium cursor-pointer hover:bg-white transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px] bg-no-repeat bg-[right:10px_center]">
+            <option value="all">Status</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="maintenance">Maintenance</option>
+        </select>
+
+        <!-- Divider -->
+        <div class="h-6 w-px bg-slate-200"></div>
+
+        <!-- Shift Selector - Icons Only -->
+        <div class="flex items-center gap-1" x-data="{ selectedShift: 'day' }">
+            <span class="text-[10px] font-bold text-slate-500 mr-1">Shift:</span>
+            <div class="flex bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                <button @click="selectedShift = 'day'; setTimelineShift('day')"
+                    :class="selectedShift === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Morning Shift (6AM-2PM)">
+                    <i class="ph ph-sun text-sm"></i>
+                </button>
+                <button @click="selectedShift = 'middle'; setTimelineShift('middle')"
+                    :class="selectedShift === 'middle' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Afternoon Shift (2PM-10PM)">
+                    <i class="ph ph-sun-dim text-sm"></i>
+                </button>
+                <button @click="selectedShift = 'night'; setTimelineShift('night')"
+                    :class="selectedShift === 'night' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Night Shift (10PM-6AM)">
+                    <i class="ph ph-moon text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- View Range Selector - Icons Only -->
+        <div class="flex items-center gap-1" x-data="{ selectedView: 'day' }">
+            <span class="text-[10px] font-bold text-slate-500 mr-1">View:</span>
+            <div class="flex bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                <button @click="selectedView = 'day'; setGanttView('day')"
+                    :class="selectedView === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Day View">
+                    <i class="ph ph-calendar-blank text-sm"></i>
+                </button>
+                <button @click="selectedView = 'week'; setGanttView('week')"
+                    :class="selectedView === 'week' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Week View">
+                    <i class="ph ph-calendar text-sm"></i>
+                </button>
+                <button @click="selectedView = 'month'; setGanttView('month')"
+                    :class="selectedView === 'month' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Month View">
+                    <i class="ph ph-calendar-dots text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Spacer -->
+        <div class="flex-1"></div>
+
+        <!-- Refresh Button -->
+        <button onclick="window.initGanttChart(true)"
+            class="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+            title="Refresh Timeline">
+            <i class="ph ph-arrow-clockwise text-sm"></i>
+        </button>
+
+        <!-- Status Legend Toggle -->
+        <button
+            class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-white hover:border-slate-300 transition-all text-slate-600"
+            onclick="document.getElementById('statusLegend').classList.toggle('hidden')" title="Toggle Status Legend">
+            <i class="ph ph-info text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Collapsible Status Legend -->
+    <div id="statusLegend" class="hidden flex items-center gap-3 text-xs pb-2 px-2 flex-shrink-0">
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Pending</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-blue-600 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Active</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Complete</span>
+        </div>
+    </div>
+
+
+    <div
+        class="flex justify-between items-center mb-1 p-2 bg-blue-50 rounded-lg border border-blue-100/50 flex-shrink-0">
+        <div class="flex items-center gap-2 text-xs text-blue-700">
+            <i class="ph ph-info text-sm"></i>
+            <span class="font-medium">Click empty slot to schedule. Drag to move orders.</span>
+        </div>
+        <div class="text-xs text-blue-600 font-medium">
+            <i class="ph ph-clock text-sm"></i>
+            Current Time: {% now "H:i" %}
+        </div>
+    </div>
+
+    <!-- DATA PAYLOAD HIDDEN (Safe Script Blocks) -->
+    <script id="data-machines" type="application/json">
+    {{ machines_json|safe }}
+  </script>
+    <script id="data-tasks" type="application/json">
+    {{ tasks_json|safe }}
+  </script>
+
+    <div class="flex gap-4 flex-1 min-h-0">
+        <!-- Main Gantt Chart (Vis.js) -->
+        <!-- Custom CSS Grid Timeline -->
+        <div class="flex-1 overflow-hidden border rounded-lg bg-white relative flex flex-col shadow-inner min-h-0">
+            <!-- Scroll Container (Fixed Height Fix) -->
+            <div class="w-full flex-1 overflow-y-auto overflow-x-auto" id="timelineScrollWrapper" style="height: 100%;">
+                <div id="customTimeline" class="min-w-full relative">
+                    <!-- Header (Time Axis) -->
+                    <div id="timelineHeader"
+                        class="sticky top-0 z-40 bg-gray-50 border-b border-gray-200 h-10 flex text-xs font-bold text-gray-500">
+                        <!-- JS will populate grid cols here -->
+                    </div>
+
+                    <!-- Body (Machine Rows) -->
+                    <div id="timelineBody" class="relative">
+                        <!-- JS will populate machine rows here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Orders Sidebar -->
+        <div x-data="{ sidebarCollapsed: false, sidebarTab: '{% if request.user.profile.role.name == 'supervisor' %}backlog{% else %}pending{% endif %}', sidebarSearch: '' }"
+            :class="sidebarCollapsed ? 'w-16' : 'w-80'"
+            class="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-lg shadow-md flex flex-col transition-all duration-300 overflow-hidden flex-shrink-0">
+
+            <!-- Sidebar Header -->
+            <div class="p-4 border-b border-slate-200 flex flex-col gap-3 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <!-- Tabs -->
+                    <div class="flex bg-slate-200/50 p-1 rounded-lg w-full mr-2" x-show="!sidebarCollapsed">
+                        {% if request.user.profile.role.name == 'supervisor' %}
+                        <!-- Supervisor Tabs -->
+                        <button @click="sidebarTab = 'backlog'"
+                            :class="sidebarTab === 'backlog' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'"
+                            class="flex-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide transition-all">
+                            Backlog
+                        </button>
+                        {% if unmanned_orders %}
+                        <button @click="sidebarTab = 'unmanned'"
+                            :class="sidebarTab === 'unmanned' ? 'bg-white shadow text-red-600' : 'text-slate-500 hover:text-slate-700'"
+                            class="flex-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-1">
+                            Assign <span class="bg-red-100 text-red-600 px-1 rounded-full text-[9px]">{{
+                                unmanned_orders.count|default:0 }}</span>
+                        </button>
+                        {% endif %}
+                        {% if pending_logs_count %}
+                        <button @click="sidebarTab = 'approvals'"
+                            :class="sidebarTab === 'approvals' ? 'bg-white shadow text-emerald-600' : 'text-slate-500 hover:text-slate-700'"
+                            class="flex-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-1">
+                            Checks <span class="bg-emerald-100 text-emerald-600 px-1 rounded-full text-[9px]">{{
+                                pending_logs_count|default:0 }}</span>
+                        </button>
+                        {% endif %}
+                        {% else %}
+                        <!-- Planner Tabs -->
+                        <button @click="sidebarTab = 'pending'"
+                            :class="sidebarTab === 'pending' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'"
+                            class="flex-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide transition-all flex items-center justify-center gap-1">
+                            Pending Orders <span class="bg-blue-100 text-blue-600 px-1 rounded-full text-[9px]">{{
+                                pending_wos.count|default:0 }}</span>
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <button @click="sidebarCollapsed = !sidebarCollapsed"
+                        class="p-1.5 hover:bg-slate-200 rounded-lg transition-colors"
+                        :title="sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'">
+                        <i class="ph" :class="sidebarCollapsed ? 'ph-caret-right' : 'ph-caret-left'"></i>
+                    </button>
+                </div>
+
+                <!-- Smart Search Input -->
+                <div x-show="!sidebarCollapsed" x-transition>
+                    <div class="relative">
+                        <i
+                            class="ph ph-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" x-model="sidebarSearch" placeholder="Search orders..."
+                            class="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-300 rounded-md focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-shadow">
+                    </div>
+                </div>
+            </div>
+
+            <!-- List Content -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar" x-show="!sidebarCollapsed"
+                x-transition:enter="transition-opacity duration-300" x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100">
+
+                <!-- PLANNER: PENDING ORDERS LIST -->
+                {% if request.user.profile.role.name != 'supervisor' %}
+                <div x-show="sidebarTab === 'pending'" class="space-y-3">
+                    {% for wo in pending_wos %}
+                    <div onclick="openWorkOrderModal('{{ wo.id }}')"
+                        x-show="$el.innerText.toLowerCase().includes(sidebarSearch.toLowerCase())"
+                        class="p-3 bg-white border border-blue-200 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group">
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                            <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-full">
+                                Pending
+                            </span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+                        <div class="flex items-center gap-2 text-xs text-slate-600">
+                            <i class="ph ph-package"></i>
+                            <span>Qty: {{ wo.quantity }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-600 mt-1">
+                            <i class="ph ph-calendar-blank"></i>
+                            <span>Due: {{ wo.due_date|date:"M d" }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="ph ph-check-circle text-4xl mb-2"></i>
+                        <p class="text-xs font-medium">All orders scheduled!</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% endif %}
+
+                <!-- SUPERVISOR: BACKLOG LIST -->
+                {% if request.user.profile.role.name == 'supervisor' %}
+                <div x-show="sidebarTab === 'backlog'" class="space-y-3">
+                    {% for wo in pending_orders %}
+                    <div onclick="openWorkOrderModal('{{ wo.id }}')"
+                        x-show="$el.innerText.toLowerCase().includes(sidebarSearch.toLowerCase())"
+                        class="p-3 bg-white border border-amber-200 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer relative group">
+                        <div class="flex items-start justify-between mb-2">
+
+                            <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                            <span class="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full">
+                                Pending
+                            </span>
+                        </div>
+                        <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+                        {% if wo.customer__name %}
+                        <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                            <i class="ph ph-user"></i>
+                            <span class="truncate">{{ wo.customer__name }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="flex items-center gap-2 text-xs text-slate-600">
+                            <i class="ph ph-package"></i>
+                            <span>Qty: {{ wo.quantity }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-600 mt-1">
+                            <i class="ph ph-calendar-blank"></i>
+                            <span>Due: {{ wo.due_date|date:"M d" }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-8 text-slate-400">
+                        <i class="ph ph-check-circle text-4xl mb-2"></i>
+                        <p class="text-xs font-medium">All orders scheduled!</p>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 2. UNMANNED LIST (Supervisor) -->
+                {% if unmanned_orders %}
+                <div x-show="sidebarTab === 'unmanned'" class="space-y-3" x-cloak>
+                    {% for wo in unmanned_orders %}
+                    <div x-show="$el.innerText.toLowerCase().includes(sidebarSearch.toLowerCase())"
+                        class="p-3 bg-white border border-red-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative group">
+
+                        <div class="flex items-start justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-700">#{{ wo.id }}</span>
+                            <span
+                                class="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-full flex items-center gap-1">
+                                <i class="ph ph-user-minus"></i> Unstaffed
+                            </span>
+                        </div>
+
+                        <h4 class="text-sm font-semibold text-slate-800 mb-1 leading-tight">{{ wo.product_name }}</h4>
+
+                        <div class="flex items-center gap-2 text-xs text-slate-600 mb-2">
+                            <i class="ph ph-factory text-indigo-500"></i>
+                            <span class="font-medium text-indigo-700">{{ wo.machine.name }}</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs text-slate-500 mb-3">
+                            <div class="flex items-center gap-1">
+                                <i class="ph ph-calendar"></i>
+                                {{ wo.start_date|date:"D H:i" }}
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <i class="ph ph-timer"></i>
+                                <span>~1h</span>
+                            </div>
+                        </div>
+
+                        <!-- Assignment Button -->
+                        <button
+                            onclick="openWorkerAssignModal('{{ wo.id }}', '{{ wo.product_name }}', '{{ wo.machine.name }}')"
+                            class="w-full py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-md text-xs font-bold transition-colors flex items-center justify-center gap-2">
+                            <i class="ph ph-user-plus"></i> Assign Worker
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- 3. APPROVALS LIST (Supervisor) -->
+                {% if pending_logs %}
+                <div x-show="sidebarTab === 'approvals'" class="space-y-3" x-cloak>
+                    {% for log in pending_logs %}
+                    <div
+                        class="p-3 bg-white border border-emerald-200 rounded-lg shadow-sm hover:shadow-md transition-shadow relative">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[10px] font-bold uppercase text-slate-500">{{ log.work_order.product_name
+                                }}</span>
+                            <span
+                                class="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">Report</span>
+                        </div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <div
+                                class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                {{ log.worker.username|slice:":2"|upper }}
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-800">{{ log.worker.username }}</div>
+                                <div class="text-[10px] text-slate-500 flex items-center gap-1">
+                                    <i class="ph ph-clock"></i> {{ log.created_at|date:"H:i" }}
+                                    <span class="px-1">•</span>
+                                    <span class="font-bold text-indigo-600">{{ log.quantity }} {{
+                                        log.work_order.bom.uom|default:"pcs" }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <button onclick="approveLog('{{ log.id }}', 'reject')"
+                                class="py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 text-[10px] font-bold rounded flex items-center justify-center transition-colors">
+                                Reject
+                            </button>
+                            <button onclick="approveLog('{{ log.id }}', 'approve')"
+                                class="py-1 bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-600 text-[10px] font-bold rounded flex items-center justify-center transition-colors">
+                                Approve
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endif %} <!-- End supervisor sections -->
+
+            </div>
+
+        </div> <!-- Close Timeline Content Wrapper -->
+
+        <!-- Edit Task Drawer (Slide-in from Right) -->
+        <div id="editTaskDrawer"
+            class="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-[60] transform translate-x-full transition-transform duration-300 flex flex-col">
+            <!-- Drawer Header -->
+            <div
+                class="p-6 border-b border-slate-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-blue-100">
+                <div>
+                    <h3 id="drawerTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        Edit Work Order
+                    </h3>
+                    <div id="drawerSubtitle" class="text-xs text-slate-500 font-medium">WO #...</div>
+                </div>
+                <button onclick="closeEditDrawer()" class="p-2 hover:bg-white rounded-lg transition-colors">
+                    <i class="ph ph-x text-slate-600 text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Drawer Body (Scrollable) -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-4">
+                <!-- WO ID (Hidden/Read-Only) -->
+                <input type="hidden" id="drawerTaskId">
+
+
+
+                <!-- Quantity -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Quantity</label>
+                    <input type="number" id="drawerQuantity"
+                        class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Priority -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Priority</label>
+                    <select id="drawerPriority"
+                        class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="Low">Low</option>
+                        <option value="Normal">Normal</option>
+                        <option value="High">High</option>
+                        <option value="Urgent">Urgent</option>
+                    </select>
+                </div>
+
+                <!-- Start Date & Time -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Start Date & Time</label>
+                    <input type="datetime-local" id="drawerStartDate"
+                        class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- Stage Selection (Dynamic) -->
+                <div id="drawerStageContainer" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Production Stage</label>
+                    <select id="drawerStage"
+                        class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Select Stage --</option>
+                    </select>
+                </div>
+
+                <!-- Machine Selection -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Assigned Machine</label>
+                    <select id="drawerMachine"
+                        class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- Select Machine --</option>
+                    </select>
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Status</label>
+                    <select id="drawerStatus"
+                        class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                        <option value="pending">Pending</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="completed">Completed</option>
+                        <option value="on_hold">On Hold</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Drawer Footer (Actions) -->
+            <div class="p-6 border-t border-slate-200 flex gap-3 bg-slate-50">
+                <button onclick="closeEditDrawer()"
+                    class="flex-1 px-4 py-2 text-sm text-slate-600 bg-white hover:bg-slate-100 rounded-lg font-semibold border border-slate-200 transition">
+                    Cancel
+                </button>
+                <button onclick="unscheduleTask()"
+                    class="px-4 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-semibold transition">
+                    Unschedule
+                </button>
+                <button onclick="saveTaskChanges()"
+                    class="px-6 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-bold shadow-md transition">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+        <!-- Overlay -->
+        <div id="drawerOverlay" onclick="closeEditDrawer()"
+            class="fixed inset-0 bg-black/20 z-[55] hidden backdrop-blur-[1px]">
+        </div>
+
+        <script>
+            async function openWorkOrderModal(woId) {
+                console.log("Opening WO", woId);
+                try {
+                    const response = await fetch(`/manufacturing/api/workorder/${woId}/json/`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        const wo = data.work_order;
+                        const machines = data.suggested_machines || [];
+                        const typeNeeded = data.machine_type_needed;
+
+                        // Populate Header
+                        document.getElementById('drawerTitle').innerHTML = `Edit Work Order <span class="text-sm font-normal text-slate-500">#${wo.id}</span>`;
+
+                        let subtitle = `<span class="font-semibold text-slate-700">${wo.product_name}</span>`;
+                        if (wo.customer) {
+                            subtitle += ` <span class="mx-1 text-slate-300">|</span> <span class="text-slate-600"><i class="ph ph-user"></i> ${wo.customer}</span>`;
+                        }
+                        if (document.getElementById('drawerSubtitle')) {
+                            document.getElementById('drawerSubtitle').innerHTML = subtitle;
+                        }
+
+                        // Populate Fields
+                        if (document.getElementById('drawerQuantity')) document.getElementById('drawerQuantity').value = wo.quantity;
+                        if (document.getElementById('drawerPriority')) document.getElementById('drawerPriority').value = wo.priority;
+                        if (document.getElementById('drawerStatus')) document.getElementById('drawerStatus').value = wo.status;
+
+                        // Populate Machines Dropdown
+                        const machineSelect = document.getElementById('drawerMachine');
+                        if (machineSelect) {
+                            machineSelect.innerHTML = '<option value="">-- Select Machine --</option>';
+                            machines.forEach(m => {
+                                const opt = document.createElement('option');
+                                opt.value = m.id;
+                                opt.textContent = `${m.name} (${m.code})`;
+                                machineSelect.appendChild(opt);
+                            });
+
+                            // Update Label if Type enforced
+                            const machineLabel = machineSelect.previousElementSibling;
+                            if (machineLabel && typeNeeded) {
+                                machineLabel.innerHTML = `Assigned Machine <span class="text-blue-600 text-[10px]">(Type: ${typeNeeded})</span>`;
+                            } else if (machineLabel) {
+                                machineLabel.innerHTML = `Assigned Machine <span class="text-slate-400 text-[10px] font-normal">(Showing All)</span>`;
+                            }
+                        }
+
+                        // Handle Date (Default to NOW)
+                        if (document.getElementById('drawerStartDate')) {
+                            const now = new Date();
+                            const localIso = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+                            document.getElementById('drawerStartDate').value = localIso;
+                        }
+
+                        // Store WO ID
+                        const drawer = document.getElementById('editTaskDrawer');
+                        if (drawer) {
+                            drawer.dataset.woId = wo.id;
+                            drawer.classList.remove('translate-x-full');
+                        }
+
+                        const overlay = document.getElementById('drawerOverlay');
+                        if (overlay) overlay.classList.remove('hidden');
+
+                    } else {
+                        console.error("Error loading order:", data.error);
+                        alert("Error: " + data.error);
+                    }
+                } catch (error) {
+                    console.error("Error fetching WO details:", error);
+                }
+            }
+
+            function closeEditDrawer() {
+                const drawer = document.getElementById('editTaskDrawer');
+                if (drawer) drawer.classList.add('translate-x-full');
+
+                const overlay = document.getElementById('drawerOverlay');
+                if (overlay) overlay.classList.add('hidden');
+            }
+
+            async function saveTaskChanges() {
+                const drawer = document.getElementById('editTaskDrawer');
+                const woId = drawer.dataset.woId;
+
+                const startDate = document.getElementById('drawerStartDate').value;
+                const quantity = document.getElementById('drawerQuantity')?.value;
+                const machineSelect = document.getElementById('drawerMachine');
+                const machineId = machineSelect ? machineSelect.value : null;
+
+                if (!startDate || !machineId) {
+                    alert("Please select a Start Date and a Machine.");
+                    return;
+                }
+
+                // Disable button to prevent double submit
+                const btn = event.target;
+                const originalText = btn.innerText;
+                btn.innerText = "Saving...";
+                btn.disabled = true;
+
+                try {
+                    const response = await fetch(`/manufacturing/api/schedule-work-order/${woId}/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                            start_date: startDate,
+                            quantity: quantity,
+                            machine_id: machineId
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert("Scheduled Successfully!");
+                        location.reload();
+                    } else {
+                        alert(data.error);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert("Failed to save changes.");
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                }
+            }
+
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            function unscheduleTask() {
+                if (confirm("Are you sure you want to unschedule this task?")) {
+                    closeEditDrawer();
+                }
+            }
+        </script>

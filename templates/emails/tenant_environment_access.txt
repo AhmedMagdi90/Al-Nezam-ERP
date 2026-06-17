@@ -1,0 +1,30 @@
+Nezam access details for {{ organization.name }}
+
+Admin account
+- Email / username: {{ recipient_email }}
+- Sign in: {{ portal_login_url }}
+
+Available environments
+{% for environment in environment_entries %}
+- {{ environment.label }}
+  Tenant code: {{ environment.tenant_code }}
+  Login URL: {{ environment.login_url }}
+  {% if environment.setup_url %}Setup / Reset URL: {{ environment.setup_url }}{% endif %}
+  Workspace URL: {{ environment.app_url }}
+  {% if environment.hostname %}Hostname: {{ environment.hostname }}{% endif %}
+{% endfor %}
+
+Environment portal
+- {{ portal_environment_url }}
+
+{% if demo_accounts %}
+Seeded demo users
+{% for role, username in demo_accounts.items %}
+- {{ role|title }}: {{ username }}
+{% endfor %}
+- Shared demo password: {{ demo_password }}
+{% endif %}
+
+Notes
+- Use the setup/reset link above if you want to set or replace the admin password for a specific environment.
+- Test and Live environments appear here as soon as they are provisioned for your organization.

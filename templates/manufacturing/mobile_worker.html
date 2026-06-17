@@ -1,0 +1,415 @@
+{% extends "manufacturing/base.html" %}
+{% load static i18n %}
+
+{% block title %}Worker Mobile - Nezam{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <!-- Mobile Header -->
+    <div class="bg-blue-600 text-white p-4 sticky top-0 z-10">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span class="text-xl">👷</span>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold">Worker Portal</h1>
+                    <p class="text-xs text-blue-100">{{ user.username }}</p>
+                </div>
+            </div>
+            <button onclick="refreshData()" class="p-2 bg-blue-500 rounded-lg">
+                <span>🔄</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-2 gap-4 p-4">
+        <div class="bg-white rounded-xl p-4 shadow-sm">
+            <div class="text-2xl font-bold text-blue-600" id="activeOrders">0</div>
+            <div class="text-xs text-gray-500">Active Orders</div>
+        </div>
+        <div class="bg-white rounded-xl p-4 shadow-sm">
+            <div class="text-2xl font-bold text-green-600" id="todayOutput">0</div>
+            <div class="text-xs text-gray-500">Today's Output</div>
+        </div>
+    </div>
+
+    <!-- My Work Orders -->
+    <div class="p-4">
+        <h2 class="text-lg font-bold text-gray-800 mb-3">My Work Orders</h2>
+        <div id="workOrdersList" class="space-y-3">
+            <!-- Work orders will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+        <div class="grid grid-cols-3 gap-3">
+            <button onclick="showRecordOutput()" class="bg-blue-600 text-white py-3 rounded-xl font-medium">
+                📊 Record
+            </button>
+            <button onclick="showQualityCheck()" class="bg-green-600 text-white py-3 rounded-xl font-medium">
+                ✅ Quality
+            </button>
+            <button onclick="scanBarcode()" class="bg-purple-600 text-white py-3 rounded-xl font-medium">
+                📷 Scan
+            </button>
+        </div>
+    </div>
+
+    <!-- Record Output Modal -->
+    <div id="recordOutputModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50">
+        <div class="bg-white rounded-t-2xl mt-auto p-6">
+            <h3 class="text-lg font-bold mb-4">Record Production Output</h3>
+            <form id="outputForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Work Order</label>
+                    <select id="workOrderSelect" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="">Select Work Order</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                    <input type="number" id="quantityInput" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Enter quantity" min="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Shift</label>
+                    <select id="shiftSelect" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="morning">Morning</option>
+                        <option value="evening">Evening</option>
+                        <option value="night">Night</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes (Optional)</label>
+                    <textarea id="notesInput" class="w-full p-3 border border-gray-300 rounded-lg" rows="3" placeholder="Add notes..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="closeModal('recordOutputModal')" class="bg-gray-200 text-gray-800 py-3 rounded-lg">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-blue-600 text-white py-3 rounded-lg">
+                        Submit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quality Check Modal -->
+    <div id="qualityModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50">
+        <div class="bg-white rounded-t-2xl mt-auto p-6">
+            <h3 class="text-lg font-bold mb-4">Quality Check</h3>
+            <form id="qualityForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Work Order</label>
+                    <select id="qualityWorkOrderSelect" class="w-full p-3 border border-gray-300 rounded-lg">
+                        <option value="">Select Work Order</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Good</label>
+                        <input type="number" id="goodQuantity" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="0" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Repair</label>
+                        <input type="number" id="repairQuantity" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="0" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Faulty</label>
+                        <input type="number" id="faultyQuantity" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="0" min="0">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="qualityNotes" class="w-full p-3 border border-gray-300 rounded-lg" rows="3" placeholder="Quality notes..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="closeModal('qualityModal')" class="bg-gray-200 text-gray-800 py-3 rounded-lg">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-green-600 text-white py-3 rounded-lg">
+                        Submit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let workOrders = [];
+let websocket = null;
+
+// Initialize WebSocket connection
+function initWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/production/`;
+    
+    websocket = new WebSocket(wsUrl);
+    
+    websocket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        handleRealtimeUpdate(data);
+    };
+    
+    websocket.onclose = function() {
+        // Reconnect after 5 seconds
+        setTimeout(initWebSocket, 5000);
+    };
+}
+
+// Handle real-time updates
+function handleRealtimeUpdate(data) {
+    if (data.type === 'work_order_update') {
+        refreshData();
+    } else if (data.type === 'production_notification') {
+        showNotification(data.data.message, 'info');
+    }
+}
+
+// Load work orders
+async function loadWorkOrders() {
+    try {
+        const response = await fetch('/api/v1/workorders/?assigned_to__username={{ user.username }}');
+        const data = await response.json();
+        workOrders = data.results || data;
+        
+        updateWorkOrdersList();
+        updateWorkOrderSelects();
+        updateStats();
+    } catch (error) {
+        console.error('Error loading work orders:', error);
+    }
+}
+
+// Update work orders list
+function updateWorkOrdersList() {
+    const container = document.getElementById('workOrdersList');
+    
+    if (workOrders.length === 0) {
+        container.innerHTML = '<div class="text-center text-gray-500 py-8">No active work orders</div>';
+        return;
+    }
+    
+    container.innerHTML = workOrders.map(wo => `
+        <div class="bg-white rounded-xl p-4 shadow-sm">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h3 class="font-bold text-gray-800">WO#${wo.id}</h3>
+                    <p class="text-sm text-gray-600">${wo.product_name}</p>
+                </div>
+                <span class="px-2 py-1 text-xs rounded-full ${getStatusClass(wo.status)}">
+                    ${wo.status}
+                </span>
+            </div>
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    Qty: ${wo.quantity} | Progress: ${wo.progress}%
+                </div>
+                <button onclick="quickRecord(${wo.id})" class="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg text-sm">
+                    Quick Record
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Update work order selects
+function updateWorkOrderSelects() {
+    const selects = ['workOrderSelect', 'qualityWorkOrderSelect'];
+    
+    selects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        const activeOrders = workOrders.filter(wo => wo.status === 'in_progress');
+        
+        select.innerHTML = '<option value="">Select Work Order</option>' +
+            activeOrders.map(wo => `<option value="${wo.id}">WO#${wo.id} - ${wo.product_name}</option>`).join('');
+    });
+}
+
+// Update stats
+function updateStats() {
+    const activeOrders = workOrders.filter(wo => wo.status === 'in_progress').length;
+    document.getElementById('activeOrders').textContent = activeOrders;
+    
+    // Load today's output
+    loadTodayOutput();
+}
+
+// Load today's output
+async function loadTodayOutput() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`/api/v1/production-logs/my_logs/?date=${today}`);
+        const data = await response.json();
+        
+        const todayOutput = (data.results || data).reduce((sum, log) => sum + log.quantity, 0);
+        document.getElementById('todayOutput').textContent = todayOutput;
+    } catch (error) {
+        console.error('Error loading today\'s output:', error);
+    }
+}
+
+// Get status class
+function getStatusClass(status) {
+    const classes = {
+        'pending': 'bg-gray-100 text-gray-600',
+        'in_progress': 'bg-blue-100 text-blue-600',
+        'completed': 'bg-green-100 text-green-600',
+        'hold': 'bg-yellow-100 text-yellow-600'
+    };
+    return classes[status] || 'bg-gray-100 text-gray-600';
+}
+
+// Show record output modal
+function showRecordOutput() {
+    document.getElementById('recordOutputModal').classList.remove('hidden');
+}
+
+// Show quality check modal
+function showQualityCheck() {
+    document.getElementById('qualityModal').classList.remove('hidden');
+}
+
+// Close modal
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
+// Quick record for specific work order
+function quickRecord(workOrderId) {
+    document.getElementById('workOrderSelect').value = workOrderId;
+    showRecordOutput();
+}
+
+// Refresh data
+function refreshData() {
+    loadWorkOrders();
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+    // Simple notification implementation
+    const notification = document.createElement('div');
+    notification.className = `fixed top-20 right-4 p-4 rounded-lg text-white z-50 ${
+        type === 'success' ? 'bg-green-600' : 
+        type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+    }`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// Handle output form submission
+document.getElementById('outputForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        work_order: document.getElementById('workOrderSelect').value,
+        quantity: document.getElementById('quantityInput').value,
+        shift: document.getElementById('shiftSelect').value,
+        note: document.getElementById('notesInput').value
+    };
+    
+    try {
+        const response = await fetch('/api/v1/production-logs/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            showNotification('Production recorded successfully!', 'success');
+            closeModal('recordOutputModal');
+            document.getElementById('outputForm').reset();
+            refreshData();
+        } else {
+            showNotification('Error recording production', 'error');
+        }
+    } catch (error) {
+        showNotification('Network error', 'error');
+    }
+});
+
+// Handle quality form submission
+document.getElementById('qualityForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+        work_order: document.getElementById('qualityWorkOrderSelect').value,
+        good_quantity: document.getElementById('goodQuantity').value,
+        repair_quantity: document.getElementById('repairQuantity').value,
+        faulty_quantity: document.getElementById('faultyQuantity').value,
+        notes: document.getElementById('qualityNotes').value
+    };
+    
+    try {
+        const response = await fetch('/api/v1/quality-checks/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            showNotification('Quality check recorded!', 'success');
+            closeModal('qualityModal');
+            document.getElementById('qualityForm').reset();
+            refreshData();
+        } else {
+            showNotification('Error recording quality check', 'error');
+        }
+    } catch (error) {
+        showNotification('Network error', 'error');
+    }
+});
+
+// Get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Simulate barcode scanning
+function scanBarcode() {
+    // In a real implementation, this would use the device camera
+    // For now, just show a simple input dialog
+    const barcode = prompt('Scan or enter barcode:');
+    if (barcode) {
+        // Process barcode
+        showNotification(`Barcode scanned: ${barcode}`, 'info');
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadWorkOrders();
+    initWebSocket();
+});
+
+// Refresh data every 30 seconds
+setInterval(refreshData, 30000);
+</script>
+{% endblock %}

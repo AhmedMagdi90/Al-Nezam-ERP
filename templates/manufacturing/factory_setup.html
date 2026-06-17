@@ -1,0 +1,715 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% load static i18n tenant_i18n %}
+
+{% block title %}{% tenant_trans "Factory Setup" %} - Nezam{% endblock %}
+
+{% block content %}
+<style>
+    [data-factory-setup="true"] [role="tab"]:focus-visible,
+    [data-factory-setup="true"] button:focus-visible,
+    [data-factory-setup="true"] a:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 3px;
+        border-radius: 0.5rem;
+    }
+
+    [data-factory-setup="true"] .factory-setup-tabs {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    [data-factory-setup="true"] .factory-setup-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    @media (max-width: 640px) {
+        [data-factory-setup="true"] .factory-setup-table-wrap {
+            margin-left: -0.25rem;
+            margin-right: -0.25rem;
+        }
+
+        [data-factory-setup="true"] .factory-setup-card-actions {
+            align-items: stretch;
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="h-full flex flex-col bg-slate-50" data-factory-setup="true" x-data="{
+    storageKey: 'factorySetup.activeSection',
+    allowedSections: ['machines', 'stages', 'boms', 'work_orders', 'bulk_upload'],
+    activeSection: 'machines',
+    init() {
+        this.activeSection = this.getInitialSection();
+        this.persistSection(this.activeSection);
+    },
+    normalizeSection(section) {
+        return this.allowedSections.includes(section) ? section : 'machines';
+    },
+    getInitialSection() {
+        const params = new URLSearchParams(window.location.search);
+        const queryTab = params.get('tab');
+        const storedTab = localStorage.getItem(this.storageKey);
+        return this.normalizeSection(queryTab || storedTab || 'machines');
+    },
+    persistSection(section) {
+        const normalized = this.normalizeSection(section);
+        localStorage.setItem(this.storageKey, normalized);
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', normalized);
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    },
+    setActiveSection(section) {
+        this.activeSection = this.normalizeSection(section);
+        this.persistSection(this.activeSection);
+    }
+}" x-init="init()">
+    {% if factory_setup_error %}
+    <div class="mx-8 mt-4 rounded-lg border border-red-200 bg-red-50 text-red-700 px-4 py-3 text-sm">
+        {% tenant_trans "Factory setup loaded in safe mode due to an internal data error:" %} {{ factory_setup_error }}
+    </div>
+    {% endif %}
+
+    <!-- Header -->
+    <div class="bg-white border-b border-slate-200 px-4 py-3 sm:px-8">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-slate-800">{% tenant_trans "Factory Setup" %}</h1>
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="bg-white border-b border-slate-200 px-4 sm:px-8">
+        <div data-reorderable-tabs="factory-setup-tab-order" role="tablist" aria-label="{% tenant_trans 'Factory setup sections' %}" class="factory-setup-tabs flex gap-6 overflow-x-auto sm:gap-8">
+            <button @click="setActiveSection('machines')" role="tab" :aria-selected="activeSection === 'machines' ? 'true' : 'false'" aria-controls="factorySetupMachines" data-tab-key="machines" draggable="true" class="shrink-0 px-1 py-2.5 font-semibold transition-all relative cursor-grab active:cursor-grabbing"
+                :class="activeSection === 'machines' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'">
+                <i class="ph ph-gear mr-2"></i> {% tenant_trans "Machines" %}
+                <div x-show="activeSection === 'machines'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600">
+                </div>
+            </button>
+            <button @click="setActiveSection('stages')" role="tab" :aria-selected="activeSection === 'stages' ? 'true' : 'false'" aria-controls="factorySetupStages" data-tab-key="stages" draggable="true" class="shrink-0 px-1 py-2.5 font-semibold transition-all relative cursor-grab active:cursor-grabbing"
+                :class="activeSection === 'stages' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'">
+                <i class="ph ph-flow-arrow mr-2"></i> {% tenant_trans "Production Stages" %}
+                <div x-show="activeSection === 'stages'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600">
+                </div>
+            </button>
+            <button @click="setActiveSection('boms')" role="tab" :aria-selected="activeSection === 'boms' ? 'true' : 'false'" aria-controls="factorySetupBoms" data-tab-key="boms" draggable="true" class="shrink-0 px-1 py-2.5 font-semibold transition-all relative cursor-grab active:cursor-grabbing"
+                :class="activeSection === 'boms' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'">
+                <i class="ph ph-list-bullets mr-2"></i> {% tenant_trans "Bills of Materials" %}
+                <div x-show="activeSection === 'boms'" class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            </button>
+            <button @click="setActiveSection('work_orders')" role="tab" :aria-selected="activeSection === 'work_orders' ? 'true' : 'false'" aria-controls="factorySetupWorkOrders" data-tab-key="work_orders" draggable="true" class="shrink-0 px-1 py-2.5 font-semibold transition-all relative cursor-grab active:cursor-grabbing"
+                :class="activeSection === 'work_orders' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'">
+                <i class="ph ph-clipboard-text mr-2"></i> {% tenant_trans "Work Orders" %}
+                <div x-show="activeSection === 'work_orders'"
+                    class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            </button>
+            <button @click="setActiveSection('bulk_upload')" role="tab" :aria-selected="activeSection === 'bulk_upload' ? 'true' : 'false'" aria-controls="factorySetupBulkUpload" data-tab-key="bulk_upload" draggable="true" class="shrink-0 px-1 py-2.5 font-semibold transition-all relative cursor-grab active:cursor-grabbing"
+                :class="activeSection === 'bulk_upload' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-700'">
+                <i class="ph ph-upload-simple mr-2"></i> {% tenant_trans "Bulk Upload" %}
+                <div x-show="activeSection === 'bulk_upload'"
+                    class="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="flex-1 overflow-auto px-4 py-3 sm:px-8">
+
+        <!-- Machines Section -->
+        <div id="factorySetupMachines" role="tabpanel" x-show="activeSection === 'machines'" x-transition>
+            <div id="factoryMachineSaveNotice" aria-live="polite" class="mb-4 hidden rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700"></div>
+            <div class="mb-4 flex justify-end">
+                <button onclick="openMachineCreateModal()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm transition flex items-center gap-2">
+                    <i class="ph ph-plus-circle text-lg"></i>
+                    {% tenant_trans "Add Machine" %}
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {% for machine in machines %}
+                <div
+                    class="bg-white rounded-lg p-5 shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            {% if machine.image %}
+                            <img src="{{ machine.image.url }}" alt="{{ machine.name }}"
+                                class="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm">
+                            {% else %}
+                            <div
+                                class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                                <i class="ph ph-gear text-blue-600 text-2xl"></i>
+                            </div>
+                            {% endif %}
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">{{ machine.name }}</h3>
+                                <p class="text-xs text-slate-500 font-mono">{{ machine.code }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-600">{% tenant_trans "Category" %}</span>
+                            <span class="font-semibold text-slate-800">
+                                {{ machine.category|default:machine.type|default:"General" }}
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-600">{% tenant_trans "Status" %}</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold
+                {% if machine.status == 'operational' %}bg-green-100 text-green-700
+                {% elif machine.status == 'maintenance' %}bg-red-100 text-red-700
+                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {% tenant_trans machine.get_status_display|default:machine.status|title %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-100">
+                        <div class="mb-3 flex items-center justify-between text-sm">
+                            <span class="text-slate-600">{% tenant_trans "Working Hours" %}</span>
+                            <span class="font-semibold text-slate-800 text-right">{{ machine.working_hours_summary }}</span>
+                        </div>
+                        <button type="button"
+                            data-machine-id="{{ machine.id }}"
+                            data-machine-name="{{ machine.name|escapejs }}"
+                            data-machine-code="{{ machine.code|escapejs }}"
+                            data-machine-category="{{ machine.category|default:''|escapejs }}"
+                            data-machine-type="{{ machine.type|default:''|escapejs }}"
+                            data-machine-status="{{ machine.status|escapejs }}"
+                            data-machine-image-url="{% if machine.image %}{{ machine.image.url|escapejs }}{% endif %}"
+                            data-machine-use-factory-shifts="{% if machine.use_factory_shifts %}1{% else %}0{% endif %}"
+                            data-machine-shift-configuration="{{ machine.shift_configuration_json|escapejs }}"
+                            onclick="openMachineEditModal(this)"
+                            aria-label="{% tenant_trans 'Edit machine' %} {{ machine.name }}"
+                            class="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1">
+                            <i class="ph ph-pencil-simple"></i>
+                            {% tenant_trans "Edit Machine" %}
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full">
+                    <div class="bg-white rounded-lg border-2 border-dashed border-slate-300 p-12 text-center">
+                        <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                            <i class="ph ph-gear text-slate-400 text-4xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-slate-700 mb-2">{% tenant_trans "No Machines Configured" %}</h3>
+                        <p class="text-slate-500 mb-6">{% tenant_trans "Get started by adding your first machine to the factory" %}</p>
+                        <button onclick="openMachineCreateModal()"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-semibold shadow-sm transition">
+                            <i class="ph ph-plus-circle mr-2"></i>
+                            {% tenant_trans "Add Machine" %}
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Stages Section -->
+        <div id="factorySetupStages" role="tabpanel" x-show="activeSection === 'stages'" x-transition>
+            <div class="mb-4 flex justify-end">
+                <button onclick="document.getElementById('stageModal').classList.remove('hidden')"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm transition flex items-center gap-2">
+                    <i class="ph ph-plus-circle text-lg"></i>
+                    {% tenant_trans "Add Stage" %}
+                </button>
+            </div>
+            <div class="factory-setup-table-wrap overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+                <table class="w-full min-w-[720px]">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                {% tenant_trans "Order" %}</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                {% tenant_trans "Stage Name" %}</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                {% tenant_trans "Assigned Machine" %}</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                {% tenant_trans "Category" %}</th>
+                            <th class="px-6 py-4 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                {% tenant_trans "Actions" %}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for stage in stages %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-6 py-4">
+                                <span
+                                    class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold">
+                                    {{ stage.order }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="font-semibold text-slate-800">{{ stage.name }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <i class="ph ph-gear text-slate-400"></i>
+                                    <span class="text-slate-700">{% tenant_trans stage.machine_name|default:"Unassigned" %}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="text-slate-700 text-sm">
+                                    {{ stage.machine_category|default:"-" }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-right">
+                                <button type="button" class="text-blue-600 hover:text-blue-700 font-semibold text-sm"
+                                    aria-label="{% tenant_trans 'Edit stage' %} {{ stage.name }}">
+                                    <i class="ph ph-pencil-simple"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="px-6 py-16 text-center">
+                                <div
+                                    class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                                    <i class="ph ph-flow-arrow text-slate-400 text-4xl"></i>
+                                </div>
+                                <h3 class="text-lg font-semibold text-slate-700 mb-2">{% tenant_trans "No Production Stages" %}</h3>
+                                <p class="text-slate-500 mb-6">{% tenant_trans "Define your production workflow by adding stages" %}</p>
+                                <button onclick="document.getElementById('stageModal').classList.remove('hidden')"
+                                    class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-semibold shadow-sm transition">
+                                    <i class="ph ph-plus-circle mr-2"></i>
+                                    {% tenant_trans "Add Stage" %}
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- BOMs Section -->
+        <div id="factorySetupBoms" role="tabpanel" x-show="activeSection === 'boms'" x-transition>
+            <div class="mb-4 flex justify-end">
+                <button type="button"
+                    onclick="window.location.href='/manufacturing/bom-builder/'"
+                    class="bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm transition flex items-center gap-2">
+                    <i class="ph ph-stack text-lg"></i>
+                    {% tenant_trans "Create BOM" %}
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4">
+                {% for bom in boms %}
+                <div
+                    class="bg-white rounded-lg p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-purple-300 transition-all">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-4 mb-3">
+                                <div
+                                    class="w-14 h-14 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph ph-list-bullets text-purple-600 text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-lg">{{ bom.product_name }}</h3>
+                                    <p class="text-sm text-slate-500">
+                                        {% tenant_trans "Version" %} {{ bom.version }} - {% tenant_trans "Created" %} {{ bom.created_at|date:"M d, Y" }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-8 ml-18">
+                                <div class="text-sm">
+                                    <span class="text-slate-500">{% tenant_trans "Components:" %}</span>
+                                    <span class="font-semibold text-slate-800 ml-2">{{ bom.components_count }}</span>
+                                </div>
+                                <div class="text-sm">
+                                    <span class="text-slate-500">{% tenant_trans "Operations:" %}</span>
+                                    <span class="font-semibold text-slate-800 ml-2">{{ bom.operations_count }}</span>
+                                </div>
+                                <div class="text-sm">
+                                    <span class="text-slate-500">{% tenant_trans "Base Quantity:" %}</span>
+                                    <span class="font-semibold text-slate-800 ml-2">{{ bom.base_quantity }} {{ bom.uom|default:"pcs" }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="factory-setup-card-actions flex items-center gap-3">
+                            <span class="px-4 py-2 rounded-lg text-sm font-semibold
+                {% if bom.status == 'active' %}bg-green-100 text-green-700
+                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ bom.status_display|default:bom.status|title }}
+                            </span>
+                            {% if bom.status != 'active' %}
+                            <button onclick="activateBOM('{{ bom.id }}')"
+                                class="text-emerald-600 hover:text-emerald-700 font-semibold p-2 hover:bg-emerald-50 rounded-lg transition"
+                                title="Activate BOM"
+                                aria-label="{% tenant_trans 'Activate BOM' %} {{ bom.product_name }}">
+                                <i class="ph ph-check-circle text-lg"></i>
+                            </button>
+                            {% endif %}
+                            <a href="{% url 'bom_builder_edit' bom.id %}"
+                                class="text-blue-600 hover:text-blue-700 font-semibold p-2 hover:bg-blue-50 rounded-lg transition"
+                                aria-label="{% tenant_trans 'Edit BOM' %} {{ bom.product_name }}">
+                                <i class="ph ph-pencil-simple text-lg"></i>
+                            </a>
+                            <button onclick="deleteBOM('{{ bom.id }}')"
+                                class="text-red-500 hover:text-red-600 font-semibold p-2 hover:bg-red-50 rounded-lg transition"
+                                aria-label="{% tenant_trans 'Delete BOM' %} {{ bom.product_name }}">
+                                <i class="ph ph-trash text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="bg-white rounded-lg border-2 border-dashed border-slate-300 p-12 text-center">
+                    <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                        <i class="ph ph-list-bullets text-slate-400 text-4xl"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-700 mb-2">{% tenant_trans "No Bills of Materials" %}</h3>
+                    <p class="text-slate-500 mb-6">Create your first BOM to define product recipes and workflows</p>
+                    <p class="text-sm text-slate-600">BOMs can be created from the main dashboard.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Work Orders Section -->
+        <div id="factorySetupWorkOrders" role="tabpanel" x-show="activeSection === 'work_orders'" x-transition>
+            <div class="factory-setup-table-wrap overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm relative"
+                x-data="{ selectedWOs: [] }">
+                <!-- Bulk Toolbar -->
+                <div x-show="selectedWOs.length > 0" x-transition
+                    class="absolute top-0 left-0 right-0 bg-indigo-50 border-b border-indigo-100 p-3 flex items-center justify-between z-10">
+                    <div class="flex items-center gap-3">
+                        <span class="bg-indigo-600 text-white text-xs font-bold px-2 py-1 rounded-full"
+                            x-text="selectedWOs.length"></span>
+                        <span class="text-sm font-semibold text-indigo-900">Selected</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button @click="performBulkAction('set_pending', selectedWOs)"
+                            class="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 text-sm font-semibold rounded hover:bg-indigo-100">
+                            Set to Pending
+                        </button>
+                        <button @click="performBulkAction('set_archived', selectedWOs)"
+                            class="px-3 py-1.5 bg-white border border-indigo-200 text-indigo-700 text-sm font-semibold rounded hover:bg-indigo-100">
+                            Archive
+                        </button>
+                        <button @click="performBulkAction('delete', selectedWOs)"
+                            class="px-3 py-1.5 bg-red-100 text-red-700 text-sm font-semibold rounded hover:bg-red-200">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                <table class="w-full min-w-[820px]">
+                    <thead class="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th class="px-6 py-4 w-10">
+                                <input type="checkbox"
+                                    @change="if($el.checked) { selectedWOs = [{% for wo in work_orders %}'{{wo.id}}',{% endfor %}] } else { selectedWOs = [] }"
+                                    class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            </th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">WO
+                                #</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                Product</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                {% tenant_trans "Status" %}</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                Qty</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                Stage</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">
+                                Log</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for wo in work_orders %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="px-6 py-4">
+                                <input type="checkbox" value="{{ wo.id }}" x-model="selectedWOs"
+                                    class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            </td>
+                            <td class="px-6 py-4 font-mono text-sm text-slate-500">#{{ wo.id }}</td>
+                            <td class="px-6 py-4">
+                                <div class="font-bold text-slate-800">{{ wo.product_name }}</div>
+                                <div class="text-xs text-slate-400">{{ wo.created_at|date:"M d g:i A" }}</div>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+                                    {% if wo.status == 'completed' %}bg-green-100 text-green-700
+                                    {% elif wo.status == 'in_progress' %}bg-blue-100 text-blue-700
+                                    {% elif wo.status == 'pending' %}bg-amber-100 text-amber-700
+                                    {% elif wo.status == 'archived' %}bg-gray-100 text-gray-400 line-through
+                                    {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                    {{ wo.status_display }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 font-bold text-slate-700">{{ wo.quantity }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-500">
+                                {{ wo.current_stage_name|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <button type="button" onclick="openWOLog('{{ wo.id }}')"
+                                    class="px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100">
+                                    View Log
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-slate-400">No work orders found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Bulk Upload Section -->
+        <div id="factorySetupBulkUpload" role="tabpanel" x-show="activeSection === 'bulk_upload'" x-transition>
+            <div class="bg-white rounded-lg border border-slate-200 p-5 sm:p-8">
+                <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">{% tenant_trans "Bulk Upload" %}</h3>
+                        <p class="text-sm text-slate-500 mt-0.5">
+                            {% tenant_trans "Import machines, stages, products, employees, or work orders in one step." %}
+                        </p>
+                        <ul class="mt-4 space-y-1 text-sm text-slate-600">
+                            <li>- {% tenant_trans "Upload CSV/Excel files using the guided importer." %}</li>
+                            <li>- {% tenant_trans "Validate rows before applying changes." %}</li>
+                            <li>- {% tenant_trans "Reduce manual setup time for large factories." %}</li>
+                        </ul>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <a href="{% url 'bulk_import_dashboard' %}"
+                            class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold shadow-sm transition">
+                            <i class="ph ph-upload-simple text-lg"></i>
+                            {% tenant_trans "Open Bulk Upload" %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Work Order Log Modal -->
+<div id="woLogModal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl p-6 relative">
+        <button onclick="closeWOLog()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-700">
+            <i class="ph ph-x"></i>
+        </button>
+        <h3 class="text-lg font-bold text-slate-800 mb-4">{% tenant_trans "Work Order Log" %}</h3>
+        <div id="woLogContent" class="space-y-3 max-h-[60vh] overflow-y-auto text-sm text-slate-600"></div>
+    </div>
+</div>
+
+<script>
+    function openWOLog(woId) {
+        const modal = document.getElementById('woLogModal');
+        const content = document.getElementById('woLogContent');
+        if (!modal || !content) return;
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        content.innerHTML = '<div class="text-sm text-slate-400">Loading log entries...</div>';
+
+        fetch(`/manufacturing/api/work-order/${woId}/log/`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    content.innerHTML = `<div class="text-sm text-red-600">Failed to load log: ${data.error || 'Unknown error'}</div>`;
+                    return;
+                }
+
+                const logs = Array.isArray(data.logs) ? data.logs : [];
+                content.innerHTML = '';
+                if (logs.length === 0) {
+                    content.innerHTML = '<div class="text-sm text-slate-400">No log entries yet.</div>';
+                    return;
+                }
+
+                logs.forEach(log => {
+                    const card = document.createElement('div');
+                    card.className = 'p-3 rounded-lg border border-slate-200 bg-slate-50';
+
+                    const header = document.createElement('div');
+                    header.className = 'flex items-center justify-between text-xs text-slate-500';
+
+                    const timestamp = document.createElement('span');
+                    timestamp.textContent = log.timestamp || '';
+                    const status = document.createElement('span');
+                    status.textContent = (log.status || '').toUpperCase();
+
+                    header.appendChild(timestamp);
+                    header.appendChild(status);
+
+                    const title = document.createElement('div');
+                    title.className = 'text-sm font-semibold text-slate-800 mt-1';
+                    const hasQty = Number.isFinite(Number(log.quantity));
+                    title.textContent = hasQty
+                        ? `${log.action || 'Production logged'} - Qty: ${log.quantity}`
+                        : `${log.action || 'Work order updated'}`;
+
+                    const meta = document.createElement('div');
+                    meta.className = 'text-xs text-slate-500 mt-1';
+                    const metaParts = [];
+                    if (log.worker) metaParts.push(`Worker: ${log.worker}`);
+                    if (log.editor) metaParts.push(`Edited by: ${log.editor}`);
+                    if (log.reviewed_by) metaParts.push(`Reviewed: ${log.reviewed_by}`);
+                    if (log.reviewed_at) metaParts.push(`@ ${log.reviewed_at}`);
+                    meta.textContent = metaParts.join(' - ');
+
+                    const details = document.createElement('div');
+                    details.className = 'text-xs text-slate-500 mt-1';
+                    details.textContent = log.details || '';
+
+                    const note = document.createElement('div');
+                    note.className = 'text-xs text-slate-600 mt-1';
+                    note.textContent = log.note || '';
+
+                    card.appendChild(header);
+                    card.appendChild(title);
+                    if (meta.textContent) card.appendChild(meta);
+                    if (details.textContent) card.appendChild(details);
+                    if (note.textContent) card.appendChild(note);
+
+                    content.appendChild(card);
+                });
+            })
+            .catch(err => {
+                console.error(err);
+                content.innerHTML = '<div class="text-sm text-red-600">Error loading log. Check console for details.</div>';
+            });
+    }
+
+    function closeWOLog() {
+        const modal = document.getElementById('woLogModal');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    async function deleteBOM(id) {
+        const confirmed = typeof window.appConfirm === 'function'
+            ? await window.appConfirm('Are you sure you want to delete this BOM? This action cannot be undone.', {
+                title: 'Delete BOM',
+                confirmText: 'Delete',
+                kind: 'warning'
+            })
+            : window.confirm('Are you sure you want to delete this BOM? This action cannot be undone.');
+        if (!confirmed) return;
+
+        try {
+            const res = await fetch(`/manufacturing/api/v1/boms/${id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (res.ok) {
+                // Show toast or verify?
+                if (window.appNotify) window.appNotify('BOM deleted successfully.', 'success');
+                window.location.reload();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                if (window.appNotify) window.appNotify('Failed to delete BOM: ' + (data.detail || res.statusText), 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            if (window.appNotify) window.appNotify('Error deleting BOM. Check console for details.', 'error');
+        }
+    }
+
+    async function activateBOM(id) {
+        const confirmed = typeof window.appConfirm === 'function'
+            ? await window.appConfirm('Activate this BOM for production?', {
+                title: 'Activate BOM',
+                confirmText: 'Activate',
+                kind: 'warning'
+            })
+            : window.confirm('Activate this BOM for production?');
+        if (!confirmed) return;
+        try {
+            const body = new URLSearchParams({
+                bom_id: id,
+                status: 'active'
+            });
+            const res = await fetch("{% url 'update_bom_status' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (window.appNotify) window.appNotify('BOM activated for production.', 'success');
+                location.reload();
+            } else {
+                if (window.appNotify) window.appNotify("Failed to activate BOM: " + (data.error || "Unknown error"), 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            if (window.appNotify) window.appNotify('Activation request failed.', 'error');
+        }
+    }
+
+    async function performBulkAction(action, ids) {
+        if (!ids.length) return;
+        if (action === 'delete') {
+            const confirmed = typeof window.appConfirm === 'function'
+                ? await window.appConfirm(`Are you sure you want to delete ${ids.length} orders?`, {
+                    title: 'Bulk Delete',
+                    confirmText: 'Delete',
+                    kind: 'warning'
+                })
+                : window.confirm(`Are you sure you want to delete ${ids.length} orders?`);
+            if (!confirmed) return;
+        }
+
+        try {
+            const res = await fetch("{% url 'api_bulk_wo_action' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ action: action, ids: ids })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // Toast notification here ideally
+                if (window.appNotify) window.appNotify('Bulk action completed.', 'success');
+                window.location.reload();
+            } else {
+                if (window.appNotify) window.appNotify("Error: " + data.error, 'error');
+            }
+        } catch (e) { console.error(e); if (window.appNotify) window.appNotify("Network error", 'error'); }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const notice = document.getElementById('factoryMachineSaveNotice');
+        if (!notice) return;
+        try {
+            const message = localStorage.getItem('factorySetup.machineSaveNotice');
+            if (!message) return;
+            localStorage.removeItem('factorySetup.machineSaveNotice');
+            notice.textContent = message;
+            notice.classList.remove('hidden');
+        } catch (error) {
+            console.warn('Unable to read machine save notice.', error);
+        }
+    });
+</script>
+{% endblock %}
+
+
+
+
+

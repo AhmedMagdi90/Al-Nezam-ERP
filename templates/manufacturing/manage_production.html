@@ -1,0 +1,143 @@
+{% load static %}
+{% load form_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nezam - Supervisor Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans leading-relaxed">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 mb-1">🕵️ Supervisor Dashboard</h1>
+                <p class="text-gray-600">Overview production and approve worker logs.</p>
+            </div>
+            <div>
+                <a href="/manufacturing/create-workorder/" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 transition">
+                    ⬅ Planner View
+                </a>
+            </div>
+        </div>
+
+        <!-- 🔔 Pending Logs Section -->
+        <div class="bg-white shadow-lg rounded-xl p-6 mb-10 border-l-4 border-yellow-400">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                🔔 Pending Production Logs 
+                <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">{{ pending_logs.count }}</span>
+            </h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-700 uppercase font-semibold">
+                        <tr>
+                            <th class="px-4 py-3">Work Order</th>
+                            <th class="px-4 py-3">Worker</th>
+                            <th class="px-4 py-3">Qty</th>
+                            <th class="px-4 py-3">Shift</th>
+                            <th class="px-4 py-3">Date</th>
+                            <th class="px-4 py-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for log in pending_logs %}
+                        <tr id="log-row-{{ log.id }}" class="hover:bg-gray-50">
+                            <td class="px-4 py-3 font-medium">{{ log.work_order.product_name }}</td>
+                            <td class="px-4 py-3">{{ log.worker.username }}</td>
+                            <td class="px-4 py-3 font-bold text-blue-600">{{ log.quantity }}</td>
+                            <td class="px-4 py-3">{{ log.get_shift_display }}</td>
+                            <td class="px-4 py-3 text-gray-500">{{ log.date }}</td>
+                            <td class="px-4 py-3 flex gap-2">
+                                <button onclick="handleLog('{{ log.id }}', 'approve')" class="bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1 rounded-md transition">
+                                    ✅ Approve
+                                </button>
+                                <button onclick="handleLog('{{ log.id }}', 'reject')" class="bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1 rounded-md transition">
+                                    ❌ Reject
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-8 text-gray-400 italic">No pending logs to review.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 📋 Active Work Orders -->
+        <div class="bg-white shadow-lg rounded-xl p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Shop Floor Status</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for wo in workorders %}
+                <div class="border border-gray-200 p-4 rounded-lg flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg text-gray-800">{{ wo.product_name }}</h3>
+                            <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded">WO#{{ wo.id }}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">
+                            <span class="font-semibold">Machine:</span> {{ wo.machine.display_label }}
+                        </p>
+                        <p class="text-sm text-gray-600 mb-3">
+                            <span class="font-semibold">Assigned:</span> {{ wo.assigned_to.username|default:"Unassigned" }}
+                        </p>
+                        
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ wo.progress }}%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500 mb-4">
+                            <span>{{ wo.progress }}%</span>
+                            <span>Target: {{ wo.quantity }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500">No active work orders.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function handleLog(logId, action) {
+            if(!confirm(`Are you sure you want to ${action} this log?`)) return;
+            const payload = {
+                action: action,
+                csrfmiddlewaretoken: '{{ csrf_token }}'
+            };
+            if (action === 'reject') {
+                const reason = prompt('Enter rejection reason');
+                if (!reason || !reason.trim()) {
+                    alert('Rejection reason is required.');
+                    return;
+                }
+                payload.reason = reason.trim();
+            }
+
+            $.ajax({
+                url: `/manufacturing/approve-log/${logId}/`,
+                method: "POST",
+                data: payload,
+                success: function(response) {
+                    if(response.success) {
+                        $(`#log-row-${logId}`).fadeOut();
+                    } else {
+                        alert("Error: " + response.error);
+                    }
+                },
+                error: function() {
+                    alert("An error occurred.");
+                }
+            });
+        }
+    </script>
+</body>
+</html>

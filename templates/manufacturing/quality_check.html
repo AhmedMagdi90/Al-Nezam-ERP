@@ -1,0 +1,449 @@
+﻿{% extends "manufacturing/base_dashboard.html" %}
+{% load static tenant_i18n %}
+
+{% block title %}{% tenant_trans "Quality Control" %}{% endblock %}
+{% block subtitle %}{% tenant_trans "Quality workflow hub" %}{% endblock %}
+
+{% block content %}
+<div class="mb-4 rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm sm:px-6">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-cyan-700">
+                <i class="ph ph-shield-check text-sm"></i>
+                {% tenant_trans "Quality Workspace" %}
+            </div>
+            <h1 class="mt-3 text-2xl font-black tracking-[-0.04em] text-slate-950">
+                {% if read_only %}
+                    {% tenant_trans "Quality Overview" %}
+                {% elif role_mode == 'head' %}
+                    {% tenant_trans "Quality Control Hub" %}
+                {% elif role_mode == 'supervisor' %}
+                    {% tenant_trans "Quality Supervisor Queue" %}
+                {% else %}
+                    {% tenant_trans "Quality Worker Queue" %}
+                {% endif %}
+            </h1>
+            <p class="mt-2 text-sm leading-6 text-slate-600">
+                {% if read_only %}
+                    {% tenant_trans "Read-only visibility for planner users. Focus on pending inspections, affected machines, and approval load." %}
+                {% elif role_mode == 'head' %}
+                    {% tenant_trans "Run the quality loop in order: review queue, assign or override, approve results, then watch SLA risk." %}
+                {% elif role_mode == 'supervisor' %}
+                    {% tenant_trans "Prioritize open inspections, keep assignments moving, and clear anything blocking release." %}
+                {% else %}
+                    {% tenant_trans "Open the next inspection, record evidence, and submit cleanly before moving to the next item." %}
+                {% endif %}
+            </p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 lg:min-w-[24rem]">
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{% tenant_trans "1. Review queue" %}</div>
+                <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Find pending inspections first" %}</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{% tenant_trans "2. Check evidence" %}</div>
+                <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Use checklist, notes, and quantities together" %}</div>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">{% tenant_trans "3. Release or escalate" %}</div>
+                <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Approve when clear, raise issues when blocked" %}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% if read_only %}
+<div class="h-[calc(100vh-140px)] overflow-y-auto pr-2 custom-scrollbar space-y-6">
+    <div class="p-6 rounded-2xl border border-slate-200 bg-white">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800">{% tenant_trans "Quality Overview" %}</h1>
+                <p class="text-sm text-slate-500 mt-1">{% tenant_trans "Planner read-only view" %}</p>
+            </div>
+            <div class="px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                {% tenant_trans "View Only" %}
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase">{% tenant_trans "Pending Inspections" %}</div>
+            <div class="text-2xl font-black text-slate-800 mt-2">{{ work_orders.count }}</div>
+        </div>
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase">{% tenant_trans "Total Qty" %}</div>
+            <div class="text-2xl font-black text-slate-800 mt-2">{{ pending_qty }}</div>
+        </div>
+        <div class="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs font-bold text-slate-500 uppercase">{% tenant_trans "Machines Affected" %}</div>
+            <div class="text-2xl font-black text-slate-800 mt-2">{{ machines_affected }}</div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-bold text-slate-700">{% tenant_trans "Pending QC Queue" %}</h2>
+            <span class="text-xs text-slate-400">{% tenant_trans "Updated" %} {% now "M d, H:i" %}</span>
+        </div>
+        <div class="hidden md:grid md:grid-cols-6 gap-3 px-4 py-2 bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wide">
+            <div class="col-span-2">{% tenant_trans "Work Order / Product" %}</div>
+            <div>{% tenant_trans "Stage" %}</div>
+            <div>{% tenant_trans "Machine" %}</div>
+            <div>{% tenant_trans "Qty" %}</div>
+            <div>{% tenant_trans "Status / Completed" %}</div>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for wo in work_orders %}
+            <div class="p-4 grid grid-cols-1 md:grid-cols-6 gap-3 items-start">
+                <div class="md:col-span-2">
+                    <div class="text-sm font-bold text-slate-800">WO-{{ wo.id }} - {{ wo.product_name }}</div>
+                </div>
+                <div class="text-xs text-slate-600">
+                    {{ wo.current_stage.name|default:wo.stage.name|default:"-" }}
+                </div>
+                <div class="text-xs text-slate-600">
+                    {{ wo.machine.display_label|default:"Manual" }}
+                </div>
+                <div class="text-xs text-slate-600">
+                    {{ wo.pending_qc_qty }}
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        {% tenant_trans "Waiting QC" %}
+                    </span>
+                    <div class="text-xs text-slate-400">
+                        {% if wo.end_date %}{% tenant_trans "Completed" %} {{ wo.end_date|date:"M d, H:i" }}{% else %}{% tenant_trans "Completed" %} -{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-10 text-center text-slate-400">
+                <div class="text-lg font-semibold">{% tenant_trans "All caught up" %}</div>
+                <div class="text-xs mt-1">{% tenant_trans "No pending inspections" %}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% else %}
+
+<div class="min-h-[calc(100vh-140px)] flex flex-col gap-4">
+    <div class="bg-white border border-slate-200 rounded-2xl px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-slate-800">
+                {% if role_mode == 'head' %}{% tenant_trans "Quality Module" %}{% elif role_mode == 'supervisor' %}{% tenant_trans "Quality Supervisor" %}{% else %}{% tenant_trans "Quality Worker" %}{% endif %}
+            </h1>
+        </div>
+        <div class="flex items-center gap-3">
+            {% if role_mode == 'head' %}
+            <form method="post" class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="toggle_auto_release">
+                <input type="hidden" name="auto_release" value="{% if qc_auto_release %}0{% else %}1{% endif %}">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <div class="text-[11px] font-semibold text-slate-500 uppercase">{% tenant_trans "Auto Assign" %}</div>
+                <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-semibold {% if qc_auto_release %}bg-blue-600 text-white{% else %}bg-white text-slate-700 border border-slate-200{% endif %}">
+                    {% if qc_auto_release %}{% tenant_trans "On" %}{% else %}{% tenant_trans "Off" %}{% endif %}
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-2xl px-3 py-2 flex flex-wrap items-center gap-2">
+        {% for tab in tabs %}
+        <a href="?tab={{ tab.id }}{% if selected_qc %}&qc={{ selected_qc.id }}{% endif %}"
+            class="px-4 py-1.5 rounded-full text-sm font-semibold border transition {% if active_tab == tab.id %}bg-blue-100 text-blue-700 border-blue-200{% else %}bg-white text-slate-600 border-slate-200 hover:border-slate-400{% endif %}">
+            {% tenant_trans tab.label %} <span class="ml-2 text-[11px] px-2 py-0.5 rounded-full {% if active_tab == tab.id %}bg-blue-600 text-white{% else %}bg-slate-100 text-slate-500{% endif %}">{{ tab.count }}</span>
+        </a>
+        {% endfor %}
+        <div class="ml-auto text-xs text-slate-400">SLA {{ sla_hours }}h</div>
+    </div>
+
+    {% if role_mode != 'worker' %}
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4">
+            <div class="text-xs font-semibold text-slate-500 uppercase">{% if role_mode == 'head' %}Open{% else %}Pending{% endif %}</div>
+            <div class="text-2xl font-bold text-blue-600 mt-2">{{ kpi_open_count }}</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4">
+            <div class="text-xs font-semibold text-slate-500 uppercase">{% tenant_trans "In Review" %}</div>
+            <div class="text-2xl font-bold text-emerald-600 mt-2">{{ kpi_review_count }}</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4">
+            <div class="text-xs font-semibold text-slate-500 uppercase">{% tenant_trans "SLA Risk" %}</div>
+            <div class="text-2xl font-bold text-amber-500 mt-2">{{ kpi_sla_count }}</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl px-5 py-4">
+            <div class="text-xs font-semibold text-slate-500 uppercase">{% if role_mode == 'head' %}{% tenant_trans "History" %}{% else %}{% tenant_trans "Completed" %}{% endif %}</div>
+            <div class="text-2xl font-bold text-rose-500 mt-2">{{ kpi_history_count }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0">
+        {% if role_mode != 'worker' %}
+        <div class="lg:col-span-3 bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
+            <div class="px-4 py-3 border-b border-slate-100 text-sm font-semibold text-slate-700">{% tenant_trans "Inspection Queue" %}</div>
+            <div class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
+                {% for qc in active_list %}
+                <a href="?tab={{ active_tab }}&qc={{ qc.id }}"
+                    class="block p-4 rounded-xl border transition {% if selected_qc and qc.id == selected_qc.id %}border-blue-300 bg-blue-50{% else %}bg-white border-slate-100 hover:border-slate-300{% endif %}">
+                    <div class="flex items-start justify-between">
+                        <div class="text-xs font-semibold text-slate-400">WO #{{ qc.work_order.id }}</div>
+                        <div class="text-[10px] font-semibold px-2 py-0.5 rounded-full {% if qc.sla_overdue %}bg-rose-100 text-rose-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                            {{ qc.sla_display }}
+                        </div>
+                    </div>
+                    <div class="text-sm font-semibold mt-1 text-slate-800">{{ qc.work_order.product_name }}</div>
+                    <div class="text-xs mt-1 text-slate-500">{{ qc.stage_name }} - {{ qc.machine_name }}</div>
+                    <div class="text-xs mt-1 text-slate-500">
+                        WO Qty {{ qc.work_order.quantity }} | Pending QC {{ qc.pending_qty }}
+                    </div>
+                </a>
+                {% empty %}
+                <div class="p-6 text-center text-sm text-slate-400">No items in this tab.</div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="{% if role_mode == 'worker' %}lg:col-span-12{% else %}lg:col-span-9{% endif %} bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
+            {% if selected_qc %}
+            <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <div class="text-xs font-semibold text-slate-400">WO #{{ selected_qc.work_order.id }}</div>
+                    <div class="text-xl font-bold text-slate-800">{{ selected_qc.work_order.product_name }}</div>
+                    <div class="text-sm text-slate-500">Stage {{ selected_qc.stage_name }} - {{ selected_qc.machine_name }}</div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600">Pending {{ selected_qc.pending_qty }}</span>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-600">Approved {{ selected_qc.approved_qty }}</span>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-50 text-emerald-600">Checked {{ selected_qc.qc_checked }}</span>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                    <div class="text-xs font-semibold text-slate-500 uppercase">Summary</div>
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-slate-600">
+                        <div>Supervisor: {{ selected_qc.assigned_supervisor.username|default:"Unassigned" }}</div>
+                        <div>Worker: {{ selected_qc.assigned_worker.username|default:"Unassigned" }}</div>
+                        <div>Created: {{ selected_qc.created_at|date:"M d, H:i" }}</div>
+                    </div>
+                    <div class="mt-4">
+                        {% if selected_qc.approved_qty %}
+                            {% widthratio selected_qc.qc_checked selected_qc.approved_qty 100 as qc_progress %}
+                        {% else %}
+                            {% with qc_progress=0 %}{% endwith %}
+                        {% endif %}
+                        <div class="h-2 rounded-full bg-slate-200 overflow-hidden">
+                            <div class="h-full bg-blue-500" style="width: {{ qc_progress|default:0 }}%"></div>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-2">Progress {{ selected_qc.qc_checked }} / {{ selected_qc.approved_qty }}</div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-4">
+                    <div class="text-sm font-semibold text-slate-700">Checklist</div>
+                    <div class="mt-3 space-y-2 text-sm">
+                        {% if criteria_list %}
+                            {% for c in criteria_list %}
+                            <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                <div>
+                                    <div class="font-semibold text-slate-700">{{ c.parameter }}</div>
+                                    <div class="text-xs text-slate-500">{{ c.method }}</div>
+                                </div>
+                                <div class="text-xs text-slate-400">Pass/Fail</div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-xs text-slate-400">No checklist configured for this BOM.</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-4">
+                    <div class="text-sm font-semibold text-slate-700">Evidence</div>
+                    <div class="mt-3 grid grid-cols-4 gap-3">
+                        {% for i in "1234" %}
+                        <div class="h-16 rounded-lg bg-slate-100 border border-slate-200"></div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-4">
+                    <div class="text-sm font-semibold text-slate-700">Notes</div>
+                    <div class="mt-2 text-sm text-slate-500">
+                        {{ selected_qc.notes|default:"No notes yet." }}
+                    </div>
+                </div>
+
+                {% if role_mode == 'head' %}
+                    {% if selected_qc.status == 'new' %}
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+                        <div class="text-sm font-semibold text-slate-700 mb-3">Assign Supervisor</div>
+                        <form method="post" class="flex flex-wrap gap-3 items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign_supervisor">
+                            <input type="hidden" name="qc_id" value="{{ selected_qc.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="supervisor_id" class="border border-slate-200 rounded-lg px-3 py-2 text-sm min-w-[220px]">
+                                <option value="">Select supervisor</option>
+                                {% for sup in supervisors %}
+                                <option value="{{ sup.id }}">{{ sup.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Assign</button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <details class="bg-white border border-slate-200 rounded-2xl p-4">
+                        <summary class="text-sm font-semibold text-slate-700 cursor-pointer">Override and approve</summary>
+                        <form method="post" class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="override_qc">
+                            <input type="hidden" name="qc_id" value="{{ selected_qc.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Good Qty</label>
+                                <input type="number" name="good_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Good" value="{{ selected_qc.good_quantity }}">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Repair Qty</label>
+                                <input type="number" name="repair_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Repair" value="{{ selected_qc.repair_quantity }}">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Scrap Qty</label>
+                                <input type="number" name="faulty_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Scrap" value="{{ selected_qc.faulty_quantity }}">
+                            </div>
+                            <textarea name="override_notes" rows="2" class="md:col-span-3 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Override notes (optional)"></textarea>
+                            <div class="md:col-span-3 flex justify-end">
+                                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Approve</button>
+                            </div>
+                        </form>
+                    </details>
+                {% endif %}
+
+                {% if role_mode == 'supervisor' %}
+                    {% if selected_qc.status == 'new' and not selected_qc.assigned_worker %}
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+                        <div class="text-sm font-semibold text-slate-700 mb-3">Assign Inspector</div>
+                        <form method="post" class="flex flex-wrap gap-3 items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="assign_worker">
+                            <input type="hidden" name="qc_id" value="{{ selected_qc.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <select name="worker_id" class="border border-slate-200 rounded-lg px-3 py-2 text-sm min-w-[220px]">
+                                <option value="">Select worker</option>
+                                {% for worker in workers %}
+                                <option value="{{ worker.id }}">{{ worker.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">Assign</button>
+                        </form>
+                    </div>
+                    {% elif selected_qc.status == 'new' and selected_qc.completed_at %}
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+                        <div class="text-sm font-semibold text-slate-700">Supervisor Decision</div>
+                        <div class="grid grid-cols-3 gap-3 text-sm">
+                            <div class="p-3 rounded-lg bg-emerald-50 text-emerald-700">Good: {{ selected_qc.good_quantity }}</div>
+                            <div class="p-3 rounded-lg bg-amber-50 text-amber-700">Repair: {{ selected_qc.repair_quantity }}</div>
+                            <div class="p-3 rounded-lg bg-rose-50 text-rose-700">Scrap: {{ selected_qc.faulty_quantity }}</div>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="approve_qc">
+                                <input type="hidden" name="qc_id" value="{{ selected_qc.id }}">
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="px-5 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Approve</button>
+                            </form>
+                            <details class="flex-1">
+                                <summary class="text-sm font-semibold text-slate-600 cursor-pointer">Override quantities</summary>
+                                <form method="post" class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="override_qc">
+                                    <input type="hidden" name="qc_id" value="{{ selected_qc.id }}">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Good Qty</label>
+                                        <input type="number" name="good_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Good" value="{{ selected_qc.good_quantity }}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Repair Qty</label>
+                                        <input type="number" name="repair_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Repair" value="{{ selected_qc.repair_quantity }}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Scrap Qty</label>
+                                        <input type="number" name="faulty_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Scrap" value="{{ selected_qc.faulty_quantity }}">
+                                    </div>
+                                    <textarea name="override_notes" rows="2" class="md:col-span-3 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Override notes (optional)"></textarea>
+                                    <div class="md:col-span-3 flex justify-end">
+                                        <button type="submit" class="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-semibold">Override</button>
+                                    </div>
+                                </form>
+                            </details>
+                        </div>
+                    </div>
+                    {% elif selected_qc.status == 'new' and selected_qc.assigned_worker and not selected_qc.completed_at %}
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+                        <div class="text-sm text-slate-500">Worker is processing this check.</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                {% if role_mode == 'worker' %}
+                    {% if selected_qc.status == 'new' and not selected_qc.completed_at %}
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+                        <div class="text-sm font-semibold text-slate-700">Inspection Result</div>
+                        <form method="post" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="complete_qc">
+                            <input type="hidden" name="qc_id" value="{{ selected_qc.id }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Good Qty</label>
+                                <input type="number" name="good_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Good" required>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Rework Qty</label>
+                                <input type="number" name="repair_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Rework">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Reject Qty</label>
+                                <input type="number" name="faulty_quantity" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Reject">
+                            </div>
+                            <textarea name="notes" rows="2" class="md:col-span-3 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Notes (optional)"></textarea>
+                            <div class="md:col-span-3 flex justify-end">
+                                <button type="submit" class="px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-semibold">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div class="bg-white border border-slate-200 rounded-2xl p-4">
+                        <div class="text-sm text-slate-500">This inspection is already submitted.</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 text-sm text-slate-600">
+                    <div class="font-semibold text-slate-700 mb-2">Details</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>Supervisor: {{ selected_qc.assigned_supervisor.username|default:"Unassigned" }}</div>
+                        <div>Worker: {{ selected_qc.assigned_worker.username|default:"Unassigned" }}</div>
+                        <div>Created: {{ selected_qc.created_at|date:"M d, H:i" }}</div>
+                        <div>Status: {{ selected_qc.status }}</div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="flex-1 flex items-center justify-center text-slate-400">Select a quality item to view details.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}

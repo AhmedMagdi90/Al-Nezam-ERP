@@ -1,0 +1,165 @@
+{% extends "manufacturing/base_public.html" %}
+
+{% block title %}Organization Bootstrap - Nezam{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-slate-50 py-10 px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-6xl">
+        <div class="mb-8 flex items-start justify-between gap-4">
+            <div>
+                <div class="text-xs font-black uppercase tracking-[0.24em] text-slate-400">Control Plane</div>
+                <h1 class="mt-2 text-3xl font-black text-slate-900">Bootstrap Organization</h1>
+                <p class="mt-3 max-w-3xl text-sm text-slate-500">
+                    Create an organization and provision exactly the environments you need. `demo` seeds sample data, `test` copies from demo, and `dev` follows the latest available setup.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <a href="{% url 'platform_control_center' %}" class="inline-flex items-center rounded-xl border border-cyan-200 bg-white px-4 py-3 text-sm font-bold text-cyan-700 shadow-sm transition hover:border-cyan-300 hover:text-cyan-900">
+                    Open Control Center
+                </a>
+                <a href="{% url 'logout' %}" class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900">
+                    Sign Out
+                </a>
+            </div>
+        </div>
+
+        {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+            <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.9fr)]">
+            <div class="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+
+                    <div class="grid gap-5 md:grid-cols-2">
+                        <div>
+                            <label for="{{ form.company_name.id_for_label }}" class="mb-2 block text-sm font-bold text-slate-700">Company Name</label>
+                            {{ form.company_name }}
+                            {% if form.company_name.errors %}
+                            <div class="mt-2 text-sm font-semibold text-rose-600">{{ form.company_name.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.company_code.id_for_label }}" class="mb-2 block text-sm font-bold text-slate-700">Company Code</label>
+                            {{ form.company_code }}
+                            {% if form.company_code.errors %}
+                            <div class="mt-2 text-sm font-semibold text-rose-600">{{ form.company_code.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="grid gap-5 md:grid-cols-2">
+                        <div>
+                            <label for="{{ form.owner_email.id_for_label }}" class="mb-2 block text-sm font-bold text-slate-700">Owner Email</label>
+                            {{ form.owner_email }}
+                            {% if form.owner_email.errors %}
+                            <div class="mt-2 text-sm font-semibold text-rose-600">{{ form.owner_email.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.owner_password.id_for_label }}" class="mb-2 block text-sm font-bold text-slate-700">Owner Password</label>
+                            {{ form.owner_password }}
+                            {% if form.owner_password.errors %}
+                            <div class="mt-2 text-sm font-semibold text-rose-600">{{ form.owner_password.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="grid gap-5 md:grid-cols-2">
+                        <div>
+                            <label for="{{ form.subscription_plan.id_for_label }}" class="mb-2 block text-sm font-bold text-slate-700">Subscription Plan</label>
+                            {{ form.subscription_plan }}
+                            {% if form.subscription_plan.errors %}
+                            <div class="mt-2 text-sm font-semibold text-rose-600">{{ form.subscription_plan.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.demo_password.id_for_label }}" class="mb-2 block text-sm font-bold text-slate-700">Demo Seed Password</label>
+                            {{ form.demo_password }}
+                            <div class="mt-2 text-xs font-medium text-slate-500">{{ form.demo_password.help_text }}</div>
+                            {% if form.demo_password.errors %}
+                            <div class="mt-2 text-sm font-semibold text-rose-600">{{ form.demo_password.errors|join:", " }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="mb-3 text-sm font-bold text-slate-700">Environments</div>
+                        <div class="grid gap-3 md:grid-cols-2">
+                            {% for checkbox in form.environments %}
+                            <label class="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition hover:border-cyan-200 hover:bg-cyan-50">
+                                {{ checkbox.tag }}
+                                <span>
+                                    <span class="block text-sm font-bold text-slate-800">{{ checkbox.choice_label }}</span>
+                                    <span class="mt-1 block text-xs text-slate-500">
+                                        {% if checkbox.data.value == 'demo' %}
+                                        Seeded evaluation workspace for customers.
+                                        {% elif checkbox.data.value == 'test' %}
+                                        Customer validation space copied from demo setup.
+                                        {% elif checkbox.data.value == 'dev' %}
+                                        Internal engineering space copied from the latest available setup.
+                                        {% else %}
+                                        Live production environment for real operations.
+                                        {% endif %}
+                                    </span>
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% if form.environments.errors %}
+                        <div class="mt-2 text-sm font-semibold text-rose-600">{{ form.environments.errors|join:", " }}</div>
+                        {% endif %}
+                    </div>
+
+                    {% if form.non_field_errors %}
+                    <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                        {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-black text-white transition hover:bg-cyan-700">
+                        Create Organization And Environments
+                    </button>
+                </form>
+            </div>
+
+            <div class="space-y-6">
+                <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Bootstrap Rules</div>
+                    <div class="mt-4 space-y-3 text-sm text-slate-600">
+                        <div><span class="font-semibold text-slate-800">Demo:</span> seeded with users, machines, BOMs, and sample work orders.</div>
+                        <div><span class="font-semibold text-slate-800">Test:</span> copies setup from demo, without transactional records.</div>
+                        <div><span class="font-semibold text-slate-800">Dev:</span> copies setup from demo, then test, then live if available.</div>
+                        <div><span class="font-semibold text-slate-800">Live:</span> copies setup from test when present.</div>
+                    </div>
+                </div>
+
+                {% if created_environments %}
+                <div class="rounded-[28px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-6 shadow-sm">
+                    <div class="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-600">Created</div>
+                    <div class="mt-4 space-y-4">
+                        {% for environment in created_environments %}
+                        <div class="rounded-2xl border border-emerald-100 bg-white px-4 py-4">
+                            <div class="text-sm font-black text-slate-900">{{ environment.label }}</div>
+                            <div class="mt-2 text-sm text-slate-600"><span class="font-semibold text-slate-800">Tenant code:</span> {{ environment.tenant_code }}</div>
+                            <div class="mt-1 text-sm text-slate-600"><span class="font-semibold text-slate-800">DB alias:</span> {{ environment.db_alias }}</div>
+                            {% if environment.hostname %}
+                            <div class="mt-1 text-sm text-slate-600"><span class="font-semibold text-slate-800">Hostname:</span> {{ environment.hostname }}</div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

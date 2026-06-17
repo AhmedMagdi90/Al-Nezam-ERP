@@ -1,0 +1,209 @@
+{% load tenant_i18n %}
+<div class="flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm min-h-[360px]"
+    x-data="productionCalendar()">
+    <!-- Header Controls -->
+    <div class="flex flex-col md:flex-row justify-between items-center p-6 border-b border-slate-100 gap-4">
+        <div class="flex items-center gap-6">
+            <h2 class="text-2xl font-bold text-slate-900" x-text="monthName + ' ' + year"></h2>
+            <div class="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
+                <button @click="prevMonth()"
+                    class="p-1.5 hover:bg-white hover:text-indigo-600 rounded-md shadow-sm transition text-slate-500"><i
+                        class="ph ph-caret-left font-bold"></i></button>
+                <div class="w-px bg-slate-300 mx-1 h-4 self-center"></div>
+                <button @click="nextMonth()"
+                    class="p-1.5 hover:bg-white hover:text-indigo-600 rounded-md shadow-sm transition text-slate-500"><i
+                        class="ph ph-caret-right font-bold"></i></button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- Legend -->
+            <div class="flex items-center gap-3 text-xs font-medium text-slate-500 mr-4">
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span> {% tenant_trans "Scheduled" %}
+                </div>
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> {% tenant_trans "In Progress" %}</div>
+                <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> {% tenant_trans "Completed" %}</div>
+            </div>
+
+            <button @click="jumpToToday()"
+                class="flex items-center gap-2 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition border border-indigo-100">
+                <i class="ph ph-calendar-check"></i>
+                {% tenant_trans "Today" %}
+            </button>
+        </div>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="flex-1 grid grid-cols-7 grid-rows-[auto_1fr] overflow-hidden">
+        <!-- Weekdays -->
+        <template x-for="day in ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']">
+            <div class="py-3 text-center text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-50 border-b border-slate-200"
+                x-text="day.substring(0, 3)"></div>
+        </template>
+
+        <!-- Days Container -->
+        <div
+            class="col-span-7 grid grid-cols-7 grid-rows-6 h-full auto-rows-fr bg-slate-300 gap-px border-b border-l border-slate-300">
+            <!-- Empty slots for start of month -->
+            <template x-for="n in startingBlankDays">
+                <div class="bg-slate-100/50 bg-pattern"></div>
+            </template>
+
+            <!-- Actual Days -->
+            <template x-for="day in daysInMonth">
+                <div
+                    class="relative bg-white p-1 transition group hover:bg-slate-50 flex flex-col gap-1 overflow-hidden min-h-[120px]">
+
+                    <!-- Date Number -->
+                    <div class="flex justify-between items-start mb-1 px-1 pt-1">
+                        <span
+                            class="text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full transition-colors"
+                            :class="isToday(day) ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700 group-hover:text-black'">
+                            <span x-text="day"></span>
+                        </span>
+
+                        <!-- Add Button (Hover) -->
+                        <button
+                            class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 transition-all"
+                            title="Add Event">
+                            <i class="ph ph-plus-circle text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- Events List -->
+                    <div class="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                        <template x-for="task in getTasksForDay(day)">
+                            <div class="flex flex-col gap-0.5 px-2 py-1.5 rounded border text-xs cursor-pointer hover:-translate-y-0.5 transition-all shadow-sm relative group/task"
+                                :class="getTaskColor(task)" @click="openTask(task.id)">
+                                <div class="flex justify-between items-center w-full">
+                                    <span class="font-bold tracking-tight text-slate-900"
+                                        x-text="'WO #' + task.id"></span>
+                                    <i class="ph text-[10px] opacity-70"
+                                        :class="task.status === 'completed' ? 'ph-check-circle' : (task.status === 'in_progress' ? 'ph-spinner' : 'ph-clock')"></i>
+                                </div>
+                                <span class="truncate font-medium text-slate-700" x-text="task.product"></span>
+
+                                <!-- Tooltip -->
+                                <div
+                                    class="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/task:block w-48 bg-slate-800 text-white text-[10px] p-2 rounded shadow-xl pointer-events-none z-[100]">
+                                    <div class="flex justify-between mb-1 pb-1 border-b border-slate-600">
+                                        <span class="font-bold text-white" x-text="'WO #' + task.id"></span>
+                                        <span x-text="task.status" class="capitalize"></span>
+                                    </div>
+                                    <div class="font-bold text-slate-200 truncate mb-0.5" x-text="task.product"></div>
+                                    <div class="text-slate-400 flex items-center gap-1"><i class="ph ph-wrench"></i>
+                                        <span x-text="task.machine_name || 'Unassigned'"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Trailing Empty slots -->
+            <template x-for="n in (42 - (daysInMonth + startingBlankDays))">
+                <div class="bg-slate-100/50 bg-pattern"></div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function registerProductionCalendar() {
+        const register = () => Alpine.data('productionCalendar', () => ({
+            date: new Date(),
+            tasks: [],
+            machines: [],
+
+            init() {
+                this.refreshData();
+                window.addEventListener('planner-refresh-calendar', () => this.refreshData());
+            },
+
+            refreshData() {
+                try {
+                    const tasksEl = document.getElementById('data-tasks');
+                    const machinesEl = document.getElementById('data-machines');
+                    if (tasksEl) this.tasks = JSON.parse(tasksEl.textContent);
+                    if (machinesEl) this.machines = JSON.parse(machinesEl.textContent);
+
+                    this.tasks = this.tasks.map(t => ({
+                        ...t,
+                        machine_name: this.getMachineName(t.machine_id)
+                    }));
+                } catch (e) { console.error(e); }
+            },
+
+            get year() { return this.date.getFullYear(); },
+            get month() { return this.date.getMonth(); },
+            get monthName() { return this.date.toLocaleString('default', { month: 'long' }); },
+
+            get daysInMonth() {
+                return new Date(this.year, this.month + 1, 0).getDate();
+            },
+            get startingBlankDays() {
+                return new Date(this.year, this.month, 1).getDay();
+            },
+
+            prevMonth() { this.date = new Date(this.year, this.month - 1, 1); },
+            nextMonth() { this.date = new Date(this.year, this.month + 1, 1); },
+            jumpToToday() { this.date = new Date(); },
+
+            isToday(day) {
+                const today = new Date();
+                return day === today.getDate() &&
+                    this.month === today.getMonth() &&
+                    this.year === today.getFullYear();
+            },
+
+            getTasksForDay(day) {
+                // Construct date string manually to avoid UTC shifts
+                const year = this.year;
+                const month = String(this.month + 1).padStart(2, '0'); // 1-indexed
+                const d = String(day).padStart(2, '0');
+                const compareStr = `${year}-${month}-${d}`;
+
+                const searchInput = document.getElementById('globalSmartSearch') || document.getElementById('timelineSearch');
+                const query = searchInput ? searchInput.value.toLowerCase() : '';
+
+                return this.tasks.filter(t => {
+                    if (!t.start) return false;
+
+                    // Search Filter
+                    if (query) {
+                        const match = (t.product && t.product.toLowerCase().includes(query)) ||
+                            (t.id && String(t.id).includes(query));
+                        if (!match) return false;
+                    }
+
+                    // Check if task start string (YYYY-MM-DD...) starts with our day string
+                    return t.start.startsWith(compareStr);
+                });
+            },
+
+            getMachineName(id) {
+                if (!id) return null;
+                const m = this.machines.find(x => x.id == id);
+                return m ? (m.display_name || m.name) : null;
+            },
+
+            openTask(id) {
+                if (window.openWorkOrderModal) {
+                    window.openWorkOrderModal(id);
+                }
+            },
+
+            getTaskColor(task) {
+                if (task.status === 'completed') return 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                if (task.status === 'in_progress') return 'bg-blue-50 text-blue-800 border-blue-200';
+                return 'bg-amber-50 text-amber-800 border-amber-200';
+            }
+        }));
+        if (window.Alpine) {
+            register();
+        } else {
+            document.addEventListener('alpine:init', register);
+        }
+    })();
+</script>

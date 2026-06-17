@@ -1,0 +1,548 @@
+{% extends 'manufacturing/base_dashboard.html' %}
+
+{% block title %}BOM Creator{% endblock %}
+{% block subtitle %}Design Products & Processes{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full space-y-6">
+
+    <!-- Header Actions -->
+    <div class="flex justify-between items-center glass-panel p-4 rounded-2xl">
+        <div class="flex items-center space-x-4">
+            <select class="form-select bg-gray-50 border-0 rounded-xl py-2 px-4 shadow-sm" id="product-select">
+                <option value="" disabled selected>Select Product...</option>
+                {% for p in products %}
+                <option value="{{ p.id }}">{{ p.name }} ({{ p.unit }})</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="base-qty" placeholder="Base Qty (e.g. 100)"
+                class="w-32 bg-gray-50 border-0 rounded-xl py-2 px-4 shadow-sm text-center">
+        </div>
+
+        <div class="flex space-x-3">
+            <button onclick="saveBOM('draft')"
+                class="px-6 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium transition-colors">
+                Save Draft
+            </button>
+            <button onclick="saveBOM('active')"
+                class="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all">
+                Publish Active
+            </button>
+        </div>
+    </div>
+
+    <!-- Wizard Stepper -->
+    <div
+        class="flex items-center justify-between px-10 py-4 bg-white rounded-2xl shadow-sm border border-gray-100 relative mb-4">
+        <!-- Progress Bar -->
+        <div class="absolute top-1/2 left-0 w-full h-1 bg-gray-200 -z-10"></div>
+        <div class="absolute top-1/2 left-0 h-1 bg-blue-500 -z-10 transition-all duration-500" id="stepper-progress"
+            style="width: 0%"></div>
+
+        <!-- Step 1 -->
+        <div class="flex flex-col items-center cursor-pointer" onclick="goToStep(1)">
+            <div id="step-circle-1"
+                class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors">
+                1</div>
+            <span class="text-xs font-semibold mt-2 text-slate-700">Materials</span>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="flex flex-col items-center cursor-pointer" onclick="goToStep(2)">
+            <div id="step-circle-2"
+                class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors">
+                2</div>
+            <span class="text-xs font-semibold mt-2 text-gray-500">Operations</span>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="flex flex-col items-center cursor-pointer" onclick="goToStep(3)">
+            <div id="step-circle-3"
+                class="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors">
+                3</div>
+            <span class="text-xs font-semibold mt-2 text-gray-500">Quality</span>
+        </div>
+    </div>
+
+    <!-- Tab 1: Materials -->
+    <div id="tab-materials" class="tab-content flex-1 overflow-auto glass-panel rounded-2xl p-6">
+        <div class="flex justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-700">Raw Materials & Components</h3>
+            <button onclick="addMaterialRow()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">+ Add
+                Material</button>
+        </div>
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="text-xs font-semibold text-gray-500 border-b border-gray-100 uppercase tracking-wider">
+                    <th class="py-3">Material Name</th>
+                    <th class="py-3 w-32">Gross Qty</th>
+                    <th class="py-3 w-24">Unit</th>
+                    <th class="py-3 w-32">Unit Cost</th>
+                    <th class="py-3 w-32">Scrap Qty</th>
+                    <th class="py-3 w-32">Scrap Price</th>
+                    <th class="py-3 w-10"></th>
+                </tr>
+            </thead>
+            <tbody id="materials-list" class="divide-y divide-gray-100">
+                <!-- Rows injected by JS -->
+            </tbody>
+            <tfoot>
+                <tr class="font-bold text-slate-700 bg-gray-50/50">
+                    <td colspan="3" class="py-4 text-right pr-4">Estimated Total Cost:</td>
+                    <td id="total-cost-display" class="py-4">$0.00</td>
+                    <td colspan="3"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Tab 2: Operations -->
+    <div id="tab-operations" class="tab-content hidden flex-1 overflow-auto glass-panel rounded-2xl p-6 relative">
+        <div class="flex justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-700">Production Route</h3>
+            <div class="text-sm text-gray-500">Drag items to reorder stages</div>
+        </div>
+
+        <div class="flex gap-6 h-full">
+            <!-- Toolbox -->
+            <div class="w-1/4 space-y-4">
+                <div class="bg-gray-50 p-4 rounded-xl">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Available Machines</h4>
+                    <div class="space-y-2">
+                        {% for m in machines %}
+                        <div draggable="true" ondragstart="drag(event)" data-type="machine" data-id="{{ m.id }}"
+                            data-name="{{ m.name }}" data-cost="50.00"
+                            class="bg-white p-3 rounded-lg border border-gray-200 shadow-sm cursor-grab hover:shadow-md transition-all flex items-center justify-between">
+                            <span class="text-sm font-medium">{{ m.name }}</span>
+                            <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">$50/hr</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas -->
+            <div class="flex-1 bg-gray-50/50 rounded-xl border-2 border-dashed border-gray-200 p-6 flex flex-col gap-4 overflow-y-auto relative"
+                id="operations-canvas" ondrop="drop(event)" ondragover="allowDrop(event)">
+
+                <!-- Start Node -->
+                <div class="w-full flex justify-center mb-4">
+                    <div
+                        class="w-32 py-2 bg-green-100 text-green-700 text-xs font-bold uppercase rounded-full border border-green-300 text-center shadow-sm">
+                        <i class="ph ph-play-circle mr-1"></i> Start
+                    </div>
+                </div>
+
+                <!-- Empty State (Initial) -->
+                <div id="op-empty-state" class="text-center py-20 text-gray-400 opacity-50">
+                    <i class="ph ph-hand-grabbing text-4xl mb-2"></i>
+                    <p class="text-xs">Drag machines here to connect the flow</p>
+                </div>
+
+                <!-- Items Injected Here -->
+
+                <!-- End Node -->
+                <div class="w-full flex justify-center mt-auto pt-4">
+                    <div
+                        class="w-32 py-2 bg-red-100 text-red-700 text-xs font-bold uppercase rounded-full border border-red-300 text-center shadow-sm">
+                        <i class="ph ph-stop-circle mr-1"></i> End
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Calculation -->
+        <div class="mt-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex justify-between items-center">
+            <div class="text-sm text-gray-600">Total Cycle Time: <span id="cycle-time-display"
+                    class="font-bold text-blue-700 text-lg">0</span> min</div>
+            <div class="text-xs text-gray-400">Calculated as: Σ (Setup + (Run × BaseQty))</div>
+        </div>
+    </div>
+
+    <!-- Tab 3: Acceptance Criteria -->
+    <div id="tab-quality" class="tab-content hidden flex-1 overflow-auto glass-panel rounded-2xl p-6">
+        <div class="flex justify-between mb-4">
+            <h3 class="text-lg font-semibold text-slate-700">Step 3: Quality Standards</h3>
+            <button onclick="addCriteriaRow()"
+                class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1">
+                <i class="ph ph-clipboard-text"></i> Add Standard
+            </button>
+        </div>
+
+        <div class="border rounded-xl overflow-hidden shadow-sm">
+            <table class="w-full text-left border-collapse bg-white">
+                <thead class="bg-gray-50">
+                    <tr class="text-xs font-bold text-gray-500 border-b border-gray-100 uppercase tracking-wider">
+                        <th class="py-3 px-4">Test Method / Gauge</th>
+                        <th class="py-3 px-4">Parameter</th>
+                        <th class="py-3 px-4 w-32">Target</th>
+                        <th class="py-3 px-4 w-32">Tolerance</th>
+                        <th class="py-3 px-4 w-24 text-center">Critical?</th>
+                        <th class="py-3 px-4 w-10"></th>
+                    </tr>
+                </thead>
+                <tbody id="criteria-list" class="divide-y divide-gray-100">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Persistent Footer -->
+    <div class="glass-panel p-4 rounded-xl flex justify-between items-center border-t border-gray-200 mt-auto">
+        <div class="flex space-x-8 text-sm">
+            <div>
+                <span class="text-gray-400 uppercase text-[10px] font-bold block">Material Cost</span>
+                <span class="font-bold text-slate-700" id="footer-mat-cost">$0.00</span>
+            </div>
+            <div>
+                <span class="text-gray-400 uppercase text-[10px] font-bold block">Operation Cost</span>
+                <span class="font-bold text-slate-700" id="footer-ops-cost">$0.00</span>
+            </div>
+            <div class="pl-8 border-l border-gray-200">
+                <span class="text-gray-400 uppercase text-[10px] font-bold block">Total Unit Cost</span>
+                <span class="font-bold text-blue-600 text-lg" id="footer-total-cost">$0.00</span>
+            </div>
+        </div>
+
+        <div class="flex space-x-3">
+            <button onclick="prevStep()" id="btn-back"
+                class="px-6 py-2 rounded-xl text-gray-500 hover:bg-gray-100 font-medium hidden">Back</button>
+            <button onclick="nextStep()" id="btn-next"
+                class="px-6 py-2 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-lg shadow-blue-200">Next
+                Step ></button>
+            <button onclick="saveBOM('active')" id="btn-save"
+                class="hidden px-6 py-2 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 shadow-lg shadow-green-200">Save
+                & Publish</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Templates for JS -->
+<template id="row-material">
+    <tr class="group hover:bg-blue-50/30 transition-colors">
+        <td class="py-2"><input type="text" name="name"
+                class="w-full bg-transparent border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 text-sm"
+                placeholder="Material Name"></td>
+        <td class="py-2"><input type="number" name="qty" oninput="calculateCost()"
+                class="w-full bg-transparent border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 text-sm text-center"
+                value="1"></td>
+        <td class="py-2">
+            <select name="unit" class="bg-transparent text-sm border-0 focus:ring-0">
+                <option value="pcs">Pcs</option>
+                <option value="kg">kg</option>
+                <option value="m">m</option>
+                <option value="l">L</option>
+            </select>
+        </td>
+        <td class="py-2"><input type="number" name="cost" oninput="calculateCost()"
+                class="w-full bg-transparent border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 text-sm text-center"
+                placeholder="0.00"></td>
+        <td class="py-2"><input type="number" name="scrap_qty"
+                class="w-full bg-transparent border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 text-sm text-center"
+                placeholder="0"></td>
+        <td class="py-2"><input type="number" name="scrap_price"
+                class="w-full bg-transparent border-0 border-b border-transparent focus:border-blue-500 focus:ring-0 text-sm text-center"
+                placeholder="0.00"></td>
+        <td class="py-2 text-center"><button onclick="this.closest('tr').remove(); calculateCost()"
+                class="text-gray-300 hover:text-red-500"><i class="ph ph-trash"></i></button></td>
+    </tr>
+</template>
+
+<template id="row-criteria">
+    <tr class="group hover:bg-blue-50/30 transition-colors">
+        <td class="py-2 px-4"><input type="text" name="method"
+                class="w-full bg-transparent border-0 border-b border-gray-100 focus:border-blue-500 focus:ring-0 text-sm"
+                placeholder="Method (e.g Visual)"></td>
+        <td class="py-2 px-4"><input type="text" name="parameter"
+                class="w-full bg-transparent border-0 border-b border-gray-100 focus:border-blue-500 focus:ring-0 text-sm"
+                placeholder="Parameter"></td>
+        <td class="py-2 px-4"><input type="text" name="target"
+                class="w-full bg-transparent border-0 border-b border-gray-100 focus:border-blue-500 focus:ring-0 text-sm text-center"
+                placeholder="e.g. 10mm"></td>
+        <td class="py-2 px-4"><input type="text" name="tolerance"
+                class="w-full bg-transparent border-0 border-b border-gray-100 focus:border-blue-500 focus:ring-0 text-sm text-center"
+                placeholder="+/-"></td>
+        <td class="py-2 px-4 text-center"><input type="checkbox" name="is_critical"
+                class="rounded text-red-600 focus:ring-red-500"></td>
+        <td class="py-2 px-4 text-center"><button onclick="this.closest('tr').remove()"
+                class="text-gray-300 hover:text-red-500"><i class="ph ph-trash"></i></button></td>
+    </tr>
+</template>
+
+<script>
+    let currentStep = 1;
+    const TOTAL_STEPS = 3;
+
+    function goToStep(step) {
+        currentStep = step;
+        updateWizardUI();
+    }
+
+    function nextStep() {
+        if (currentStep < TOTAL_STEPS) {
+            currentStep++;
+            updateWizardUI();
+        }
+    }
+
+    function prevStep() {
+        if (currentStep > 1) {
+            currentStep--;
+            updateWizardUI();
+        }
+    }
+
+    function updateWizardUI() {
+        // Toggle Contents
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+
+        // Map steps to IDs (Materials is 1, Ops is 2, Quality is 3)
+        // Map steps to IDs (Materials is 1, Ops is 2, Quality is 3)
+        const map = { 1: 'tab-materials', 2: 'tab-operations', 3: 'tab-quality' };
+        const el = document.getElementById(map[currentStep]);
+        if (el) el.classList.remove('hidden');
+
+        // Update Stepper Visuals
+        for (let i = 1; i <= TOTAL_STEPS; i++) {
+            const circle = document.getElementById('step-circle-' + i);
+            const label = circle.nextElementSibling;
+            if (i < currentStep) {
+                circle.classList.remove('bg-gray-200', 'text-gray-500', 'bg-blue-600', 'text-white');
+                circle.classList.add('bg-green-500', 'text-white');
+                circle.innerHTML = '<i class="ph ph-check"></i>';
+                label.classList.add('text-green-600');
+            } else if (i === currentStep) {
+                circle.classList.remove('bg-gray-200', 'text-gray-500', 'bg-green-500');
+                circle.classList.add('bg-blue-600', 'text-white');
+                circle.innerText = i;
+                label.classList.remove('text-gray-500', 'text-green-600');
+                label.classList.add('text-blue-600');
+            } else {
+                circle.className = "w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors";
+                circle.innerText = i;
+                label.className = "text-xs font-semibold mt-2 text-gray-500";
+            }
+        }
+
+        // Progress Bar
+        const pct = ((currentStep - 1) / (TOTAL_STEPS - 1)) * 100;
+        document.getElementById('stepper-progress').style.width = pct + '%';
+
+        // Update Buttons
+        const backBtn = document.getElementById('btn-back');
+        const nextBtn = document.getElementById('btn-next');
+        const saveBtn = document.getElementById('btn-save');
+
+        if (currentStep === 1) backBtn.classList.add('hidden'); else backBtn.classList.remove('hidden');
+
+        if (currentStep === TOTAL_STEPS) {
+            nextBtn.classList.add('hidden');
+            saveBtn.classList.remove('hidden');
+        } else {
+            nextBtn.classList.remove('hidden');
+            saveBtn.classList.add('hidden');
+        }
+    }
+
+    // --- Materials Logic ---
+    function addMaterialRow() {
+        const tpl = document.getElementById('row-material');
+        const clone = tpl.content.cloneNode(true);
+        document.getElementById('materials-list').appendChild(clone);
+    }
+
+    function calcTotals() {
+        // Deprecated by calculateCost but called by template, redirect
+        calculateCost();
+    }
+
+    // --- Operations Drag & Drop ---
+    function allowDrop(ev) { ev.preventDefault(); }
+
+    function drag(ev) {
+        ev.dataTransfer.setData("type", ev.target.dataset.type);
+        ev.dataTransfer.setData("id", ev.target.dataset.id);
+        ev.dataTransfer.setData("name", ev.target.dataset.name);
+        ev.dataTransfer.setData("cost", ev.target.dataset.cost);
+    }
+
+    function drop(ev) {
+        ev.preventDefault();
+        const type = ev.dataTransfer.getData("type");
+        const id = ev.dataTransfer.getData("id");
+        const name = ev.dataTransfer.getData("name");
+        const costRate = parseFloat(ev.dataTransfer.getData("cost")) || 50;
+
+        document.getElementById('op-empty-state')?.remove();
+
+        const node = document.createElement('div');
+        node.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between group animate-fade-in-up w-3/4 mx-auto relative z-10";
+        node.dataset.machineId = id;
+        node.dataset.costRate = costRate;
+        node.innerHTML = `
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold index-badge">#</div>
+                <div class="flex flex-col">
+                    <div class="font-bold text-slate-700">${name}</div>
+                    <input type="text" class="text-xs border-0 border-b border-gray-200 focus:border-blue-500 focus:ring-0 p-0 w-32 bg-transparent" placeholder="Stage Name">
+                </div>
+            </div>
+            
+            <!-- Time Inputs -->
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-center">
+                    <label class="text-[10px] uppercase font-bold text-gray-400">Setup (m)</label>
+                    <input type="number" name="setup_time" value="10" oninput="calcCycleTime()"
+                        class="w-16 bg-gray-50 rounded px-2 py-1 text-sm border-0 text-center font-semibold text-gray-700">
+                </div>
+                <div class="h-8 w-px bg-gray-200"></div>
+                <div class="flex flex-col items-center">
+                    <label class="text-[10px] uppercase font-bold text-gray-400">Run (m/unit)</label>
+                    <input type="number" step="0.1" name="run_time" value="5" oninput="calculateCost()"
+                        class="w-16 bg-gray-50 rounded px-2 py-1 text-sm border-0 text-center font-semibold text-gray-700">
+                </div>
+
+                <i class="ph ph-x text-gray-300 hover:text-red-500 cursor-pointer ml-2" onclick="this.closest('div.group').remove(); updateIndices(); calculateCost()"></i>
+            </div>
+            
+            <!-- Linker Line -->
+            <div class="absolute -bottom-4 left-1/2 w-0.5 h-4 bg-gray-300 -z-10"></div>
+        `;
+        document.getElementById('operations-canvas').appendChild(node);
+        updateIndices();
+        calculateCost();
+    }
+
+    function updateIndices() {
+        document.querySelectorAll('.index-badge').forEach((el, idx) => {
+            el.innerText = idx + 1;
+        });
+    }
+
+    function calculateCost() {
+        let matTotal = 0;
+        let opsTotal = 0;
+        let opsTimeTotal = 0;
+        const baseQty = parseFloat(document.getElementById('base-qty').value) || 1;
+
+        // 1. Materials
+        document.querySelectorAll('#materials-list tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('[name=qty]').value) || 0;
+            const cost = parseFloat(row.querySelector('[name=cost]').value) || 0;
+            matTotal += (qty * cost);
+        });
+
+        // 2. Operations
+        document.querySelectorAll('#operations-canvas > div.group').forEach(node => {
+            const setup = parseFloat(node.querySelector('input[name=setup_time]').value) || 0;
+            const run = parseFloat(node.querySelector('input[name=run_time]').value) || 0;
+            const rate = parseFloat(node.dataset.costRate) || 50;
+
+            const totalMin = setup + (run * baseQty);
+            opsTimeTotal += totalMin;
+
+            // Time in Hours for Cost
+            const totalHours = totalMin / 60;
+            opsTotal += (totalHours * rate);
+        });
+
+        // Update UI
+        document.getElementById('footer-mat-cost').innerText = '$' + matTotal.toFixed(2);
+        document.getElementById('footer-ops-cost').innerText = '$' + opsTotal.toFixed(2);
+        document.getElementById('footer-total-cost').innerText = '$' + (matTotal + opsTotal).toFixed(2);
+
+        // Update Cycle Time
+        const timeDisplay = document.getElementById('cycle-time-display');
+        if (timeDisplay) timeDisplay.innerText = opsTimeTotal.toFixed(1);
+    }
+
+    // Attach listener to base qty
+    document.getElementById('base-qty').addEventListener('input', calculateCost);
+
+    // --- Criteria Logic ---
+    function addCriteriaRow() {
+        const tpl = document.getElementById('row-criteria');
+        document.getElementById('criteria-list').appendChild(tpl.content.cloneNode(true));
+    }
+
+    // --- Save Payload ---
+    async function saveBOM(status) {
+        const product_id = document.getElementById('product-select').value;
+        const base_qty = document.getElementById('base-qty').value;
+
+        if (!product_id) return alert("Please select a product");
+
+        // Collect Materials
+        const components = [];
+        document.querySelectorAll('#materials-list tr').forEach(row => {
+            components.push({
+                name: row.querySelector('[name=name]').value,
+                qty: row.querySelector('[name=qty]').value,
+                unit: row.querySelector('[name=unit]').value,
+                cost: row.querySelector('[name=cost]').value,
+                scrap_qty: row.querySelector('[name=scrap_qty]').value,
+                scrap_price: row.querySelector('[name=scrap_price]').value
+            });
+        });
+
+        // Collect Operations
+        const operations = [];
+        document.querySelectorAll('#operations-canvas > div').forEach(node => {
+            operations.push({
+                machine_id: node.dataset.machineId,
+                stage_name: node.querySelector('input[type=text]').value,
+                setup_time: node.querySelector('input[name=setup_time]').value,
+                run_time: node.querySelector('input[name=run_time]').value
+            });
+        });
+
+        // Collect Criteria
+        const criteria = [];
+        document.querySelectorAll('#criteria-list tr').forEach(row => {
+            criteria.push({
+                parameter: row.querySelector('[name=parameter]').value,
+                method: row.querySelector('[name=method]').value,
+                target_value: row.querySelector('[name=target]').value,
+                tolerance: row.querySelector('[name=tolerance]').value,
+                is_critical: row.querySelector('[name=is_critical]').checked,
+
+                // Back Compat (Optional)
+                min: "", max: "", pass_fail: false
+            });
+        });
+
+        const payload = {
+            product_id, base_qty, status, components, operations, criteria
+        };
+
+        // Send
+        try {
+            const res = await fetch("{% url 'api_save_bom' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload)
+            });
+            const json = await res.json();
+            if (json.status === 'success') {
+                alert("BOM Saved Successfully!");
+                window.location.href = "{% url 'bom_builder' %}"; // Reload clean
+            } else {
+                alert("Error: " + json.message);
+            }
+        } catch (e) {
+            alert("Network Error");
+        }
+    }
+
+    // Init
+    addMaterialRow();
+    // Init
+    document.addEventListener('DOMContentLoaded', () => {
+        updateWizardUI();
+    });
+</script>
+{% endblock %}

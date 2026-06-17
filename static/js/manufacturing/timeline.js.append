@@ -1,0 +1,37 @@
+
+function filterMachinesByStage(stageId) {
+    const machSelect = document.getElementById('drawerMachine');
+    if (!machSelect) return;
+    
+    // 1. Reset: Show all options first
+    Array.from(machSelect.options).forEach(opt => opt.hidden = false);
+    
+    if (!stageId) return; // No stage selected -> Show all
+    
+    // 2. Find selected stage data
+    const stage = window.currentDrawerStages.find(s => s.id == stageId);
+    if (!stage || !stage.machine_type) return; // No type restriction
+    
+    const requiredType = stage.machine_type;
+    console.log(`Filtering machines for Stage: ${stage.name} (Type: ${requiredType})`);
+    
+    // 3. Filter options
+    Array.from(machSelect.options).forEach(opt => {
+        if (!opt.value) return; // Skip placeholder
+        
+        const machine = machinesCache.find(m => m.id == opt.value);
+        if (machine) {
+            // Flexible matching: check if types match (case-insensitive)
+            // Assuming strict match for now based on ID logic or exact string
+            const mType = machine.type || "";
+            if (mType.toLowerCase() !== requiredType.toLowerCase()) {
+                opt.hidden = true;
+            }
+        }
+    });
+    
+    // 4. Reset selection if current selection is now hidden
+    if (machSelect.selectedOptions[0].hidden) {
+        machSelect.value = "";
+    }
+}

@@ -1,0 +1,111 @@
+{% load tenant_i18n %}
+<div
+    {% if not selected_wo or wo.id != selected_wo.id %}
+    onclick="switchWorkOrder('{{ wo.id }}')"
+    {% endif %}
+    class="worker-queue-card p-4 md:p-6 rounded-2xl border-2 shadow-sm transition-all group relative overflow-hidden {% if wo.completion_pending %}worker-queue-card-approval{% elif wo.status == 'in_progress' %}worker-queue-card-current{% elif wo.id in ready_task_ids %}worker-queue-card-ready{% else %}worker-queue-card-pending{% endif %} {% if not selected_wo or wo.id != selected_wo.id %}cursor-pointer hover:scale-[1.02]{% else %}cursor-default ring-2 ring-slate-400{% endif %}"
+    :class="[
+        theme === 'dark' ? 'bg-slate-800 border-slate-700 hover:border-indigo-500' : 'bg-white border-slate-200 hover:border-indigo-300 hover:shadow-md',
+        '{{ wo.priority }}' === 'Urgent' ? (theme === 'dark' ? 'border-l-red-500 bg-red-950/10' : 'border-l-red-500 bg-red-50/30') : '',
+        '{{ wo.priority }}' === 'High' ? (theme === 'dark' ? 'border-l-indigo-500' : 'border-l-indigo-500') : '',
+    ]">
+
+    {% if wo.priority != 'Normal' %}
+    <div class="absolute top-0 right-0">
+        <span
+            class="text-[9px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-widest text-white shadow-sm"
+            :class="{
+                'bg-red-600': '{{ wo.priority }}' === 'Urgent',
+                'bg-indigo-600': '{{ wo.priority }}' === 'High',
+                'bg-emerald-600': '{{ wo.priority }}' === 'Low'
+            }">
+            {{ wo.priority }}
+        </span>
+    </div>
+    {% endif %}
+
+    <div class="flex justify-between items-start mb-4">
+        <div class="min-w-0 pr-2">
+            <span class="text-[10px] font-bold px-2 py-1 rounded-md mb-2 inline-block"
+                :class="theme === 'dark' ? 'bg-slate-700 text-slate-400' : 'bg-slate-100 text-slate-400'">
+                {{ wo.display_work_order_code }}
+            </span>
+            {% firstof wo.display_product_name wo.product_name as queue_name %}
+            <h4 class="font-bold text-base md:text-lg leading-tight truncate group-hover:text-indigo-500 transition-colors"
+                :class="theme === 'dark' ? 'text-white' : 'text-slate-900'">
+                {{ queue_name }}</h4>
+        </div>
+        <div class="text-right shrink-0">
+            <span class="worker-status-pill block text-[10px] font-bold uppercase tracking-widest mb-1 px-2.5 py-1 rounded-full {% if wo.completion_pending %}worker-status-pill-approval{% elif wo.status == 'in_progress' %}worker-status-pill-current{% elif wo.id in ready_task_ids %}worker-status-pill-ready{% else %}worker-status-pill-pending{% endif %}">
+                {% if wo.completion_pending %}
+                {% tenant_trans "Pending Approval" %}
+                {% elif wo.status == 'in_progress' %}
+                {% tenant_trans "Activated" %}
+                {% elif wo.id in ready_task_ids %}
+                {% tenant_trans "Ready to Start" %}
+                {% else %}
+                {% tenant_trans "Pending Later" %}
+                {% endif %}
+            </span>
+            <span class="block text-xl md:text-2xl font-bold"
+                :class="theme === 'dark' ? 'text-slate-200' : 'text-slate-800'">{{ wo.quantity }}</span>
+            <span class="text-[10px] font-bold text-slate-500 uppercase">{% tenant_trans "Units" %}</span>
+        </div>
+    </div>
+
+    {% if wo.material_readiness_status == 'shortage' %}
+    <div class="mb-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] font-bold text-rose-700">
+        {% tenant_trans "Material shortage" %}{% if wo.material_shortage_note %}: {{ wo.material_shortage_note }}{% endif %}
+    </div>
+    {% elif wo.material_readiness_status == 'ready' %}
+    <div class="mb-3 inline-flex w-fit rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-emerald-700">
+        {% tenant_trans "Materials ready" %}
+    </div>
+    {% endif %}
+
+    {% with stage_obj=wo.display_stage %}
+    <div class="text-xs font-medium" :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-500'">
+        {% if stage_obj %}
+        Stage {{ stage_obj.order|default:"-" }}{% if stage_obj.name %}: {{ stage_obj.name }}{% endif %}
+        {% else %}
+        Stage -
+        {% endif %}
+        | {{ wo.display_machine_label }}
+    </div>
+    {% if wo.status == 'pending' %}
+    <div class="mt-2 text-[11px] font-semibold"
+        :class="theme === 'dark' ? 'text-slate-400' : 'text-slate-500'">
+        {% if wo.completion_pending %}
+        {% tenant_trans "Waiting for approval" %}
+        {% elif wo.id in ready_task_ids %}
+        {% tenant_trans "Scheduled now" %}
+        {% else %}
+        {% tenant_trans "Starts" %} {{ wo.start_date|default:wo.scheduled_start_date|date:"M d, H:i"|default:"later" }}
+        {% endif %}
+    </div>
+    {% if wo.dispatch_block_reason and wo.id not in ready_task_ids %}
+    <div class="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-700">
+        {{ wo.dispatch_block_reason }}
+    </div>
+    {% endif %}
+    {% endif %}
+    {% endwith %}
+    <div class="worker-queue-action-row mt-4 pt-3 flex items-center justify-between gap-3">
+        <span class="text-[10px] font-black uppercase tracking-[0.18em]"
+            :class="theme === 'dark' ? 'text-slate-500' : 'text-slate-400'">
+            {% if selected_wo and wo.id == selected_wo.id %}
+            {% tenant_trans "Selected" %}
+            {% else %}
+            {% tenant_trans "Tap to open" %}
+            {% endif %}
+        </span>
+        <span
+            class="worker-start-btn text-white px-4 py-2 rounded-xl font-bold shadow-lg transition-all text-xs {% if wo.completion_pending %}worker-start-btn-approval{% elif wo.status == 'in_progress' %}worker-start-btn-current{% elif wo.id in ready_task_ids %}worker-start-btn-ready{% else %}worker-start-btn-pending{% endif %}">
+            {% if selected_wo and wo.id == selected_wo.id %}
+            {% tenant_trans "Opened" %}
+            {% else %}
+            {% tenant_trans "Open" %}
+            {% endif %}
+        </span>
+    </div>
+</div>

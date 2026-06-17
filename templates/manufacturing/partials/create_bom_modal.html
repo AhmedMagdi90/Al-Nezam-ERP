@@ -1,0 +1,1445 @@
+<!-- 📦 Add BOM Modal -->
+<div id="bomModal" class="fixed inset-0 z-[70] hidden flex" x-data="{ fullscreen: false }"
+    :style="fullscreen ? 'padding: 0 !important; margin: 0 !important; background: rgba(0,0,0,0.95) !important; align-items: stretch !important; justify-content: stretch !important;' : 'padding: 1rem; background: rgba(0,0,0,0.6); backdrop-filter: blur(12px); align-items: center; justify-content: center;'"
+    x-transition.opacity>
+
+    <!-- Modal Container -->
+    <div :style="fullscreen ? 'width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; border-radius: 0 !important; margin: 0 !important; padding: 0 !important;' : ''"
+        :class="fullscreen ? '' : 'w-full max-w-5xl max-h-[90vh] rounded-3xl'"
+        class="bg-white shadow-2xl overflow-hidden flex flex-col border border-slate-200/50 transform transition-all relative">
+
+        <!-- Header -->
+        <div
+            class="px-8 py-6 border-b bg-gradient-to-r from-slate-50 to-emerald-50 flex justify-between items-center shrink-0">
+            <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg">
+                    <i class="ph ph-file-plus text-lg"></i>
+                </div>
+                Create Bill of Materials
+            </h2>
+            <div class="flex items-center gap-2">
+                <!-- Full-screen Toggle -->
+                <button @click="fullscreen = !fullscreen" type="button"
+                    :class="fullscreen ? 'bg-emerald-100 text-emerald-600' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'"
+                    class="w-8 h-8 rounded-lg transition-all flex items-center justify-center"
+                    :title="fullscreen ? 'Exit Full Screen (ESC)' : 'Enter Full Screen'">
+                    <i :class="fullscreen ? 'ph-fill ph-arrows-in' : 'ph ph-arrows-out'" class="text-lg"></i>
+                </button>
+                <button onclick="closeBOMModal()" type="button"
+                    class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all flex items-center justify-center">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-8" id="bomModalContent">
+
+            <!-- TEST MODE BANNER -->
+            <div id="testModeBanner"
+                class="hidden bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg text-sm font-bold border border-yellow-300 shadow-sm uppercase tracking-wide mb-6 text-center w-full">
+                ⚠️ Test Simulation Mode (Read-Only)
+            </div>
+
+            <!-- Stepper Navigation -->
+            <div
+                class="flex items-center justify-between px-12 py-6 bg-slate-50/50 rounded-2xl border border-slate-200 relative mb-8">
+                <div class="absolute top-1/2 left-0 w-full h-1 bg-slate-200 -z-10"></div>
+                <div class="absolute top-1/2 left-0 h-1 bg-emerald-500 -z-10 transition-all duration-500"
+                    id="stepperProgress" style="width: 0%"></div>
+
+                <!-- Step 1 -->
+                <div class="flex flex-col items-center cursor-pointer group" onclick="goToBomStepV3(1)">
+                    <div id="stepCircle1"
+                        class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold ring-4 ring-white shadow-sm z-10 transition-all group-hover:scale-110">
+                        1</div>
+                    <span class="text-xs font-bold mt-3 text-emerald-700 tracking-wide">Materials</span>
+                </div>
+                <!-- Step 2 -->
+                <div class="flex flex-col items-center cursor-pointer group" onclick="goToBomStepV3(2)">
+                    <div id="stepCircle2"
+                        class="w-10 h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-all group-hover:scale-110">
+                        2</div>
+                    <span class="text-xs font-bold mt-3 text-slate-500 tracking-wide">Quality</span>
+                </div>
+                <!-- Step 3 -->
+                <div class="flex flex-col items-center cursor-pointer group" onclick="goToBomStepV3(3)">
+                    <div id="stepCircle3"
+                        class="w-10 h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-all group-hover:scale-110">
+                        3</div>
+                    <span class="text-xs font-bold mt-3 text-slate-500 tracking-wide">Operations</span>
+                </div>
+            </div>
+
+            <form id="createBOMForm" class="space-y-8">
+                {% csrf_token %}
+                <input type="hidden" id="simBomId" name="bom_id">
+
+                <!-- Autocomplete Source -->
+                <datalist id="materialOptions"></datalist>
+                <datalist id="productOptions"></datalist>
+
+                <!-- Product Info (Shared Header) -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <div class="md:col-span-4">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Product
+                            Name</label>
+                        <input type="text" name="product_name" list="productOptions"
+                            placeholder="E.g. Electric Cable 10mm"
+                            class="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition shadow-sm font-medium">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Version</label>
+                        <input type="text" name="version" value="v1.0"
+                            class="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition shadow-sm font-medium text-center">
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-xs font-bold text-emerald-600 uppercase tracking-widest mb-2">Base
+                            Batch Size</label>
+                        <div class="flex gap-2">
+                            <input type="number" name="base_quantity" value="100" min="1" step="1" required
+                                class="w-2/3 bg-white border border-emerald-200 rounded-lg px-4 py-2.5 text-sm font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition shadow-sm"
+                                title="All component quantities are relative to this Base Quantity">
+                            <select name="uom"
+                                class="w-1/3 bg-white border border-slate-200 rounded-lg text-xs px-2 font-medium">
+                                <option value="pcs">Pcs</option>
+                                <option value="kg">KG</option>
+                                <option value="m">M</option>
+                                <option value="l">L</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Image Upload -->
+                    <div class="md:col-span-3">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Product
+                            Image</label>
+                        <input type="file" id="productImageInput" accept="image/*"
+                            class="w-full bg-white border border-slate-200 rounded-lg text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 transition cursor-pointer">
+                    </div>
+                    <div class="md:col-span-3">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">BOM
+                            Attachment</label>
+                        <input type="file" id="bomAttachmentInput" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                            class="w-full bg-white border border-slate-200 rounded-lg text-xs file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition cursor-pointer">
+                        <p id="bomAttachmentExisting" class="mt-1 hidden truncate text-[11px] font-semibold text-slate-500"></p>
+                    </div>
+                </div>
+
+                <!-- TAB 1: MATERIALS -->
+                <div id="bomTab-materials" class="bom-tab-content block">
+                    <!-- Explanatory Banner -->
+                    <div
+                        class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-3 mb-4 flex items-center gap-3 text-indigo-800 text-sm">
+                        <i class="ph ph-info text-lg text-indigo-500"></i>
+                        <p>
+                            Components listed below are required to produce
+                            <span
+                                class="font-bold bg-white px-2 py-0.5 rounded border border-indigo-200 mx-1 shadow-sm">
+                                <span id="dispBaseQty">100</span> <span id="dispBaseUom">Pcs</span>
+                            </span>
+                            of the finished product.
+                        </p>
+                    </div>
+
+                    <div
+                        class="border border-slate-200 rounded-2xl overflow-hidden shadow-sm overflow-x-auto ring-1 ring-slate-200">
+                        <table class="w-full text-sm text-left min-w-[900px]">
+                            <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th class="py-4 px-4 w-1/4">Material Info</th>
+                                    <th class="py-4 px-4 w-24 text-center">Unit</th>
+                                    <th class="py-4 px-4 w-28 text-center">Qty Required</th>
+                                    <th class="py-4 px-4 w-28 text-center">Unit Cost</th>
+                                    <th class="py-4 px-4 w-28 text-center text-orange-600">Wastage</th>
+                                    <th class="py-4 px-4 w-28 text-center text-emerald-600">Scrap Val</th>
+                                    <th class="py-4 px-4 w-12 text-center"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="bomRows" class="divide-y divide-slate-100 bg-white">
+                                <!-- Dynamic Rows Here -->
+                            </tbody>
+                        </table>
+                        <!-- Add Row Button -->
+                        <button type="button"
+                            class="w-full bg-slate-50 hover:bg-slate-100 p-3 text-center border-t border-slate-200 cursor-pointer transition text-sm font-bold text-slate-600 flex items-center justify-center gap-2 group"
+                            id="addRow" onclick="forceAddRow()">
+                            <i
+                                class="ph ph-plus-circle text-lg text-slate-400 group-hover:text-emerald-500 transition"></i>
+                            Add Another Material
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 2: QUALITY -->
+                <div id="bomTab-quality" class="bom-tab-content hidden h-[500px] flex flex-col">
+                    <div class="flex justify-between items-center mb-6 shrink-0">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600">
+                                <i class="ph ph-clipboard-text text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800">Quality Standards</h3>
+                                <p class="text-xs text-slate-500">Define checkpoints for quality assurance.</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addQualityRow()"
+                            class="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
+                            <i class="ph ph-plus-circle text-lg"></i>
+                            Add Standard
+                        </button>
+                    </div>
+                    <!-- Fixed: Added flex-1 and overflow-y-auto for scrolling -->
+                    <div class="border border-slate-200 rounded-2xl flex-1 overflow-y-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse bg-white">
+                            <thead class="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                <tr class="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <th class="py-4 px-6">Test Method</th>
+                                    <th class="py-4 px-6">Parameter</th>
+                                    <th class="py-4 px-6 w-32">Target</th>
+                                    <th class="py-4 px-6 w-32">Tolerance</th>
+                                    <th class="py-4 px-6 w-24 text-center">Critical</th>
+                                    <th class="py-4 px-6 w-16"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="qualityRows" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 3: OPERATIONS -->
+                <div id="bomTab-operations" class="bom-tab-content hidden h-[500px] overflow-auto">
+                    <div
+                        class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+                                <i class="ph ph-tree-structure text-lg"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-blue-800 uppercase tracking-wide">Workflow Editor</h3>
+                                <p class="text-xs text-blue-600 mb-0">Drag machines from the left to map the process.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="openReviewModal()"
+                                class="text-xs font-bold text-slate-500 hover:text-purple-600 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-purple-200 hover:bg-purple-50 transition-all flex items-center gap-2">
+                                <i class="ph ph-presentation-chart text-lg"></i>
+                                Preview Flow
+                            </button>
+                            <button type="button"
+                                class="text-xs font-bold text-blue-600 hover:text-blue-800 underline uppercase tracking-wide"
+                                onclick="clearWorkflow()">Reset Flow</button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex gap-6 overflow-hidden h-full">
+                        <!-- Helper Tooltip -->
+                        <div
+                            class="w-1/4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col overflow-hidden">
+                            <div class="p-3 bg-slate-100 border-b border-slate-200">
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Machine
+                                    Library</h4>
+                                <div class="relative">
+                                    <i
+                                        class="ph ph-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" placeholder="Search machines or stages..."
+                                        class="w-full bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:border-blue-400 transition"
+                                        oninput="filterMachines(this.value)">
+                                </div>
+                            </div>
+                            <div class="p-3 overflow-y-auto flex-1 space-y-3" id="toolboxList">
+                                <!-- Quality Check Item (Moved to Top) -->
+                                <div class="bg-white p-3 rounded-xl border border-orange-200 shadow-sm cursor-grab active:cursor-grabbing hover:shadow-md hover:border-orange-400 transition group"
+                                    draggable="true" ondragstart="handleMachineDrag(event)" data-type="quality"
+                                    data-name="Quality Checkpoint" data-id="qc-node">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                                            <i class="ph ph-shield-check text-xl"></i>
+                                        </div>
+                                        <div>
+                                            <div class="text-xs font-bold text-slate-700">Quality Checkpoint</div>
+                                            <div class="text-[10px] text-orange-500 font-medium">Trigger & Comment</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% for machine in machines %}
+                                <div class="bg-white border border-slate-200 p-3 rounded-xl shadow-sm cursor-grab hover:border-emerald-400 hover:shadow-md transition-all flex items-center gap-3 group toolbox-item"
+                                    draggable="true" ondragstart="handleMachineDrag(event)" data-type="machine"
+                                    data-id="{{ machine.id }}" data-name="{{ machine.display_label }}"
+                                    data-cost="{{ machine.hourly_rate|default:'0.00' }}"
+                                    data-machine-id="{{ machine.id }}"
+                                    data-category="{{ machine.category|default:machine.type|default:''|escape }}">
+                                    <div
+                                        class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-xl group-hover:bg-emerald-50 transition-colors">
+                                        🏭
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="text-sm font-bold text-slate-700 group-hover:text-emerald-700 transition-colors">
+                                            {{ machine.display_label }}</p>
+                                        <p class="text-[10px] text-slate-400 font-medium">Rate: $
+                                            <span class="font-bold">{{ machine.hourly_rate|default:"0.00" }}</span>/hr
+                                        </p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+
+                                {% if stages %}
+                                <div class="pt-2">
+                                    <div class="text-[10px] font-bold uppercase tracking-wide text-slate-400 px-1 pb-1">
+                                        Stage Library
+                                    </div>
+                                    {% for stage in stages %}
+                                    <div class="bg-white border border-indigo-200 p-3 rounded-xl shadow-sm cursor-grab hover:border-indigo-400 hover:shadow-md transition-all flex items-center gap-3 group toolbox-item mt-2"
+                                        draggable="true" ondragstart="handleMachineDrag(event)" data-type="stage"
+                                        data-id="{{ stage.id }}" data-name="{{ stage.name|escape }}"
+                                        data-cost="{{ stage.machine.hourly_rate|default:'0.00' }}"
+                                        data-machine-id="{{ stage.machine_id|default:'' }}"
+                                        data-category="{{ stage.category|default:stage.machine.category|default:stage.machine.type|default:''|escape }}">
+                                        <div
+                                            class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-base group-hover:bg-indigo-100 transition-colors">
+                                            <i class="ph ph-flow-arrow"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-700 group-hover:text-indigo-700 transition-colors">
+                                                {{ stage.name }}
+                                            </p>
+                                            <p class="text-[10px] text-slate-400 font-medium">
+                                                {{ stage.category|default:stage.machine.category|default:stage.machine.type|default:"General" }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Canvas -->
+                        <div class="w-3/4 bg-slate-50/50 border-2 border-dashed border-slate-300 rounded-2xl relative overflow-y-auto custom-scrollbar"
+                            id="workflowCanvasArea" ondrop="dropInModalV2(event)" ondragover="event.preventDefault()">
+                            <!-- SVG Lines Layer -->
+                            <svg id="workflowConnections"
+                                class="absolute inset-0 w-full h-full pointer-events-none z-0">
+                                <defs>
+                                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5"
+                                        orient="auto">
+                                        <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+                                    </marker>
+                                </defs>
+                            </svg>
+                            <!-- Nodes Container -->
+                            <div id="workflowCanvas" class="w-full h-full relative z-10 p-4"></div>
+                            <!-- Empty State -->
+                            <div id="workflowPlaceholder"
+                                class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-50">
+                                <i class="ph ph-hand-grabbing text-4xl text-slate-300 mb-2"></i>
+                                <span class="text-slate-400 text-sm font-medium">Drag machines here to build flow</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+            </form>
+        </div>
+
+        <!-- GLOBAL FIXED FOOTER -->
+        <div
+            class="bg-white border-t border-slate-200 p-6 z-50 rounded-b-3xl flex flex-col md:flex-row gap-6 items-center justify-between shrink-0">
+
+            <!-- Cost Summary (Black Box Style) -->
+            <div
+                class="bg-slate-900 text-white p-4 rounded-xl shadow-lg flex gap-8 text-center min-w-[320px] items-center">
+                <div class="text-left">
+                    <p class="text-slate-400 text-[10px] uppercase font-bold tracking-widest mb-1">Total Unit Cost
+                    </p>
+                    <p class="text-2xl font-bold text-emerald-300 leading-none" id="dispNetCost">0.00 <span
+                            class="text-sm font-normal text-emerald-500">LE</span></p>
+                </div>
+                <div class="h-8 w-px bg-slate-700"></div>
+                <div>
+                    <p class="text-slate-500 text-[10px] uppercase font-bold text-left">Gross</p>
+                    <p class="text-sm font-mono text-slate-300" id="dispGrossCost">0.00</p>
+                </div>
+                <div>
+                    <p class="text-slate-500 text-[10px] uppercase font-bold text-left">Scrap</p>
+                    <p class="text-sm font-mono text-emerald-400" id="dispScrapRecovery">0.00</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-4">
+                <button type="button" id="btnBack" onclick="navStepV3(-1)"
+                    class="hidden px-5 py-2.5 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-all border border-transparent hover:border-slate-200">
+                    Back
+                </button>
+
+                <div class="flex gap-3">
+                    <button type="button" onclick="closeBOMModal()"
+                        class="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition-all">
+                        Cancel
+                    </button>
+
+                    <button type="button" id="btnNext" onclick="navStepV3(1)"
+                        class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center gap-2">
+                        Next Step <i class="ph ph-caret-right"></i>
+                    </button>
+
+                    <button type="button" id="btnSave" onclick="submitBOM()"
+                        class="hidden px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all flex items-center gap-2 animate-pulse">
+                        <i class="ph ph-check-circle text-lg"></i>
+                        Save & Publish
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- REVIEW FLOW PREVIEW MODAL Z-80 -->
+    <div id="reviewFlowModal"
+        class="fixed inset-0 z-[80] hidden flex items-center justify-center bg-black/80 backdrop-blur-sm p-8"
+        onclick="if(event.target === this) closeReviewModal()">
+        <div class="bg-white rounded-3xl w-full max-w-6xl max-h-full overflow-hidden shadow-2xl relative flex flex-col">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-2xl">
+                        <i class="ph ph-presentation-chart"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-800">Process Overview</h2>
+                        <p class="text-sm text-slate-500 font-medium">Verify your workflow logic before finalizing.
+                        </p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeReviewModal()"
+                    class="w-10 h-10 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all flex items-center justify-center shadow-sm">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-y-auto bg-slate-50/50 p-12 flex items-center justify-center">
+                <div id="reviewCanvas" class="flex items-center justify-center gap-4 flex-wrap">
+                    <!-- Diagram renders here -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="p-6 border-t border-slate-100 bg-white flex justify-end">
+                <button onclick="closeReviewModal()"
+                    class="px-8 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-900 transition-all shadow-lg shadow-slate-200">
+                    Close & Continue Editing
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // -------- REVIEW PREVIEW MODAL --------
+    function openReviewModal() {
+        document.getElementById('reviewFlowModal').classList.remove('hidden');
+        renderReviewDiagram();
+    }
+
+    function closeReviewModal() {
+        document.getElementById('reviewFlowModal').classList.add('hidden');
+    }
+
+
+    // -------- WIZARD NAVIGATION --------
+    var currentBomStep = currentBomStep || 1;
+    var TOTAL_BOM_STEPS = TOTAL_BOM_STEPS || 3;
+
+    function goToBomStepV3(step) {
+        currentBomStep = step;
+        updateBomWizardUIV3();
+    }
+
+    function navStepV3(dir) {
+        if (dir === 1 && currentBomStep < TOTAL_BOM_STEPS) {
+            currentBomStep++;
+        } else if (dir === -1 && currentBomStep > 1) {
+            currentBomStep--;
+        }
+        updateBomWizardUIV3();
+    }
+
+    // Legacy support (optional, can be removed)
+    function goToBomStep(step) { goToBomStepV3(step); }
+    function navStep(dir) { navStepV3(dir); }
+
+    function updateBomWizardUIV3() {
+        console.log("🔄 Wizard Update: Step", currentBomStep);
+
+        // 1. Force Hide ALL Tabs
+        document.querySelectorAll('.bom-tab-content').forEach(el => {
+            el.classList.add('hidden');
+            el.style.cssText = 'display: none !important';
+        });
+
+        const map = { 1: 'bomTab-materials', 2: 'bomTab-quality', 3: 'bomTab-operations' };
+
+        const targetId = map[currentBomStep];
+        const targetEl = document.getElementById(targetId);
+
+        if (targetEl) {
+            // 2. FORCE SHOW Target Tab
+            targetEl.classList.remove('hidden');
+
+            // Explicitly set display type based on the step logic
+            // Materials is Block (default)
+            // Quality is Flex (column)
+            // Operations is Block (default container with overflow)
+
+            if (currentBomStep === 2) {
+                targetEl.style.cssText = 'display: flex !important; height: 500px;';
+            } else {
+                targetEl.style.cssText = 'display: block !important; height: 500px;';
+            }
+        } else {
+            console.error("❌ Target Tab NOT FOUND (V3):", targetId);
+        }
+
+        // Update Stepper Visuals
+        for (let i = 1; i <= TOTAL_BOM_STEPS; i++) {
+            const circle = document.getElementById('stepCircle' + i);
+            const label = circle.nextElementSibling;
+            if (i < currentBomStep) {
+                circle.classList.remove('bg-slate-200', 'text-slate-500', 'bg-emerald-600', 'text-white');
+                circle.classList.add('bg-emerald-500', 'text-white');
+                circle.innerHTML = '<i class="ph ph-check"></i>';
+                label.classList.add('text-emerald-600');
+            } else if (i === currentBomStep) {
+                circle.classList.remove('bg-slate-200', 'text-slate-500', 'bg-emerald-500', 'bg-emerald-600');
+                circle.classList.add('bg-emerald-600', 'text-white');
+                circle.innerHTML = i;
+                label.classList.remove('text-slate-500', 'text-emerald-600');
+                label.classList.add('text-emerald-700');
+            } else {
+                circle.className = "w-10 h-10 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold ring-4 ring-white z-10 transition-colors";
+                circle.innerHTML = i;
+                label.className = "text-xs font-bold mt-3 text-slate-500 tracking-wide";
+            }
+        }
+
+        // Progress Bar
+        const pct = ((currentBomStep - 1) / (TOTAL_BOM_STEPS - 1)) * 100;
+        document.getElementById('stepperProgress').style.width = pct + '%';
+
+        // Buttons
+        const btnBack = document.getElementById('btnBack');
+        const btnNext = document.getElementById('btnNext');
+        const btnSave = document.getElementById('btnSave');
+
+        if (currentBomStep === 1) btnBack.classList.add('hidden'); else btnBack.classList.remove('hidden');
+
+        if (currentBomStep === TOTAL_BOM_STEPS) {
+            btnNext.classList.add('hidden');
+            btnSave.classList.remove('hidden');
+        } else {
+            btnNext.classList.remove('hidden');
+            btnSave.classList.add('hidden');
+        }
+    }
+
+    // -------- OPERATIONS DRAG & DROP ONLY (No Lines logic yet for simplicity) --------
+
+    function handleMachineDrag(ev) {
+        const source = ev.target.closest('[draggable="true"]') || ev.target;
+        ev.dataTransfer.setData("type", source.dataset.type || "machine");
+        ev.dataTransfer.setData("id", source.dataset.id || "");
+        ev.dataTransfer.setData("name", source.dataset.name || "");
+        ev.dataTransfer.setData("cost", source.dataset.cost || "0");
+        ev.dataTransfer.setData("machineId", source.dataset.machineId || "");
+        ev.dataTransfer.setData("category", source.dataset.category || "");
+        ev.effectAllowed = "copy";
+    }
+
+    function dropInModalV2(ev) {
+        ev.preventDefault();
+        const type = ev.dataTransfer.getData("type");
+        const id = ev.dataTransfer.getData("id"); // QC nodes have 'qc-node'
+        const name = ev.dataTransfer.getData("name");
+        const machineId = ev.dataTransfer.getData("machineId");
+        const stageCategory = ev.dataTransfer.getData("category");
+
+        document.getElementById('workflowPlaceholder')?.classList.add('hidden');
+        const container = document.getElementById('workflowCanvas');
+        const node = document.createElement('div');
+        node.classList.add('shadow-lg', 'border', 'w-64', 'relative', 'group', 'op-node', 'mb-4', 'rounded-xl');
+
+        // --- RENDER LOGIC BASED ON TYPE ---
+        if (type === 'quality') {
+            node.classList.add('bg-orange-50', 'border-orange-200');
+            node.dataset.machineId = ''; // No machine
+            node.dataset.name = "Quality Check"; // Stage Name
+            node.dataset.stageCategory = 'quality';
+            node.dataset.costRate = 0; // Free? Or add labor cost later
+
+            node.innerHTML = `
+                <div class="flex flex-col gap-3 p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center text-sm font-bold step-idx">#</div>
+                            <h5 class="text-sm font-bold text-orange-800 truncate">Quality Check</h5>
+                        </div>
+                        <button type="button" class="text-slate-300 hover:text-red-500 transition" onclick="this.closest('.op-node').remove(); updateModalIndices(); calcModalCosts(); checkEmptyWorkflow()">
+                            <i class="ph ph-trash text-lg"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="bg-white p-2 rounded-lg border border-orange-100">
+                         <label class="text-[9px] uppercase font-bold text-orange-400 block mb-1">Trigger / Comment</label>
+                         <textarea name="op_desc" class="w-full text-xs border-orange-100 rounded p-1.5 bg-orange-50/50 font-medium text-slate-700 focus:ring-1 focus:ring-orange-500 outline-none resize-none" rows="2" placeholder="e.g. Check for burrs before packaging"></textarea>
+                    </div>
+                </div>
+                <!-- Link Line -->
+                <div class="absolute -bottom-4 left-1/2 w-0.5 h-4 bg-orange-200 -z-10"></div>
+             `;
+        } else {
+            // STANDARD MACHINE NODE
+            const costRate = parseFloat(ev.dataTransfer.getData("cost")) || 50;
+            node.classList.add('bg-white', 'border-slate-200');
+            node.dataset.machineId = machineId || id || '';
+            node.dataset.stageCategory = stageCategory || '';
+            node.dataset.costRate = costRate;
+            node.dataset.name = name;
+
+            node.innerHTML = `
+                    <div class="flex flex-col p-4 bg-white rounded-xl relative transition-colors duration-300 card-content shadow-sm hover:shadow-md border border-slate-100">
+                        <!-- HEADER -->
+                        <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-100 border-opacity-50">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs node-index transition-colors">#</span>
+                                <h5 class="text-sm font-bold text-slate-800 transition-colors node-title">${name}</h5>
+                            </div>
+                            <!-- ACTIONS -->
+                            <div class="flex items-center gap-2">
+                                <!-- Color Picker -->
+                                <div class="flex gap-1">
+                                    <button type="button" class="w-2.5 h-2.5 rounded-full bg-slate-400 hover:scale-125 transition-transform" 
+                                        onclick="changeNodeColor(this, 'slate')"></button>
+                                    <button type="button" class="w-2.5 h-2.5 rounded-full bg-blue-500 hover:scale-125 transition-transform" 
+                                        onclick="changeNodeColor(this, 'blue')"></button>
+                                    <button type="button" class="w-2.5 h-2.5 rounded-full bg-purple-500 hover:scale-125 transition-transform" 
+                                        onclick="changeNodeColor(this, 'purple')"></button>
+                                    <button type="button" class="w-2.5 h-2.5 rounded-full bg-emerald-500 hover:scale-125 transition-transform" 
+                                        onclick="changeNodeColor(this, 'emerald')"></button>
+                                </div>
+                                <div class="h-4 w-[1px] bg-slate-200 mx-1"></div>
+                                <i class="ph ph-trash text-slate-300 hover:text-red-500 cursor-pointer text-lg" onclick="this.closest('.op-node').remove(); updateModalIndices(); calcModalCosts(); checkEmptyWorkflow()"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- INFO BADGE -->
+                        <div class="mb-4 flex items-center justify-between">
+                            <span class="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded-md font-bold uppercase tracking-wide border border-slate-200 badge-rate">
+                                Rate: $${costRate.toFixed(2)} / hr
+                            </span>
+                             <!-- Quality Toggle Button -->
+                            <button type="button" class="text-slate-400 hover:text-orange-500 transition-colors flex items-center gap-1 text-[10px] font-bold uppercase group" 
+                                onclick="toggleQualitySection(this)" title="Toggle Quality Check">
+                                <i class="ph ph-shield-check text-lg group-hover:scale-110 transition-transform"></i>
+                                <span class="group-hover:text-orange-600">Add Check</span>
+                            </button>
+                        </div>
+
+                        <!-- Quality Checkpoint Selector (Hidden by Default) -->
+                        <div class="quality-section hidden mb-3 bg-orange-50 p-3 rounded-lg border border-orange-200 shadow-sm transition-all duration-300">
+                            <label class="block text-xs font-bold text-orange-700 uppercase mb-2 flex items-center gap-1">
+                                <i class="ph-fill ph-shield-check text-base"></i> 🛡️ QUALITY CHECKPOINT
+                            </label>
+                            <select name="op_quality_check" class="w-full text-sm border border-orange-300 rounded-lg px-3 py-2 bg-white text-slate-800 focus:ring-2 focus:ring-orange-500 outline-none quality-checkpoint-select font-bold">
+                                ${getQualityOptionsHTML()}
+                            </select>
+                            <div class="text-[10px] text-orange-600 mt-2 font-medium flex justify-between items-center">
+                                <span>📋 Link to Standard</span>
+                                <button type="button" class="text-orange-400 hover:text-orange-700 underline" onclick="toggleQualitySection(this.closest('.card-content').querySelector('button[title=\'Toggle Quality Check\']'))">Hide</button>
+                            </div>
+                        </div>
+
+                        <!-- INPUTS -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 transition-colors input-group">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Setup Time</label>
+                                <div class="flex gap-1">
+                                    <input type="number" name="op_setup" value="15" min="0" step="0.01"
+                                        class="min-w-0 flex-1 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none transition-shadow"
+                                        oninput="calcModalCosts()">
+                                    <select name="op_setup_unit" onchange="calcModalCosts()"
+                                        class="w-14 bg-white border border-slate-200 rounded px-1 py-1 text-[10px] font-bold text-slate-500 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none">
+                                        <option value="sec">sec</option>
+                                        <option value="min" selected>min</option>
+                                        <option value="hr">hr</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 transition-colors input-group">
+                                <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Processing / Item</label>
+                                <div class="flex gap-1">
+                                    <input type="number" name="op_run" value="5" min="0" step="0.01"
+                                        class="min-w-0 flex-1 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none transition-shadow"
+                                        oninput="calcModalCosts()">
+                                    <select name="op_run_unit" onchange="calcModalCosts()"
+                                        class="w-14 bg-white border border-slate-200 rounded px-1 py-1 text-[10px] font-bold text-slate-500 focus:ring-2 focus:ring-blue-100 focus:border-blue-300 outline-none">
+                                        <option value="sec">sec</option>
+                                        <option value="min" selected>min</option>
+                                        <option value="hr">hr</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+              <!-- Link Line -->
+              <div class="absolute -bottom-4 left-1/2 w-0.5 h-4 bg-slate-300 -z-10"></div>
+          `;
+        }
+
+        console.log("🚀 NEW CODE LOADED - Quality dropdown added!");
+        container.appendChild(node);
+        updateModalIndices();
+        calcModalCosts();
+        updateQualityDropdowns(); // Populate quality dropdown in new machine node
+    }
+
+    function checkEmptyWorkflow() {
+        const container = document.getElementById('workflowCanvas');
+        if (container.children.length === 0) {
+            document.getElementById('workflowPlaceholder')?.classList.remove('hidden');
+        }
+    }
+
+    function updateModalIndices() {
+        document.querySelectorAll('.step-idx').forEach((el, idx) => el.innerText = idx + 1);
+    }
+
+    function clearWorkflow() {
+        document.getElementById('workflowCanvas').innerHTML = '';
+        checkEmptyWorkflow();
+        calcModalCosts();
+    }
+
+    // -------- QUALITY ROWS --------
+    function addQualityRow() {
+        const tbody = document.getElementById('qualityRows');
+        const tr = document.createElement("tr");
+        tr.className = "group hover:bg-slate-50 transition-colors";
+        tr.innerHTML = `
+         <td class="p-3 px-6"><input name="qa_method[]" class="w-full text-sm border-0 bg-transparent border-b border-slate-200 focus:border-emerald-500 px-0 py-1 focus:ring-0 placeholder-slate-300" placeholder="e.g. Visual Inspection" oninput="updateQualityDropdowns()"></td>
+         <td class="p-3 px-6"><input name="qa_param[]" class="w-full text-sm border-0 bg-transparent border-b border-slate-200 focus:border-emerald-500 px-0 py-1 focus:ring-0 placeholder-slate-300" placeholder="Parameter Name" oninput="updateQualityDropdowns()"></td>
+         <td class="p-3 px-6"><input name="qa_target[]" class="w-full text-sm text-center border-0 bg-transparent border-b border-slate-200 focus:border-emerald-500 px-0 py-1 focus:ring-0 placeholder-slate-300" placeholder="-"></td>
+         <td class="p-3 px-6"><input name="qa_tol[]" class="w-full text-sm text-center border-0 bg-transparent border-b border-slate-200 focus:border-emerald-500 px-0 py-1 focus:ring-0 placeholder-slate-300" placeholder="±"></td>
+         <td class="p-3 px-6 text-center"><input type="checkbox" name="qa_critical[]" class="rounded text-red-500 focus:ring-red-500 border-slate-300 w-4 h-4 cursor-pointer"></td>
+         <td class="p-3 px-6 text-center">
+            <button type="button" onclick="this.closest('tr').remove(); updateQualityDropdowns()" class="text-slate-300 hover:text-red-500 transition">
+                <i class="ph ph-trash text-lg"></i>
+            </button>
+         </td>
+      `;
+        tbody.appendChild(tr);
+        updateQualityDropdowns();
+    }
+
+    // Generate Options HTML from Quality Rows
+    function getQualityOptionsHTML() {
+        // Brute force find all rows to be safe
+        const allRows = document.querySelectorAll('[id="qualityRows"] tr');
+        let html = '<option value="">-- Select Quality Check --</option>';
+
+        if (allRows.length === 0) {
+            // html += '<option value="" disabled>No Standards Found</option>';
+        }
+
+        allRows.forEach((row, idx) => {
+            const inputs = row.getElementsByTagName('input');
+            const method = inputs[0] ? inputs[0].value : '';
+            const param = inputs[1] ? inputs[1].value : '';
+
+            let label = `Quality Check ${idx + 1}`;
+            if (method || param) {
+                label = `${method} ${param ? '(' + param + ')' : ''}`.trim();
+            }
+            html += `<option value="${idx}">${label}</option>`;
+        });
+        return html;
+    }
+
+    // Update all quality checkpoint dropdowns in operations
+    function updateQualityDropdowns() {
+        const dropdowns = document.querySelectorAll('.quality-checkpoint-select');
+        const optionsHTML = getQualityOptionsHTML();
+
+        dropdowns.forEach(dropdown => {
+            const currentValue = dropdown.value;
+            dropdown.innerHTML = optionsHTML;
+            // Restore previous selection if still valid
+            if (currentValue) {
+                dropdown.value = currentValue;
+            }
+        });
+    }
+
+    // Toggle Quality Section Visibility
+    window.toggleQualitySection = function (btn) {
+        // Find the closest card content wrapper
+        const card = btn.closest('.card-content');
+        if (!card) return;
+
+        const section = card.querySelector('.quality-section');
+        const icon = btn.querySelector('i');
+        const text = btn.querySelector('span');
+
+        if (section.classList.contains('hidden')) {
+            // SHOW
+            section.classList.remove('hidden');
+            btn.classList.add('text-orange-600');
+            btn.classList.remove('text-slate-400');
+            if (text) text.innerText = "Hide Check";
+            if (icon) icon.className = "ph-fill ph-shield-check text-lg group-hover:scale-110 transition-transform";
+        } else {
+            // HIDE
+            section.classList.add('hidden');
+            btn.classList.remove('text-orange-600');
+            btn.classList.add('text-slate-400');
+            if (text) text.innerText = "Add Check";
+            if (icon) icon.className = "ph ph-shield-check text-lg group-hover:scale-110 transition-transform";
+        }
+    }
+
+    // -------- COST CALCULATION --------
+    window.calcModalCosts = function () {
+        // 1. Materials
+        let matCost = 0;
+        let scrapRecovery = 0;
+        let grossMatCost = 0;
+
+        document.querySelectorAll('#bomRows tr').forEach(row => {
+            const qty = parseFloat(row.querySelector('[name="quantities[]"]').value) || 0;
+            const uCost = parseFloat(row.querySelector('[name="costs[]"]').value) || 0;
+            const wastage = parseFloat(row.querySelector('[name="wastage[]"]').value) || 0;
+            const scrapVal = parseFloat(row.querySelector('[name="scrap_value[]"]').value) || 0;
+
+            // Total Material Consumed = Net Qty + Wastage (assuming Qty is Net)
+            // Or is Qty the GROSS required? "Qty Required" usually implies what goes INTO the machine.
+            // Let's assume Qty Required INCLUDES the wastage for now, or is the net part.
+            // Standard: You need 100 net. Wastage is 10. You buy 110.
+            // But here the fields are separate. Let's assume Cost applies to (Qty + Wastage).
+            const totalQty = qty + wastage;
+            const lineCost = totalQty * uCost;
+
+            grossMatCost += lineCost;
+            scrapRecovery += (wastage * scrapVal);
+        });
+
+        const netMatCost = grossMatCost - scrapRecovery;
+
+        // 2. Operations
+        let opsCost = 0;
+        const baseQty = parseFloat(document.querySelector('[name="base_quantity"]').value) || 1;
+
+        document.querySelectorAll('.op-node').forEach(node => {
+            // SAFE RETRIEVAL for QC nodes that lack inputs
+            const setupInput = node.querySelector('[name="op_setup"]');
+            const runInput = node.querySelector('[name="op_run"]');
+
+            const setup = setupInput ? getBomOperationInputMinutes(node, 'op_setup', 'op_setup_unit') : 0;
+            const run = runInput ? getBomOperationInputMinutes(node, 'op_run', 'op_run_unit') : 0;
+            const rate = parseFloat(node.dataset.costRate) || 0; // Default 0 for QC if not set
+
+            const totalMin = setup + (run * baseQty);
+            opsCost += (totalMin / 60) * rate;
+        });
+
+        // Update UI
+        // Net Cost = (Materials Net Cost) + Operations
+        const totalNet = netMatCost + opsCost;
+
+        document.getElementById('dispNetCost').innerText = totalNet.toFixed(2);
+        document.getElementById('dispGrossCost').innerText = (grossMatCost + opsCost).toFixed(2);
+        document.getElementById('dispScrapRecovery').innerText = scrapRecovery.toFixed(2);
+    }
+
+    // Hook into existing inputs for recalculation
+    document.addEventListener('input', (e) => {
+        if (e.target.dataset.recalc || e.target.name === 'quantities[]' || e.target.name === 'costs[]' || e.target.name === 'base_quantity') {
+            calcModalCosts();
+        }
+    });
+
+    // Init
+    // updateBomWizardUI(); // Moved to modal open to ensure refresh
+
+
+
+    // -------- MACHINE SEARCH FILTER --------
+    function changeNodeColor(btn, color) {
+        const node = btn.closest('.op-node');
+        const content = node.querySelector('.card-content');
+        const badge = node.querySelector('.badge-rate');
+        const inputs = node.querySelectorAll('.input-group');
+        const index = node.querySelector('.node-index');
+        const title = node.querySelector('.node-title');
+
+        // Reset
+        content.classList.remove('bg-white', 'bg-blue-50', 'bg-purple-50', 'bg-emerald-50');
+        badge.classList.remove('bg-slate-100', 'text-slate-500', 'border-slate-200');
+        badge.classList.remove('bg-blue-100', 'text-blue-600', 'border-blue-200');
+        badge.classList.remove('bg-purple-100', 'text-purple-600', 'border-purple-200');
+        badge.classList.remove('bg-emerald-100', 'text-emerald-600', 'border-emerald-200');
+
+        index.classList.remove('bg-slate-100', 'text-slate-600', 'bg-blue-100', 'text-blue-600', 'bg-purple-100', 'text-purple-600', 'bg-emerald-100', 'text-emerald-600');
+
+        // Apply
+        if (color === 'slate') {
+            content.classList.add('bg-white');
+            badge.classList.add('bg-slate-100', 'text-slate-500', 'border-slate-200');
+            index.classList.add('bg-slate-100', 'text-slate-600');
+        } else if (color === 'blue') {
+            content.classList.add('bg-blue-50');
+            badge.classList.add('bg-blue-100', 'text-blue-600', 'border-blue-200');
+            index.classList.add('bg-blue-100', 'text-blue-600');
+        } else if (color === 'purple') {
+            content.classList.add('bg-purple-50');
+            badge.classList.add('bg-purple-100', 'text-purple-600', 'border-purple-200');
+            index.classList.add('bg-purple-100', 'text-purple-600');
+        } else if (color === 'emerald') {
+            content.classList.add('bg-emerald-50');
+            badge.classList.add('bg-emerald-100', 'text-emerald-600', 'border-emerald-200');
+            index.classList.add('bg-emerald-100', 'text-emerald-600');
+        }
+    }
+
+    // -------- MACHINE SEARCH FILTER --------
+    function filterMachines(query) {
+        const list = document.getElementById('toolboxList');
+        const items = list.querySelectorAll('div[draggable="true"]');
+        const term = query.toLowerCase();
+
+        items.forEach(item => {
+            const name = item.dataset.name ? item.dataset.name.toLowerCase() : '';
+            if (name.includes(term)) {
+                item.classList.remove('hidden');
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+    }
+
+    // -------- REVIEW DIAGRAM RENDERER (Compact Square Mode) --------
+    function formatBomModalDuration(totalMinutes) {
+        const units = [
+            ['month', 30 * 24 * 60 * 60],
+            ['week', 7 * 24 * 60 * 60],
+            ['day', 24 * 60 * 60],
+            ['hour', 60 * 60],
+            ['minute', 60],
+            ['second', 1],
+        ];
+        let remaining = Math.max(0, Math.round((Number(totalMinutes) || 0) * 60));
+        if (remaining <= 0) return '0 seconds';
+
+        const parts = [];
+        units.forEach(([label, unitSeconds]) => {
+            if (remaining < unitSeconds) return;
+            const count = Math.floor(remaining / unitSeconds);
+            remaining %= unitSeconds;
+            parts.push(`${count} ${count === 1 ? label : `${label}s`}`);
+        });
+        return parts.length ? parts.join(' ') : '0 seconds';
+    }
+
+    function normalizeBomOperationTimeToMinutes(value, unit) {
+        const amount = parseFloat(value) || 0;
+        const normalizedUnit = String(unit || 'min').toLowerCase();
+        if (normalizedUnit === 'sec') return amount / 60;
+        if (normalizedUnit === 'hr') return amount * 60;
+        return amount;
+    }
+
+    function getBomOperationInputMinutes(node, valueName, unitName) {
+        const value = node.querySelector(`[name="${valueName}"]`)?.value || 0;
+        const unit = node.querySelector(`[name="${unitName}"]`)?.value || 'min';
+        return normalizeBomOperationTimeToMinutes(value, unit);
+    }
+
+    function renderReviewDiagram() {
+        const container = document.getElementById('reviewCanvas');
+        container.innerHTML = '';
+        container.className = "flex items-center justify-center gap-4 flex-wrap p-8"; // Unset huge width, use wrapping center
+
+        const nodes = document.querySelectorAll('#workflowCanvas .op-node');
+        const baseQty = parseFloat(document.querySelector('[name="base_quantity"]').value) || 1;
+
+        if (nodes.length === 0) {
+            container.innerHTML = '<p class="text-slate-400 font-medium text-sm">No operations added yet.</p>';
+            return;
+        }
+
+        nodes.forEach((node, idx) => {
+            // Extract Data
+            const name = node.querySelector('h5').innerText;
+            const isQC = name === "Quality Check";
+
+            // Calculate Costs/Times
+            let detailsHtml = '';
+            if (isQC) {
+                const trigger = node.querySelector('[name=op_desc]')?.value || "No trigger defined";
+                detailsHtml = `
+                    <div class="mt-3 text-[10px] text-slate-500 bg-orange-50 p-2 rounded border border-orange-100 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <strong>Trigger:</strong> ${trigger}
+                    </div>
+                `;
+            } else {
+                const setup = getBomOperationInputMinutes(node, 'op_setup', 'op_setup_unit');
+                const run = getBomOperationInputMinutes(node, 'op_run', 'op_run_unit');
+                const rate = parseFloat(node.dataset.costRate) || 0;
+
+                const totalMins = setup + (run * baseQty);
+                const totalCost = (totalMins / 60) * rate;
+
+                detailsHtml = `
+                    <div class="mt-3 text-[10px] space-y-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div class="flex justify-between border-b border-slate-100 pb-1"><span>Time:</span> <strong class="text-slate-700">${formatBomModalDuration(totalMins)}</strong></div>
+                        <div class="flex justify-between pt-1"><span>Cost:</span> <strong class="text-slate-700">$${totalCost.toFixed(2)}</strong></div>
+                    </div>
+                `;
+            }
+
+            // WRAPPER (Slot) - Fixed Compact Size
+            const wrapper = document.createElement('div');
+            wrapper.className = "relative w-24 h-24 shrink-0 transition-transform duration-300"; // Square slot
+
+            // CARD (Popover)
+            const card = document.createElement('div');
+            // Default: Full size of wrapper (inset-0). Hover: Expand outwards (z-50, bigger width/height).
+            card.className = `
+                absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 
+                w-24 h-24 bg-white rounded-2xl shadow-sm border flex flex-col items-center justify-center p-2
+                transition-all duration-300 cursor-default group overflow-hidden hover:overflow-visible
+                hover:w-56 hover:h-auto hover:z-[100] hover:shadow-2xl hover:scale-110
+                ${isQC ? 'border-orange-200 hover:border-orange-400' : 'border-slate-200 hover:border-emerald-400'}
+            `;
+
+            // Inner Content
+            card.innerHTML = `
+                <!-- Icon (Always Visible, Centers on Hover) -->
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg mb-2 shrink-0 transition-all group-hover:scale-75
+                    ${isQC ? 'bg-orange-100 text-orange-600' : 'bg-emerald-100 text-emerald-600'}">
+                    ${isQC ? '<i class="ph ph-shield-check"></i>' : idx + 1}
+                </div>
+                
+                <!-- Label (Small by default, full on hover) -->
+                <div class="text-[10px] font-bold text-center leading-tight transition-all
+                     ${isQC ? 'text-orange-800' : 'text-slate-700'}">
+                    <span class="line-clamp-2 group-hover:line-clamp-none group-hover:text-sm">${name}</span>
+                </div>
+
+                <!-- Hidden Details (Revealed on Hover) -->
+                <div class="w-full">
+                    ${detailsHtml}
+                </div>
+            `;
+
+            wrapper.appendChild(card);
+            container.appendChild(wrapper);
+
+            // Arrow
+            if (idx < nodes.length - 1) {
+                const arrow = document.createElement('div');
+                arrow.className = "text-slate-300 shrink-0";
+                arrow.innerHTML = '<i class="ph ph-arrow-right text-xl"></i>';
+                container.appendChild(arrow);
+            }
+        });
+    }
+
+    // -------- INLINE BOM SUBMISSION & UPDATED LOGIC --------
+    async function submitBOM() {
+        console.log("Submitting BOM (Inline)...");
+        const form = document.getElementById("createBOMForm");
+
+        // 1. Validate Base Quantity
+        const baseQtyInput = document.querySelector('[name="base_quantity"]');
+
+        const baseQty = parseFloat(baseQtyInput.value);
+        if (!baseQty || baseQty < 1) {
+            alert("⚠️ Base Batch Size must be at least 1.");
+            if (baseQtyInput) baseQtyInput.focus();
+            return;
+        }
+
+        // 2. Validate Rows (Materials)
+        const rows = document.querySelectorAll("#bomRows tr");
+        if (rows.length === 0) {
+            alert("⚠️ Please add at least one material.");
+            switchBomTab('materials'); // Wait, function name is goToBomStep
+            goToBomStep(1);
+            return;
+        }
+
+        let isValid = true;
+        for (const row of rows) {
+            const materialInput = row.querySelector('[name="materials[]"]');
+            const qtyInput = row.querySelector('[name="quantities[]"]');
+
+            const material = materialInput.value.trim();
+            const qty = parseFloat(qtyInput.value) || 0;
+
+            if (!material) {
+                alert("⚠️ Material Name is required.");
+                goToBomStep(1);
+                materialInput.focus();
+                isValid = false; break;
+            }
+
+            if (qty <= 0) {
+                alert(`⚠️ Quantity for '${material}' must be greater than 0.`);
+                goToBomStep(1);
+                qtyInput.focus();
+                isValid = false; break;
+            }
+        }
+
+        if (!isValid) return;
+
+        // 3. Submit
+        const product_name = document.querySelector('[name=product_name]').value;
+        const version = document.querySelector('[name=version]').value;
+        const components = [];
+        document.querySelectorAll('#bomRows tr').forEach(row => {
+            components.push({
+                name: row.querySelector('[name="materials[]"]').value,
+                qty: row.querySelector('[name="quantities[]"]').value,
+                unit: row.querySelector('[name="units[]"]').value,
+                cost: row.querySelector('[name="costs[]"]').value,
+                scrap_qty: row.querySelector('[name="wastage[]"]').value,
+                scrap_price: row.querySelector('[name="scrap_value[]"]').value
+            });
+        });
+
+        const operations = [];
+        document.querySelectorAll('.op-node').forEach(node => {
+            const setupInput = node.querySelector('[name=op_setup]');
+            const runInput = node.querySelector('[name=op_run]');
+            const setupUnitInput = node.querySelector('[name=op_setup_unit]');
+            const runUnitInput = node.querySelector('[name=op_run_unit]');
+            const descInput = node.querySelector('[name=op_desc]');
+            const qcInput = node.querySelector('[name=op_quality_check]');
+
+            operations.push({
+                machine_id: node.dataset.machineId || null,
+                stage_name: node.dataset.name, // "Quality Check" or Machine Name
+                type: node.dataset.stageCategory || null,
+                setup_time: setupInput ? setupInput.value : 0,
+                setup_time_unit: setupUnitInput ? setupUnitInput.value : 'min',
+                run_time: runInput ? runInput.value : 0,
+                run_time_unit: runUnitInput ? runUnitInput.value : 'min',
+                description: descInput ? descInput.value : "",
+                quality_check_index: qcInput ? qcInput.value : null // Send Index (needs mapping in backend)
+            });
+        });
+
+        const criteria = [];
+        document.querySelectorAll('#qualityRows tr').forEach(row => {
+            criteria.push({
+                method: row.querySelector('[name="qa_method[]"]').value,
+                parameter: row.querySelector('[name="qa_param[]"]').value,
+                target_value: row.querySelector('[name="qa_target[]"]').value,
+                tolerance: row.querySelector('[name="qa_tol[]"]').value,
+                is_critical: row.querySelector('[name="qa_critical[]"]').checked
+            });
+        });
+
+        // 4. Image Handling (Base64)
+        let image_data = null;
+        const imgInput = document.getElementById('productImageInput');
+        if (imgInput && imgInput.files.length > 0) {
+            try {
+                image_data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(imgInput.files[0]);
+                });
+            } catch (e) {
+                console.error("Image read error", e);
+            }
+        }
+
+        let attachment_data = null;
+        let attachment_name = null;
+        const attachmentInput = document.getElementById('bomAttachmentInput');
+        if (attachmentInput && attachmentInput.files.length > 0) {
+            const attachmentFile = attachmentInput.files[0];
+            const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf'];
+            const fileNameLower = (attachmentFile.name || '').toLowerCase();
+            const hasAllowedExtension = allowedExtensions.some(ext => fileNameLower.endsWith(ext));
+            if (!allowedTypes.includes(attachmentFile.type) && !hasAllowedExtension) {
+                alert("BOM attachment must be a JPG, PNG, or PDF file.");
+                attachmentInput.focus();
+                return;
+            }
+            try {
+                attachment_data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(attachmentFile);
+                });
+                attachment_name = attachmentFile.name;
+            } catch (e) {
+                console.error("Attachment read error", e);
+                alert("Could not read BOM attachment.");
+                return;
+            }
+        }
+
+        const currentBomId = document.getElementById('simBomId')?.value || null;
+        const payload = {
+            bom_id: currentBomId,
+            product_name, version, base_quantity: baseQty,
+            components, operations, criteria, status: 'active',
+            product_image: image_data,
+            attachment_data,
+            attachment_name
+        };
+
+        try {
+            const res = await fetch("{% url 'api_save_bom' %}", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if (data.version_created) {
+                    alert(data.message || "A new BOM version was created. Existing work orders keep their original BOM snapshot.");
+                } else {
+                    alert(data.message || "BOM saved successfully.");
+                }
+                closeBOMModal();
+                if (window.location.reload) window.location.reload();
+                return;
+                alert("✅ BOM Created Successfully!");
+                closeBOMModal();
+                if (window.location.reload) window.location.reload();
+            } else {
+                alert("❌ Error: " + data.message);
+            }
+        } catch (err) {
+            alert("⚠️ Server error: " + err);
+        }
+    }
+
+    function forceAddRow() {
+        const tbody = document.getElementById("bomRows");
+        if (!tbody) return;
+
+        const tr = document.createElement("tr");
+        tr.className = "bom-row group hover:bg-slate-50 transition-colors";
+        tr.innerHTML = `
+          <td class="p-3 px-4">
+            <div class="flex flex-col gap-1">
+                <input name="materials[]" list="materialOptions" class="w-full border-b border-transparent focus:border-emerald-500 bg-transparent py-1 px-2 outline-none group-hover:bg-white rounded text-sm placeholder-slate-400 font-medium text-slate-700" placeholder="Material Name (Search or Type New)">
+                 <select name="types[]" class="text-[10px] text-slate-400 mt-1 block w-full bg-transparent border-none p-0 focus:ring-0">
+                  <option value="raw">Raw Material</option>
+                  <option value="semi_finished">Semi-Finished</option>
+                </select>
+            </div>
+          </td>
+          <td class="p-3 px-4">
+            <select name="units[]" class="w-full text-center bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-xs focus:ring-1 focus:ring-emerald-500 font-medium text-slate-600">
+              <option value="kg" selected>KG</option>
+              <option value="gm">Gram</option>
+              <option value="m">Meter</option>
+              <option value="cm">CM</option>
+              <option value="pcs">Pcs</option>
+              <option value="l">Liter</option>
+            </select>
+          </td>
+          <td class="p-3 px-4"><input name="quantities[]" type="number" step="0.001" min="0" value="1" class="w-full text-center border border-slate-200 rounded-lg py-1.5 px-2 focus:border-emerald-500 outline-none text-sm font-bold text-slate-700"></td>
+          <td class="p-3 px-4 relative">
+            <span class="absolute left-6 top-3 text-slate-400 text-xs">$</span>
+            <input name="costs[]" type="number" step="0.01" min="0" value="0.00" class="w-full pl-6 text-right border border-slate-200 rounded-lg py-1.5 px-2 focus:border-emerald-500 outline-none text-sm font-medium text-slate-600">
+          </td>
+          <td class="p-3 px-4"><input name="wastage[]" type="number" step="0.001" min="0" value="0" oninput="if(window.calcModalCosts) window.calcModalCosts()" class="w-full text-center border border-orange-200 bg-orange-50 rounded-lg py-1.5 px-2 focus:border-orange-500 outline-none text-orange-700 text-sm font-medium"></td>
+          <td class="p-3 px-4"><input name="scrap_value[]" type="number" step="0.01" min="0" value="0" oninput="if(window.calcModalCosts) window.calcModalCosts()" class="w-full text-center border border-emerald-200 bg-emerald-50 rounded-lg py-1.5 px-2 focus:border-emerald-500 outline-none text-emerald-700 text-sm font-medium"></td>
+          <td class="text-center p-3 px-4">
+            <button type="button" class="text-slate-300 hover:text-red-500 transition removeRow" onclick="this.closest('tr').remove(); if(window.calcModalCosts) window.calcModalCosts();" title="Remove Item">
+                <i class="ph ph-trash text-lg"></i>
+            </button>
+          </td>
+       `;
+        tbody.appendChild(tr);
+
+        if (window.calcModalCosts) window.calcModalCosts();
+    }
+
+    // -------- AUTOCOMPLETE DATA --------
+    const SYSTEM_MATERIALS = JSON.parse('{{ all_materials_json|default:"[]"|escapejs }}');
+
+    function initAutocomplete() {
+        // 1. Materials List
+        const matList = document.getElementById('materialOptions');
+        if (matList) {
+            matList.innerHTML = '';
+            SYSTEM_MATERIALS.forEach(mat => {
+                const opt = document.createElement('option');
+                opt.value = mat.name;
+                opt.dataset.unit = mat.unit;
+                matList.appendChild(opt);
+            });
+        }
+
+        // 2. Product Name List (Reuse same data)
+        const prodList = document.getElementById('productOptions');
+        if (prodList) {
+            prodList.innerHTML = '';
+            SYSTEM_MATERIALS.forEach(mat => {
+                // Optional: Filter only finished products? No, let's allow all for flexibility
+                const opt = document.createElement('option');
+                opt.value = mat.name;
+                prodList.appendChild(opt);
+            });
+        }
+    }
+
+    // Auto-fill Unit & Type & Cost when material name matches
+    function checkMaterialAutofill(input) {
+        const val = input.value.trim().toLowerCase(); // Normalize input
+        if (!val) return;
+
+        // Loose match (case-insensitive)
+        const found = SYSTEM_MATERIALS.find(m => m.name.toLowerCase() === val);
+
+        console.log("Autofill Check:", val, found ? "Found" : "Not Found"); // Debug
+
+        if (found) {
+            const row = input.closest('tr');
+            if (!row) return;
+
+            // 1. Auto-select Unit
+            const unitSelect = row.querySelector('[name="units[]"]');
+            if (unitSelect && found.unit) {
+                unitSelect.value = found.unit;
+                // Visual feedback
+                unitSelect.classList.add('bg-emerald-100', 'text-emerald-800');
+                setTimeout(() => unitSelect.classList.remove('bg-emerald-100', 'text-emerald-800'), 1500);
+            }
+
+            // 2. Auto-select Type (if present in search data) - assuming found.material_type is what we want
+            // Note: The UI screenshot shows a dropdown, but my previous edit didn't explicitly check for a Type select.
+            // If the row has a type select/input, let's fill it.
+            const typeSelect = row.querySelector('[name="types[]"]'); // Assuming this name
+            if (typeSelect && found.material_type) {
+                typeSelect.value = found.material_type;
+            }
+
+            // 3. Auto-fill Cost (NEW)
+            const costInput = row.querySelector('[name="costs[]"]');
+            if (costInput && found.std_cost) {
+                costInput.value = found.std_cost;
+                // Visual Highlight
+                costInput.classList.add('bg-emerald-50', 'text-emerald-700');
+                setTimeout(() => costInput.classList.remove('bg-emerald-50', 'text-emerald-700'), 1500);
+
+                // Trigger recalc since cost changed
+                calcModalCosts();
+            }
+        }
+    }
+
+    // Capture input changes (Input = Typing, Change = Datalist Selection/Loss of Focus)
+    document.addEventListener('input', (e) => {
+        if (e.target.name === 'materials[]') checkMaterialAutofill(e.target);
+        if (e.target.dataset.recalc || e.target.name === 'quantities[]' || e.target.name === 'costs[]' || e.target.name === 'base_quantity') {
+            calcModalCosts();
+        }
+    });
+
+    // Also listen for 'change' to catch Datalist clicks more reliably in some browsers
+    document.addEventListener('change', (e) => {
+        if (e.target.name === 'materials[]') checkMaterialAutofill(e.target);
+    });
+
+    // -------- UPDATE BASE QTY DISPLAY --------
+    function updateBaseQtyDisplay() {
+        const qty = document.querySelector('[name="base_quantity"]').value || 1;
+        const uom = document.querySelector('[name="uom"]').value || 'Pcs';
+        const dispQty = document.getElementById('dispBaseQty');
+        const dispUom = document.getElementById('dispBaseUom');
+
+        if (dispQty) dispQty.innerText = qty;
+        if (dispUom) dispUom.innerText = uom;
+    }
+
+    // Hook listeners
+    document.querySelector('[name="base_quantity"]')?.addEventListener('input', updateBaseQtyDisplay);
+    document.querySelector('[name="uom"]')?.addEventListener('change', updateBaseQtyDisplay);
+
+    // Init
+    updateBaseQtyDisplay();
+    initAutocomplete();
+
+    // -------- OPEN BOM MODAL WITH INITIALIZATION --------
+    window.openBOMModal = function () {
+        console.log("✅ BOM MODAL OPENED - Template Version: 2026-01-13 18:51");
+        document.getElementById('bomModal').classList.remove('hidden');
+        document.getElementById('bomModal').classList.add('flex');
+
+        // RESET FORM to avoid "Active BOM" errors from previous edits
+        document.getElementById('createBOMForm').reset();
+        document.getElementById('simBomId').value = ''; // CRITICAL: Clear ID so it creates NEW
+        const attachmentExisting = document.getElementById('bomAttachmentExisting');
+        if (attachmentExisting) {
+            attachmentExisting.textContent = '';
+            attachmentExisting.classList.add('hidden');
+        }
+
+        // Reset to Step 1
+        currentBomStep = 1;
+        if (window.updateBomWizardUIV3) window.updateBomWizardUIV3();
+        if (window.updateBaseQtyDisplay) window.updateBaseQtyDisplay();
+
+        // Reset Wizard to Step 1 if defined
+        if (typeof currentBomStep !== 'undefined') currentBomStep = 1;
+        if (window.updateWizardUI) window.updateWizardUI();
+
+        // Add first row if table is empty
+        const tbody = document.getElementById('bomRows');
+        if (tbody && tbody.children.length === 0) {
+            forceAddRow();
+        }
+    };
+
+    window.closeBOMModal = function () {
+        document.getElementById('bomModal').classList.add('hidden');
+    };
+
+    // ESC key to exit full-screen
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('bomModal');
+            if (modal && !modal.classList.contains('hidden')) {
+                // Get Alpine data
+                const alpineData = Alpine.$data(modal);
+                if (alpineData && alpineData.fullscreen) {
+                    alpineData.fullscreen = false;
+                }
+            }
+        }
+    });
+</script>

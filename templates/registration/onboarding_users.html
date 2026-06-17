@@ -1,0 +1,212 @@
+{% extends "manufacturing/base_public.html" %}
+
+{% block title %}Setup Team - Nezam{% endblock %}
+
+{% block content %}
+<style>
+    .setup-guide-frame {
+        border: 2px solid rgba(37, 99, 235, 0.78) !important;
+        box-shadow: 0 18px 40px -28px rgba(37, 99, 235, 0.85), 0 0 0 5px rgba(37, 99, 235, 0.08) !important;
+    }
+
+    .setup-guide-card {
+        margin-top: 0.85rem;
+        border: 1px solid rgba(37, 99, 235, 0.18);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.92));
+        border-radius: 1.15rem;
+        padding: 0.9rem;
+    }
+
+    .setup-guide-card[data-complete="true"],
+    [data-setup-guide-step]:not(.setup-guide-frame) .setup-guide-card {
+        display: none;
+    }
+</style>
+<div class="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl">
+        <div class="public-panel rounded-[2rem] px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+            <div class="public-stepper mb-6">
+                <div class="public-step" data-state="complete">
+                    <div class="public-step__marker">OK</div>
+                    <div>
+                        <div class="public-step__label">Step 1</div>
+                        <div class="public-step__title">Register</div>
+                    </div>
+                </div>
+                <div class="public-step" data-state="complete">
+                    <div class="public-step__marker">OK</div>
+                    <div>
+                        <div class="public-step__label">Step 2</div>
+                        <div class="public-step__title">Data setup</div>
+                    </div>
+                </div>
+                <div class="public-step" data-state="current">
+                    <div class="public-step__marker">3</div>
+                    <div>
+                        <div class="public-step__label">Step 3</div>
+                        <div class="public-step__title">Team setup</div>
+                    </div>
+                </div>
+            </div>
+
+            {% if messages %}
+            <div class="mb-5 space-y-2">
+                {% for message in messages %}
+                <div class="rounded-2xl border px-4 py-3 text-sm
+                    {% if message.tags == 'error' %}border-red-200 bg-red-50 text-red-700
+                    {% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-700
+                    {% elif message.tags == 'info' %}border-blue-200 bg-blue-50 text-blue-700
+                    {% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="mt-8">
+                <div class="text-center max-w-2xl mx-auto mb-10">
+                    <h1 class="text-3xl font-black tracking-[-0.04em] text-slate-950 sm:text-[2.2rem]">
+                        Build Your Team
+                    </h1>
+                    <p class="mt-4 text-base leading-6 text-slate-600">
+                        How would you like to add your launch team? You can manually invite the essential members, import your entire staff from Excel, or skip this step to do it later.
+                    </p>
+                </div>
+
+                <div class="grid gap-6 lg:grid-cols-3 items-stretch max-w-6xl mx-auto">
+                    <!-- Choice 1: Manual Quick Add -->
+                    <div class="public-card flex flex-col p-8 transition hover:border-blue-600 hover:shadow-xl h-full group">
+                        <div class="flex flex-col items-center text-center gap-4 shrink-0">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                                <i class="ph ph-user-plus text-3xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-black text-slate-900">Quick Add</h3>
+                                <p class="mt-2 text-sm text-slate-500 leading-relaxed">Instantly add the core roles needed to start production.</p>
+                            </div>
+                        </div>
+                        <form method="POST" class="mt-5 space-y-4 flex-1 flex flex-col">
+                            {% csrf_token %}
+                            <div class="public-note mb-4 shrink-0">
+                                <p class="text-xs text-slate-700">Leave password blank to use <code>Password123!</code>.</p>
+                            </div>
+                            
+                            <div class="space-y-3 flex-1 overflow-y-auto pr-2" style="max-height: 260px; scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent;">
+                                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                                    <label class="block text-[11px] font-black uppercase tracking-wider text-slate-800 mb-1.5">Planner</label>
+                                    <div class="space-y-1.5">
+                                        <input type="text" name="name_planner" placeholder="Name" class="text-[13px] w-full py-1.5 px-3">
+                                        <input type="email" name="email_planner" placeholder="Email" class="text-[13px] w-full py-1.5 px-3">
+                                        <input type="password" name="password_planner" placeholder="Password (Optional)" class="text-[13px] w-full py-1.5 px-3">
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                                    <label class="block text-[11px] font-black uppercase tracking-wider text-slate-800 mb-1.5">Supervisor</label>
+                                    <div class="space-y-1.5">
+                                        <input type="text" name="name_supervisor" placeholder="Name" class="text-[13px] w-full py-1.5 px-3">
+                                        <input type="email" name="email_supervisor" placeholder="Email" class="text-[13px] w-full py-1.5 px-3">
+                                        <input type="password" name="password_supervisor" placeholder="Password (Optional)" class="text-[13px] w-full py-1.5 px-3">
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+                                    <label class="block text-[11px] font-black uppercase tracking-wider text-slate-800 mb-1.5">Worker</label>
+                                    <div class="space-y-1.5">
+                                        <input type="text" name="name_worker" placeholder="Name" class="text-[13px] w-full py-1.5 px-3">
+                                        <input type="email" name="email_worker" placeholder="Email" class="text-[13px] w-full py-1.5 px-3">
+                                        <input type="password" name="password_worker" placeholder="Password (Optional)" class="text-[13px] w-full py-1.5 px-3">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="pt-4 mt-auto shrink-0">
+                                <button type="submit" class="public-btn-primary w-full justify-center">Save & Open Planner</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Choice 2: Excel Import -->
+                    <div class="public-card flex flex-col p-8 transition hover:border-emerald-500 hover:shadow-xl h-full group">
+                        <div class="flex flex-col items-center text-center gap-4 shrink-0">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+                                <i class="ph ph-microsoft-excel-logo text-3xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-black text-slate-900">Import from Excel</h3>
+                                <p class="mt-2 text-sm text-slate-500 leading-relaxed">Upload your existing employee list if your team is already documented.</p>
+                            </div>
+                        </div>
+                        <div class="mt-5 space-y-4 flex-1 flex flex-col">
+                            <div class="flex justify-center shrink-0">
+                                <a href="{% url 'download_template' 'employees_template.xlsx' %}" class="public-btn-secondary text-sm">
+                                    <i class="ph ph-download-simple text-base"></i> Download Template
+                                </a>
+                            </div>
+                            <form action="{% url 'handle_bulk_import' %}" method="POST" enctype="multipart/form-data" class="mt-4 flex flex-col gap-3 flex-1">
+                                {% csrf_token %}
+                                <input type="hidden" name="import_type" value="employees">
+                                <input type="hidden" name="tenant_code" value="{{ active_tenant_code }}">
+                                <input type="hidden" name="next" value="onboarding_users">
+                                
+                                <div class="bg-slate-50 border border-slate-200 border-dashed rounded-[1rem] p-6 text-center flex-1 flex flex-col items-center justify-center cursor-pointer hover:bg-emerald-50 transition relative group/upload">
+                                    <i class="ph ph-upload-simple text-3xl text-emerald-500 mb-2 group-hover/upload:scale-110 transition-transform"></i>
+                                    <span class="text-sm font-black text-slate-700" data-upload-hint="true">Click to Browse</span>
+                                    <span class="text-xs text-slate-500 mt-1">.xlsx files only</span>
+                                    <input type="file" name="file" accept=".xlsx" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" data-upload-input="true">
+                                </div>
+                                
+                                <button type="submit" class="public-btn-secondary w-full justify-center shrink-0" data-upload-button="true">
+                                    Upload List
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Choice 3: Skip -->
+                    <form method="POST" class="h-full">
+                        {% csrf_token %}
+                        <input type="hidden" name="skip_team_setup" value="1">
+                        <button type="submit" class="public-card flex flex-col items-center gap-4 p-8 text-center transition hover:border-slate-400 hover:shadow-xl w-full h-full group cursor-pointer">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-slate-100 text-slate-600 group-hover:bg-slate-800 group-hover:text-white transition-colors duration-300">
+                                <i class="ph ph-fast-forward text-3xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-black text-slate-900">Skip for Now</h3>
+                                <p class="mt-3 text-sm text-slate-500 leading-relaxed">Proceed directly to the planner. You can invite your team members later from the settings panel.</p>
+                            </div>
+                            <div class="mt-auto pt-6">
+                                <span class="inline-flex items-center gap-2 text-sm font-black text-slate-700 group-hover:text-slate-900">
+                                    Open Planner <i class="ph ph-arrow-right"></i>
+                                </span>
+                            </div>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('[data-upload-input="true"]').forEach((fileInput) => {
+        const form = fileInput.closest('form');
+        const button = form.querySelector('[data-upload-button="true"]');
+        const hint = form.querySelector('[data-upload-hint="true"]');
+        
+        fileInput.addEventListener('change', () => {
+            if (!fileInput.files || !fileInput.files.length) return;
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Uploading...';
+                button.classList.add('opacity-70', 'cursor-not-allowed');
+            }
+            if (hint) {
+                hint.textContent = `Uploading ${fileInput.files[0].name}...`;
+                hint.classList.remove('text-slate-700');
+                hint.classList.add('text-emerald-600');
+            }
+            form.submit();
+        });
+    });
+});
+</script>
+{% endblock %}

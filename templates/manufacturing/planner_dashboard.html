@@ -1,0 +1,1816 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% load static i18n tenant_i18n %}
+
+{% block title %}{% tenant_trans "Planner Workspace" %} - Nezam{% endblock %}
+
+{% block app_header %}{% endblock %}
+
+{% block sidebar %}{% endblock %}
+
+{% block content %}
+<script>
+  window.__plannerResetWorkspaceState = {{ reset_planner_workspace_state|yesno:"true,false" }};
+
+  if (window.__plannerResetWorkspaceState) {
+    try {
+      const keysToRemove = [];
+      for (let i = 0; i < sessionStorage.length; i += 1) {
+        const key = sessionStorage.key(i);
+        if (key && key.indexOf('planner.workspace.state:') === 0) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((key) => sessionStorage.removeItem(key));
+    } catch (e) {
+      // Ignore storage reset failures.
+    }
+  }
+
+  window.getPlannerWorkspaceStorageKey = window.getPlannerWorkspaceStorageKey || function () {
+    const path = (window.location && window.location.pathname ? window.location.pathname.replace(/\/+$/, '') : '/manufacturing/dashboard') || '/manufacturing/dashboard';
+    const scopeRoot = document.querySelector('[data-planner-dashboard="true"][x-data]');
+    const tenantRaw = scopeRoot?.dataset?.plannerTenant || document.body?.dataset?.plannerTenant || '';
+    const companyRaw = scopeRoot?.dataset?.plannerCompany
+      || document.querySelector('#app-top-nav .app-top-nav-company')?.textContent?.trim()
+      || document.querySelector('#app-top-nav .text-sm.font-black.text-slate-800')?.textContent?.trim()
+      || 'company';
+    const tenant = String(tenantRaw || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const company = String(companyRaw || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'company';
+    const scope = tenant ? `tenant:${tenant}` : `company:${company}`;
+    return `planner.workspace.state:${scope}:${path}`;
+  };
+
+  window.loadPlannerWorkspaceState = window.loadPlannerWorkspaceState || function () {
+    try {
+      const raw = sessionStorage.getItem(window.getPlannerWorkspaceStorageKey());
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  window.capturePlannerWorkspaceState = window.capturePlannerWorkspaceState || function () {
+    const current = window.loadPlannerWorkspaceState() || {};
+    const scopeRoot = document.querySelector('[x-data="plannerWorkspace"], [data-planner-dashboard="true"][x-data]');
+    const scope = scopeRoot && Array.isArray(scopeRoot._x_dataStack) && scopeRoot._x_dataStack.length ? scopeRoot._x_dataStack[0] : null;
+    const timelineDate = document.getElementById('timelineDate');
+    const stageFilter = document.getElementById('timelineStageFilter');
+    const machineFilter = document.getElementById('timelineMachineFilter');
+    const globalSearch = document.getElementById('globalSmartSearch');
+    const smartSearch = document.getElementById('timelineSmartSearch');
+    const localSearch = document.getElementById('timelineSearch');
+    const timelineScroll = document.getElementById('timelineScrollWrapper');
+    const mainContent = document.getElementById('main-content');
+
+    return {
+      activeScreen: scope && typeof scope.activeScreen === 'string' ? scope.activeScreen : (current.activeScreen || 'schedule'),
+      currentView: scope && typeof scope.currentView === 'string' ? scope.currentView : (current.currentView || 'gantt'),
+      showQueueRail: scope && typeof scope.showQueueRail === 'boolean' ? scope.showQueueRail : (typeof current.showQueueRail === 'boolean' ? current.showQueueRail : true),
+      date: timelineDate ? (timelineDate.value || '') : (current.date || ''),
+      stage: stageFilter ? (stageFilter.value || 'all') : (current.stage || 'all'),
+      machineActivity: machineFilter ? (machineFilter.value || 'all') : (current.machineActivity || 'all'),
+      scale: window.getTimelineScale ? window.getTimelineScale() : (current.scale || 'day'),
+      shift: window.getTimelineShift ? window.getTimelineShift() : (current.shift || 'all'),
+      search: globalSearch?.value || smartSearch?.value || localSearch?.value || current.search || '',
+      timelineScrollLeft: timelineScroll ? Math.round(timelineScroll.scrollLeft || 0) : Math.round(current.timelineScrollLeft || 0),
+      timelineScrollTop: timelineScroll ? Math.round(timelineScroll.scrollTop || 0) : Math.round(current.timelineScrollTop || 0),
+      mainScrollTop: mainContent ? Math.round(mainContent.scrollTop || 0) : Math.round(current.mainScrollTop || 0),
+    };
+  };
+
+  window.persistPlannerWorkspaceState = window.persistPlannerWorkspaceState || function (partialState) {
+    try {
+      const snapshot = window.capturePlannerWorkspaceState();
+      const nextState = {
+        ...snapshot,
+        ...(partialState || {}),
+        updatedAt: Date.now(),
+      };
+      sessionStorage.setItem(window.getPlannerWorkspaceStorageKey(), JSON.stringify(nextState));
+      return nextState;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  window.reloadPlannerWorkspacePreservingState = window.reloadPlannerWorkspacePreservingState || function (partialState) {
+    if (typeof window.persistPlannerWorkspaceState === 'function') {
+      window.persistPlannerWorkspaceState(partialState || {});
+    }
+    window.location.reload();
+  };
+
+  window.notifyPlannerAction = window.notifyPlannerAction || function (message, type = 'info') {
+    if (typeof window.appNotify === 'function') {
+      window.appNotify(message, type);
+      return;
+    }
+    if (type === 'error') {
+      window.alert(message);
+    }
+  };
+
+  window.setPlannerActionButtonBusy = window.setPlannerActionButtonBusy || function (button, busy, label) {
+    if (!button) return;
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.disabled = Boolean(busy);
+    button.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) {
+      button.innerHTML = `<span class="inline-flex items-center justify-center gap-1.5"><i class="ph ph-spinner-gap animate-spin"></i><span>${label || 'Working...'}</span></span>`;
+    } else {
+      button.innerHTML = button.dataset.originalHtml;
+    }
+  };
+
+  window.runPlannerActionButton = window.runPlannerActionButton || async function (button, action, options = {}) {
+    if (button && button.disabled) return false;
+    window.setPlannerActionButtonBusy(button, true, options.label || 'Opening...');
+    try {
+      await Promise.resolve(typeof action === 'function' ? action() : null);
+      return false;
+    } catch (error) {
+      console.error(error);
+      window.notifyPlannerAction(options.errorMessage || 'Planner action failed. Please try again.', 'error');
+      return false;
+    } finally {
+      if (!options.keepBusy) {
+        window.setTimeout(() => window.setPlannerActionButtonBusy(button, false), options.restoreDelay || 900);
+      }
+    }
+  };
+
+  window.__plannerWorkspaceFactory = window.__plannerWorkspaceFactory || function () {
+    const savedState = window.loadPlannerWorkspaceState ? (window.loadPlannerWorkspaceState() || {}) : {};
+    return {
+      activeScreen: savedState.activeScreen === 'analytics'
+        ? 'pendingWos'
+        : (typeof savedState.activeScreen === 'string' ? savedState.activeScreen : 'schedule'),
+      currentView: typeof savedState.currentView === 'string' ? savedState.currentView : 'gantt',
+      showOverflow: false,
+      showFilterDrawer: false,
+      showAdvancedTools: false,
+      showFlowGuide: false,
+      showQueueRail: typeof savedState.showQueueRail === 'boolean' ? savedState.showQueueRail : true,
+      previousScreen: 'schedule',
+
+      init() {
+        this.$nextTick(() => {
+          if (window.applyTimelineControlUI) window.applyTimelineControlUI();
+        });
+      },
+
+      setScreen(screen) {
+        this.activeScreen = screen;
+        this.showOverflow = false;
+        if (window.persistPlannerWorkspaceState) {
+          window.persistPlannerWorkspaceState({ activeScreen: screen });
+        }
+      },
+
+      setPrimaryView(view) {
+        this.currentView = view || 'gantt';
+        if (window.plannerSetView) window.plannerSetView(this.currentView);
+        if (window.persistPlannerWorkspaceState) {
+          window.persistPlannerWorkspaceState({ currentView: this.currentView });
+        }
+      },
+
+      openFilterDrawer() {
+        this.showFilterDrawer = true;
+        setTimeout(() => {
+          if (window.syncPlannerFilterDrawer) window.syncPlannerFilterDrawer();
+        }, 60);
+      },
+
+      applyFilterDrawer() {
+        if (window.applyPlannerFilterDrawer) window.applyPlannerFilterDrawer();
+        this.showFilterDrawer = false;
+      },
+
+      resetFilterDrawer() {
+        if (window.resetPlannerFilterDrawer) window.resetPlannerFilterDrawer();
+      },
+
+      toggleQueueRail() {
+        this.showQueueRail = !this.showQueueRail;
+        if (window.persistPlannerWorkspaceState) {
+          window.persistPlannerWorkspaceState({ showQueueRail: this.showQueueRail });
+        }
+        if (window.applyTimelineControlUI) window.applyTimelineControlUI();
+      },
+
+      openNotifications() {
+        if (this.activeScreen !== 'notifications') {
+          this.previousScreen = this.activeScreen || 'schedule';
+        }
+        this.activeScreen = 'notifications';
+        if (window.persistPlannerWorkspaceState) {
+          window.persistPlannerWorkspaceState({ activeScreen: 'notifications' });
+        }
+      },
+
+      closeNotifications() {
+        const target = this.previousScreen && this.previousScreen !== 'notifications' ? this.previousScreen : 'schedule';
+        this.setScreen(target);
+      },
+    };
+  };
+
+  window.openGlobalSettings = function () {
+    const bodyRoot = document.querySelector('body[x-data]');
+    const alpineData = bodyRoot && bodyRoot._x_dataStack && bodyRoot._x_dataStack[0];
+    if (alpineData && Object.prototype.hasOwnProperty.call(alpineData, 'showSettings')) {
+      alpineData.showSettings = true;
+      return;
+    }
+
+    const settingsLink = document.querySelector('a[href*="/manufacturing/settings"]');
+    if (settingsLink && settingsLink.href) {
+      window.location.href = settingsLink.href;
+      return;
+    }
+
+    window.location.href = '/manufacturing/settings/';
+  };
+
+  window.openPlannerActionWorkOrder = window.openPlannerActionWorkOrder || function (woId, options) {
+    const targetId = String(woId || '').trim();
+    if (!targetId) return false;
+
+    const scheduleOpenDelay = 80;
+    const switchToSchedule = () => {
+      const scopeRoot = document.querySelector('[x-data="plannerWorkspace"], [data-planner-dashboard="true"][x-data]');
+      const scope = scopeRoot && Array.isArray(scopeRoot._x_dataStack) && scopeRoot._x_dataStack.length ? scopeRoot._x_dataStack[0] : null;
+      if (scope && typeof scope.setScreen === 'function') {
+        scope.setScreen('schedule');
+      } else if (scope && Object.prototype.hasOwnProperty.call(scope, 'activeScreen')) {
+        scope.activeScreen = 'schedule';
+        if (window.persistPlannerWorkspaceState) {
+          window.persistPlannerWorkspaceState({ activeScreen: 'schedule' });
+        }
+      }
+    };
+
+    const tryOpen = (attempt) => {
+      const openFn = window.__timelineOpenWorkOrderModal || window.openWorkOrderModal;
+      if (typeof openFn === 'function' && openFn !== window.openPlannerActionWorkOrder) {
+        switchToSchedule();
+        window.notifyPlannerAction('Opening work order action...', 'info');
+        window.setTimeout(() => openFn(targetId, options || {}), scheduleOpenDelay);
+        return false;
+      }
+      if (attempt < 20) {
+        window.setTimeout(() => tryOpen(attempt + 1), 75);
+        return false;
+      }
+      try {
+        sessionStorage.setItem('planner-open-wo-after-reload', targetId);
+      } catch (e) {}
+      window.notifyPlannerAction('Refreshing planner to open the work order...', 'info');
+      window.reloadPlannerWorkspacePreservingState
+        ? window.reloadPlannerWorkspacePreservingState({ activeScreen: 'schedule' })
+        : (window.location.href = `/manufacturing/dashboard/?wo=${encodeURIComponent(targetId)}`);
+      return false;
+    };
+
+    return tryOpen(0);
+  };
+
+  window.__plannerFallbackClosePlannerAction = window.__plannerFallbackClosePlannerAction || function (woId) {
+    const targetId = String(woId || '').trim();
+    if (!targetId) return false;
+
+    const tryClose = (attempt) => {
+      const closeFn = window.closePlannerAction;
+      if (typeof closeFn === 'function' && closeFn !== window.__plannerFallbackClosePlannerAction) {
+        return closeFn(targetId);
+      }
+      if (attempt < 20) {
+        window.setTimeout(() => tryClose(attempt + 1), 75);
+        return false;
+      }
+      window.openPlannerActionWorkOrder(targetId);
+      return false;
+    };
+
+    return tryClose(0);
+  };
+  window.closePlannerAction = window.closePlannerAction || window.__plannerFallbackClosePlannerAction;
+</script>
+
+<style>
+  .planner-tab-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1 1 21rem;
+    min-width: 18rem;
+    max-width: 100%;
+  }
+
+  .planner-tab-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .planner-kpi-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    flex: 1 1 24rem;
+    min-width: 0;
+  }
+
+  .planner-kpi-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .planner-action-btn[aria-busy="true"] {
+    opacity: 0.72;
+    cursor: wait;
+    pointer-events: none;
+  }
+
+  .planner-action-btn:focus-visible,
+  [data-planner-dashboard="true"] button:focus-visible,
+  [data-planner-dashboard="true"] a:focus-visible,
+  [data-planner-dashboard="true"] input:focus-visible,
+  [data-planner-dashboard="true"] select:focus-visible {
+    outline: 2px solid #0891b2;
+    outline-offset: 3px;
+  }
+
+  .planner-command-deck {
+    position: relative;
+    overflow: visible;
+    border: 1px solid rgba(203, 213, 225, 0.92);
+    background:
+      radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 34%),
+      radial-gradient(circle at top right, rgba(217, 70, 239, 0.08), transparent 30%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.84),
+      0 22px 44px -38px rgba(15, 23, 42, 0.28);
+  }
+
+  .planner-command-deck::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.5) 0, rgba(255, 255, 255, 0) 22%, rgba(255, 255, 255, 0) 78%, rgba(255, 255, 255, 0.42) 100%);
+    pointer-events: none;
+  }
+
+  .planner-command-row,
+  .planner-search-row {
+    position: relative;
+    z-index: 1;
+  }
+
+  .planner-command-row {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+
+  .planner-notification-icon-btn {
+    position: relative;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+  }
+
+  .planner-notification-icon-btn__badge {
+    position: absolute;
+    top: -0.45rem;
+    right: -0.45rem;
+  }
+
+  .planner-overview-shell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    min-width: 0;
+    flex: 999 1 34rem;
+    padding-left: 0.75rem;
+    border-left: 1px solid rgba(226, 232, 240, 0.95);
+  }
+
+  .planner-overview-shell--kpi-only {
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .planner-command-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    min-width: max-content;
+  }
+
+  .planner-flow-strip {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .planner-flow-card {
+    border-radius: 1.15rem;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 14px 30px -28px rgba(15, 23, 42, 0.25);
+  }
+
+  .planner-flow-card__eyebrow {
+    font-size: 0.72rem;
+    line-height: 1;
+    letter-spacing: 0.14em;
+  }
+
+  .planner-kpi-card {
+    min-width: 0;
+    flex: 0 0 auto;
+    border-radius: 1rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+  }
+
+  .planner-kpi-card__label {
+    font-size: 0.66rem;
+    line-height: 1;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+  }
+
+  .planner-kpi-card__value {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+
+  [data-planner-dashboard="true"] .planner-command-deck {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  [data-planner-dashboard="true"] .planner-command-row {
+    align-items: center;
+  }
+
+  [data-planner-dashboard="true"] [data-reorderable-tabs="planner-tab-order"] button {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    border-radius: 0.85rem;
+    font-size: 0.84rem;
+  }
+
+  [data-planner-dashboard="true"] .planner-kpi-card {
+    padding: 0.5rem 0.65rem;
+    border-radius: 0.85rem;
+  }
+
+  [data-planner-dashboard="true"] .planner-kpi-card__value {
+    font-size: 1.25rem;
+  }
+
+  [data-planner-dashboard="true"] .planner-search-row {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+  }
+
+  [data-planner-dashboard="true"] .planner-smart-search-shell {
+    border-radius: 1rem;
+  }
+
+  @media (max-width: 1280px) {
+    [data-planner-dashboard="true"] .planner-overview-shell {
+      flex: 1 1 100%;
+      border-left: 0;
+      border-top: 1px solid rgba(226, 232, 240, 0.95);
+      padding-left: 0;
+      padding-top: 0.7rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-command-actions {
+      margin-left: auto;
+    }
+  }
+
+  [data-planner-dashboard="true"] .planner-smart-search-copy {
+    min-width: 11.5rem;
+    padding: 0.65rem 0.8rem;
+    gap: 0.5rem;
+  }
+
+  [data-planner-dashboard="true"] .planner-smart-search-input {
+    padding: 0.65rem 0.8rem;
+    font-size: 0.92rem;
+  }
+
+  .planner-smart-search-shell {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-height: 3rem;
+    border-radius: 1.15rem;
+    border: 1px solid rgba(203, 213, 225, 0.96);
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.86),
+      0 14px 28px -28px rgba(15, 23, 42, 0.26);
+  }
+
+  .planner-smart-search-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex: 0 0 auto;
+    min-width: 0;
+    padding: 0.85rem 1rem;
+    border-right: 1px solid rgba(226, 232, 240, 0.96);
+    color: #64748b;
+    white-space: nowrap;
+  }
+
+  .planner-smart-search-copy i {
+    color: #64748b;
+  }
+
+  .planner-smart-search-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #0f172a;
+    padding: 0.85rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    outline: none;
+    box-shadow: none;
+  }
+
+  .planner-smart-search-input::placeholder {
+    color: #94a3b8;
+    font-weight: 600;
+  }
+
+  [data-planner-dashboard="true"] #timelineHeaderBlock {
+    display: none !important;
+  }
+
+  [data-planner-dashboard="true"] #timelineHeaderToggle {
+    display: none !important;
+  }
+
+  [data-planner-dashboard="true"] .timeline-header-bar {
+    margin-bottom: 1rem;
+  }
+
+  [data-planner-dashboard="true"] .timeline-header-bar>div:last-child {
+    margin-left: auto;
+  }
+
+  body.timeline-maximized-app #app-top-nav,
+  body.timeline-maximized-app main>header {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body.timeline-maximized-app #main-content {
+    padding: 0 !important;
+  }
+
+  @media (max-width: 1023px) {
+    [data-planner-dashboard="true"] .planner-flow-strip {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    [data-planner-dashboard="true"] #plannerViewContainer {
+      min-height: 32rem;
+    }
+
+    [data-planner-dashboard="true"] aside[x-show="showQueueRail"] {
+      min-height: 0;
+      max-height: 28rem;
+    }
+  }
+
+  @media (max-width: 1023px) {
+    [data-planner-dashboard="true"] {
+      gap: 1rem;
+    }
+
+    [data-planner-dashboard="true"] #plannerViewContainer {
+      min-height: 28rem;
+    }
+
+    [data-planner-dashboard="true"] #plannerViewArea {
+      min-height: 25rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    [data-planner-dashboard="true"] .timeline-header-bar {
+      margin-bottom: 0.75rem;
+    }
+
+    [data-planner-dashboard="true"] #plannerViewContainer,
+    [data-planner-dashboard="true"] aside[x-show="showQueueRail"] {
+      border-radius: 1.1rem;
+    }
+  }
+
+  @media (max-width: 640px) {
+    [data-planner-dashboard="true"] {
+      gap: 0.75rem;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      padding-bottom: 1rem;
+    }
+
+    [data-planner-dashboard="true"] > .bg-white.rounded-2xl {
+      padding: 0.75rem;
+      border-radius: 1.1rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-tab-scroll {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin-inline: -0.15rem;
+      padding: 0.15rem;
+    }
+
+    [data-planner-dashboard="true"] [data-reorderable-tabs="planner-tab-order"] {
+      gap: 0.45rem;
+    }
+
+    [data-planner-dashboard="true"] [data-reorderable-tabs="planner-tab-order"] > button {
+      padding: 0.72rem 0.85rem;
+      font-size: 0.78rem;
+      border-radius: 0.95rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-kpi-scroll {
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      overflow: visible;
+      padding-bottom: 0;
+    }
+
+    [data-planner-dashboard="true"] .planner-kpi-scroll > .planner-kpi-card {
+      flex: 1 1 calc(50% - 0.25rem);
+      min-width: 0;
+    }
+
+    [data-planner-dashboard="true"] .planner-command-actions {
+      width: 100%;
+      min-width: 0;
+      justify-content: flex-end;
+      margin-left: 0;
+    }
+
+    [data-planner-dashboard="true"] .planner-command-actions > button {
+      min-height: 2.9rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-command-deck {
+      padding: 0.8rem;
+      border-radius: 1rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-flow-strip {
+      grid-template-columns: 1fr;
+    }
+
+    [data-planner-dashboard="true"] .planner-command-row {
+      flex-wrap: wrap;
+      gap: 0.65rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-overview-shell {
+      flex: 1 1 100%;
+      border-left: 0;
+      border-top: 1px solid rgba(226, 232, 240, 0.95);
+      padding-left: 0;
+      padding-top: 0.85rem;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    [data-planner-dashboard="true"] .planner-smart-search-shell {
+      min-height: 3rem;
+      border-radius: 1rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-smart-search-copy {
+      padding: 0.8rem 0.85rem;
+      gap: 0.55rem;
+      font-size: 0.82rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-smart-search-input {
+      padding: 0.8rem 0.85rem;
+      font-size: 0.88rem;
+    }
+
+    [data-planner-dashboard="true"] .planner-kpi-card__value {
+      font-size: 1.35rem;
+    }
+
+    [data-planner-dashboard="true"] #plannerViewContainer {
+      min-height: 24rem;
+      border-radius: 1rem;
+    }
+
+    [data-planner-dashboard="true"] #plannerViewArea {
+      min-height: 22rem;
+    }
+  }
+</style>
+
+<div class="min-h-screen flex flex-col gap-4 lg:gap-5 px-3 sm:px-4 lg:px-6 pb-6 lg:pb-10" x-data="plannerWorkspace"
+  @planner-open-schedule.window="setScreen('schedule'); setPrimaryView('gantt')"
+  @planner-close-advanced.window="showAdvancedTools = false" x-cloak data-planner-dashboard="true"
+  data-planner-company="{{ company.name|default:'Company' }}"
+  data-planner-tenant="{{ request.tenant.code|default:'' }}">
+
+  <div class="planner-command-deck rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5">
+    <div class="planner-command-row">
+      <div class="planner-tab-scroll overflow-x-auto pb-1">
+        <div data-reorderable-tabs="planner-tab-order" class="flex items-center gap-2 min-w-max">
+          <button @click="setScreen('schedule')" data-tab-key="schedule" draggable="true"
+            :class="activeScreen === 'schedule' ? 'border-transparent bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-md' : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-black transition-all cursor-grab active:cursor-grabbing whitespace-nowrap shrink-0">
+            <i class="ph ph-calendar-dots text-base"></i>
+            <span>{% tenant_trans "Schedule" %}</span>
+          </button>
+          <button @click="setScreen('approvals')" data-tab-key="approvals" draggable="true"
+            :class="activeScreen === 'approvals' ? 'border-transparent bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-md' : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-black transition-all cursor-grab active:cursor-grabbing whitespace-nowrap shrink-0">
+            <i class="ph ph-seal-check text-base"></i>
+            <span>{% tenant_trans "Approvals" %}</span>
+          </button>
+          <button @click="setScreen('pendingWos')" data-tab-key="pending-wos" draggable="true"
+            :class="activeScreen === 'pendingWos' ? 'border-transparent bg-gradient-to-r from-cyan-500 to-fuchsia-500 text-white shadow-md' : 'border-slate-200 bg-white text-slate-700 shadow-sm hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'"
+            class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-black transition-all cursor-grab active:cursor-grabbing whitespace-nowrap shrink-0">
+            <i class="ph ph-list-checks text-base"></i>
+            <span>{% tenant_trans "Pending WOs" %}</span>
+          </button>
+        </div>
+      </div>
+
+      <button type="button"
+        @click="openNotifications()"
+        data-planner-notifications-button="true"
+        class="planner-notification-icon-btn inline-flex shrink-0 items-center justify-center rounded-xl border text-sm font-black shadow-sm transition focus:outline-none focus:ring-2 {% if planner_notifications_count %}border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 focus:ring-rose-300/70{% else %}border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus:ring-slate-300/70{% endif %}"
+        title="{% tenant_trans 'Planner notifications' %}"
+        aria-label="{% tenant_trans 'Planner notifications' %}">
+        <i class="ph ph-bell-ringing text-lg"></i>
+        <span aria-live="polite" class="planner-notification-icon-btn__badge inline-flex min-w-6 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-black {% if planner_notifications_count %}bg-rose-600 text-white{% else %}bg-slate-100 text-slate-500{% endif %}">
+          {{ planner_notifications_count|default:0 }}
+        </span>
+      </button>
+
+      <div class="planner-overview-shell" x-show="activeScreen === 'schedule'" x-transition.opacity.duration.200ms
+        :class="activeScreen === 'schedule' ? 'planner-overview-shell--kpi-only' : ''">
+        <div x-show="activeScreen === 'schedule'" x-transition.opacity.duration.200ms
+          class="planner-kpi-scroll flex items-center gap-2 overflow-x-auto pb-1 min-w-0">
+          <div class="planner-kpi-card px-3 py-2 rounded-2xl border border-emerald-100/90 bg-emerald-50/90 w-[168px] shrink-0">
+            <div class="planner-kpi-card__label uppercase font-black text-emerald-700/70">
+              {% tenant_trans "Schedule Adherence" %}
+            </div>
+            <div class="planner-kpi-card__value mt-1 font-black text-emerald-600"
+              x-data="{ op: {{ machine_stats.0|default:0 }}, total: {{ machine_stats.0|default:0 }} + {{ machine_stats.1|default:0 }} + {{ machine_stats.2|default:0 }} }">
+              <span x-text="total > 0 ? Math.round((op / total) * 100) + '%' : '0%'"></span>
+            </div>
+          </div>
+          <div class="planner-kpi-card px-3 py-2 rounded-2xl border border-amber-100/90 bg-amber-50/92 w-[96px] shrink-0">
+            <div class="planner-kpi-card__label uppercase font-black text-amber-700/70">
+              {% tenant_trans "Open WOs" %}
+            </div>
+            <div class="planner-kpi-card__value mt-1 font-black text-amber-500">{{ open_wos_count|default:0 }}</div>
+          </div>
+          <div class="planner-kpi-card px-3 py-2 rounded-2xl border border-rose-100/90 bg-rose-50/92 w-[120px] shrink-0">
+            <div class="planner-kpi-card__label uppercase font-black text-rose-700/70">
+              {% tenant_trans "Urgent Issues" %}
+            </div>
+            <div class="planner-kpi-card__value mt-1 font-black text-rose-500">{{ machine_stats.1|default:0 }}</div>
+          </div>
+        </div>
+        <div class="planner-command-actions">
+          <button
+            type="button"
+            @click="$dispatch('open-create-work-order')"
+            data-schedule-create-wo="true"
+            class="planner-add-wo-btn inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-black text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-300/70"
+            title="{% tenant_trans 'Create Work Order' %}"
+            aria-label="{% tenant_trans 'Create Work Order' %}">
+            <i class="ph ph-plus text-base"></i>
+            <span class="hidden md:inline">{% tenant_trans "Create Work Order" %}</span>
+          </button>
+          <button
+            type="button"
+            @click="showFlowGuide = true"
+            class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-300/70"
+            title="{% tenant_trans 'Daily Flow' %}"
+            aria-label="{% tenant_trans 'Daily Flow' %}">
+            <i class="ph ph-compass-tool text-base"></i>
+            <span class="hidden md:inline">{% tenant_trans "Guide" %}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div x-show="activeScreen === 'schedule'" x-transition.opacity.duration.200ms
+      class="planner-search-row mt-2.5 border-t border-slate-200/90 pt-2.5">
+      <label class="planner-smart-search-shell">
+        <div class="planner-smart-search-copy">
+          <i class="ph ph-magnifying-glass text-lg"></i>
+          <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500/90">
+            {% tenant_trans "Smart Search" %}
+          </div>
+        </div>
+        <input
+          type="text"
+          id="globalSmartSearch"
+          class="planner-smart-search-input"
+          placeholder="{% tenant_trans 'Search work orders, products, machines, or machine code...' %}"
+          oninput="window.filterTimeline && window.filterTimeline()"
+          aria-label="{% tenant_trans 'Smart search' %}">
+      </label>
+    </div>
+  </div>
+
+  <section x-show="activeScreen === 'notifications'" x-transition
+    class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 min-h-[560px]">
+    <div class="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+      <div>
+        <div class="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-rose-700">
+          <i class="ph ph-bell-ringing text-sm"></i>
+          {% tenant_trans "Notifications" %}
+        </div>
+        <h2 class="mt-3 text-xl font-black text-slate-950">{% tenant_trans "Planner action center" %}</h2>
+      </div>
+      <button type="button" @click="closeNotifications()"
+        class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+        title="{% tenant_trans 'Return' %}"
+        aria-label="{% tenant_trans 'Return' %}">
+        <i class="ph ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <div class="mt-5 grid grid-cols-1 xl:grid-cols-2 gap-4">
+      <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-black text-slate-950">{% tenant_trans "System notifications" %}</div>
+          <span class="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-black text-white">{{ system_notifications_count|default:0 }}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          {% for notice in system_notifications|slice:":8" %}
+          <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900">{{ notice.title }}</div>
+                <div class="mt-1 text-xs font-semibold leading-5 text-slate-600">{{ notice.message }}</div>
+                <div class="mt-1 text-[11px] font-bold text-slate-400">{{ notice.created_at|date:"Y-m-d H:i" }}</div>
+              </div>
+              {% if notice.link %}
+              <a href="{{ notice.link }}"
+                class="planner-action-btn shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-black text-white hover:bg-slate-800">
+                {% tenant_trans "Open" %}
+              </a>
+              {% endif %}
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-5 text-center text-xs font-semibold text-slate-500">
+            {% tenant_trans "No unread system notifications." %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-black text-amber-950">{% tenant_trans "BOM changes" %}</div>
+          <span class="rounded-full bg-amber-600 px-2.5 py-1 text-[11px] font-black text-white">{{ bom_change_actions_count|default:0 }}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          {% for wo in bom_change_actions|slice:":10" %}
+          <div class="rounded-xl border border-amber-200 bg-white p-3 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900">{{ wo.display_work_order_code }}</div>
+                <div class="mt-1 truncate text-xs font-semibold text-slate-600">{{ wo.product_name|default:"Work Order" }}</div>
+              </div>
+              <button type="button" aria-label="{% tenant_trans 'Open BOM decision for' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}'), { label: 'Opening...' })"
+                class="planner-action-btn rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-black text-white hover:bg-amber-700">
+                {% tenant_trans "Open Decision" %}
+              </button>
+            </div>
+            <div class="mt-2 grid grid-cols-3 gap-1.5 text-[11px]">
+              <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "WO BOM" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700">{{ wo.bom_version|default:"-" }}</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "Latest" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700">{{ wo.bom_change_payload.latest_bom_version|default:"-" }}</div>
+              </div>
+              <div class="rounded-lg bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "Reported" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700">{{ wo.bom_change_payload.reported_qty|default:0 }}</div>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-xl border border-dashed border-amber-200 bg-white/70 px-3 py-5 text-center text-xs font-semibold text-amber-700/70">
+            {% tenant_trans "No BOM decisions." %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-sky-200 bg-sky-50/60 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-black text-sky-950">{% tenant_trans "Store material responses" %}</div>
+          <span class="rounded-full bg-sky-600 px-2.5 py-1 text-[11px] font-black text-white">{{ material_actions_count|default:0 }}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          {% for wo in material_actions|slice:":10" %}
+          <div class="rounded-xl border border-sky-200 bg-white p-3 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900">{{ wo.display_work_order_code }}</div>
+                <div class="mt-1 truncate text-xs font-semibold text-slate-600">{{ wo.product_name|default:"Work Order" }}</div>
+                <div class="mt-1 text-xs font-black text-sky-700">
+                  {{ wo.material_payload.status_label }}{% if wo.material_payload.available_percent %} · {{ wo.material_payload.available_percent }}%{% endif %}{% if wo.material_payload.shortfall_qty %} · Shortfall {{ wo.material_payload.shortfall_qty }} pcs{% endif %}
+                </div>
+              </div>
+              <button type="button" aria-label="{% tenant_trans 'Open material response for' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}'), { label: 'Opening...' })"
+                class="planner-action-btn rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-black text-white hover:bg-sky-700">
+                {% tenant_trans "Open" %}
+              </button>
+            </div>
+            {% if wo.material_shortage_note %}
+            <div class="mt-2 rounded-lg bg-sky-50 px-2 py-1.5 text-xs font-semibold text-slate-700">{{ wo.material_shortage_note }}</div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="rounded-xl border border-dashed border-sky-200 bg-white/70 px-3 py-5 text-center text-xs font-semibold text-sky-700/70">
+            {% tenant_trans "No store material actions." %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-orange-200 bg-orange-50/60 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-black text-orange-950">{% tenant_trans "QC pending" %}</div>
+          <span class="rounded-full bg-orange-600 px-2.5 py-1 text-[11px] font-black text-white">{{ qc_pending_count|default:0 }}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          {% for wo in qc_pending|slice:":8" %}
+          <div class="rounded-xl border border-orange-200 bg-white p-3 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900">{{ wo.display_work_order_code }}</div>
+                <div class="mt-1 truncate text-xs font-semibold text-slate-600">{{ wo.product_name|default:"Work Order" }}</div>
+                <div class="mt-1 text-xs font-black text-orange-700">{% tenant_trans "QC must clear this stage before planner release." %}</div>
+              </div>
+              <button type="button" aria-label="{% tenant_trans 'Open QC pending work order' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}'), { label: 'Opening...' })"
+                class="planner-action-btn rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-black text-white hover:bg-orange-700">
+                {% tenant_trans "Open" %}
+              </button>
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-xl border border-dashed border-orange-200 bg-white/70 px-3 py-5 text-center text-xs font-semibold text-orange-700/70">
+            {% tenant_trans "No QC pending actions." %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-fuchsia-200 bg-fuchsia-50/60 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-black text-fuchsia-950">{% tenant_trans "Production approvals" %}</div>
+          <span class="rounded-full bg-fuchsia-600 px-2.5 py-1 text-[11px] font-black text-white">{{ pending_logs_count|default:0 }}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          {% for log in pending_logs|slice:":8" %}
+          <div class="rounded-xl border border-fuchsia-200 bg-white p-3 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900 truncate">{{ log.review_product_name }}</div>
+                <div class="mt-1 text-xs font-semibold text-slate-500">{{ log.review_stage_name }} - Qty {{ log.quantity }}</div>
+              </div>
+              <button type="button" aria-label="{% tenant_trans 'Review production approval' %} {{ log.review_product_name }}" @click="setScreen('approvals')"
+                class="planner-action-btn rounded-lg bg-fuchsia-600 px-3 py-1.5 text-xs font-black text-white hover:bg-fuchsia-700">
+                {% tenant_trans "Review" %}
+              </button>
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-xl border border-dashed border-fuchsia-200 bg-white/70 px-3 py-5 text-center text-xs font-semibold text-fuchsia-700/70">
+            {% tenant_trans "No production approvals." %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-black text-emerald-950">{% tenant_trans "Planner closure" %}</div>
+          <span class="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-black text-white">{{ planner_actions_count|default:0 }}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          {% for wo in planner_actions|slice:":8" %}
+          <div class="rounded-xl border border-emerald-200 bg-white p-3 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900">{{ wo.display_work_order_code }}</div>
+                <div class="mt-1 truncate text-xs font-semibold text-slate-600">{{ wo.product_name|default:"Work Order" }}</div>
+              </div>
+              <button type="button" aria-label="{% tenant_trans 'Open planner closure for' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}'), { label: 'Opening...' })"
+                class="planner-action-btn rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black text-white hover:bg-emerald-700">
+                {% tenant_trans "Open" %}
+              </button>
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-xl border border-dashed border-emerald-200 bg-white/70 px-3 py-5 text-center text-xs font-semibold text-emerald-700/70">
+            {% tenant_trans "No closure actions." %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-black text-indigo-950">{% tenant_trans "Machine assignment" %}</div>
+          <span class="rounded-full bg-indigo-600 px-2.5 py-1 text-[11px] font-black text-white">{{ release_ready_count|default:0 }}</span>
+        </div>
+        <div class="mt-3 space-y-2">
+          {% for wo in release_ready_tasks|slice:":8" %}
+          <div class="rounded-xl border border-indigo-200 bg-white p-3 shadow-sm">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-sm font-bold text-slate-900">{{ wo.display_work_order_code }}</div>
+                <div class="mt-1 text-xs font-semibold text-slate-500">{% tenant_trans "Next" %}: {{ wo.next_stage_name|default:"Stage" }}</div>
+              </div>
+              <button type="button" aria-label="{% tenant_trans 'Assign machine for' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}'), { label: 'Opening...' })"
+                class="planner-action-btn rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-black text-white hover:bg-indigo-700">
+                {% tenant_trans "Assign" %}
+              </button>
+            </div>
+          </div>
+          {% empty %}
+          <div class="rounded-xl border border-dashed border-indigo-200 bg-white/70 px-3 py-5 text-center text-xs font-semibold text-indigo-700/70">
+            {% tenant_trans "No machine assignment actions." %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section x-show="activeScreen === 'schedule'" x-transition class="space-y-4">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 min-h-[560px] lg:min-h-[640px]">
+      <div id="plannerViewContainer" data-planner-dashboard="true" data-planner-view-switcher="alpine"
+        class="lg:col-span-9 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[520px] md:min-h-[580px] lg:min-h-[640px] flex flex-col"
+        :style="showQueueRail ? '' : 'grid-column: 1 / -1;'"
+        x-effect="if (activeScreen === 'schedule' && window.plannerSetView) window.plannerSetView(currentView)">
+
+        <div class="p-3 sm:p-4 pb-0">
+          {% include "manufacturing/partials/timeline_header_bar.html" %}
+        </div>
+
+        <div id="plannerViewArea" class="relative flex-1 min-h-[420px] sm:min-h-[500px] lg:min-h-[560px] bg-slate-50">
+          <div id="plannerViewGantt" class="absolute inset-0 overflow-visible">
+            <div class="h-full p-3 sm:p-4 box-border">
+              {% include "manufacturing/partials/timeline_component.html" with timeline_header_mode="hidden" %}
+              {% include "manufacturing/partials/edit_task_drawer.html" %}
+
+              {{ machines_data|json_script:"data-machines" }}
+              {{ tasks_data|json_script:"data-tasks" }}
+              {{ stages_data|default:"[]"|json_script:"data-stages" }}
+              {{ intake_orders_data|json_script:"data-intake-orders" }}
+              {{ shift_config|json_script:"data-shift-config" }}
+              {{ weekly_holidays|default:"[]"|json_script:"data-weekly-holidays" }}
+              {{ user_role|default:'planner'|lower|json_script:"data-user-role" }}
+              {{ pending_wos_count|default:0|json_script:"pending-wos-count" }}
+            </div>
+          </div>
+
+          <div id="plannerViewKanban" class="absolute inset-0 hidden overflow-auto p-3 sm:p-4 bg-slate-100">
+            <div id="plannerKanbanMount" class="planner-kanban-alpine min-h-[420px]">
+              {% include "manufacturing/partials/timeline_kanban.html" %}
+            </div>
+            <div id="plannerKanbanFallback" class="hidden min-h-[420px]"></div>
+          </div>
+
+          <div id="plannerViewList" class="absolute inset-0 hidden overflow-auto p-3 sm:p-4 bg-white">
+            <div id="plannerListMount" class="max-w-5xl mx-auto min-h-[420px]"></div>
+          </div>
+
+          <div id="plannerViewCalendar" class="absolute inset-0 hidden overflow-auto p-3 sm:p-4 bg-white">
+            <div id="plannerCalendarMount" class="planner-calendar-alpine min-h-[420px]">
+              {% include "manufacturing/partials/timeline_calendar.html" %}
+            </div>
+            <div id="plannerCalendarFallback" class="hidden min-h-[420px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <aside x-show="showQueueRail" x-transition.opacity.duration.200ms
+        class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col min-h-[320px] lg:min-h-[640px]">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-slate-800">{% tenant_trans "Pending WOs" %}</h3>
+          <div class="flex items-center gap-2">
+            <span id="pendingWosCountBadge" data-pending-wos-count
+              class="px-2 py-1 rounded-full text-[10px] font-black bg-blue-100 text-blue-700">{{ pending_wos_count|default:0 }}</span>
+            <button type="button" @click="toggleQueueRail()"
+              :aria-expanded="showQueueRail ? 'true' : 'false'"
+              class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-all"
+              title="{% tenant_trans 'Hide Pending WOs' %}">
+              <i class="ph ph-sidebar-simple text-sm"></i>
+            </button>
+          </div>
+        </div>
+        <div class="space-y-2 overflow-y-auto pr-1">
+          <div id="plannerDispatchReadiness" class="mb-3 rounded-2xl border border-cyan-200 bg-cyan-50/60 p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700/80">
+                  {% tenant_trans "Dispatch Readiness" %}
+                </div>
+                <div class="mt-1 text-xs font-semibold text-cyan-900">
+                  {% tenant_trans "Supervisor handoff status" %}
+                </div>
+              </div>
+              <span id="plannerDispatchReadinessCount"
+                class="inline-flex min-w-7 items-center justify-center rounded-full bg-cyan-100 px-2 py-1 text-[10px] font-black text-cyan-700">0</span>
+            </div>
+            <div id="plannerDispatchReadinessList" class="mt-3 max-h-[420px] space-y-2 overflow-y-auto overscroll-contain pr-1">
+              <div class="rounded-xl border border-dashed border-cyan-200 bg-white/70 px-3 py-4 text-center text-xs font-semibold text-cyan-700/70">
+                {% tenant_trans "No dispatch items." %}
+              </div>
+            </div>
+          </div>
+
+          <div id="plannerFollowUpQueue" class="mb-3 rounded-2xl border border-rose-200 bg-rose-50/60 p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-rose-700/80">
+                  {% tenant_trans "Follow-up Queue" %}
+                </div>
+                <div class="mt-1 text-xs font-semibold text-rose-900">
+                  {% tenant_trans "Behind, overdue, or blocked WOs" %}
+                </div>
+              </div>
+              <span id="plannerFollowUpCount"
+                class="inline-flex min-w-7 items-center justify-center rounded-full bg-rose-100 px-2 py-1 text-[10px] font-black text-rose-700">0</span>
+            </div>
+            <div id="plannerFollowUpList" class="mt-3 max-h-[360px] space-y-2 overflow-y-auto overscroll-contain pr-1">
+              <div class="rounded-xl border border-dashed border-rose-200 bg-white/70 px-3 py-4 text-center text-xs font-semibold text-rose-700/70">
+                {% tenant_trans "No follow-up items." %}
+              </div>
+            </div>
+          </div>
+
+          {% if planner_actions %}
+          <div id="plannerClosureQueue"
+            class="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700/80">
+                  {% tenant_trans "Planner Closure Queue" %}
+                </div>
+                <div class="mt-1 text-xs font-semibold text-emerald-900">
+                  {% tenant_trans "Completed WOs waiting final close" %}
+                </div>
+              </div>
+              <span
+                class="inline-flex min-w-7 items-center justify-center rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-700">{{ planner_actions_count|default:"0" }}</span>
+            </div>
+            <div class="mt-3 space-y-2">
+          {% for wo in planner_actions|slice:":6" %}
+          <div class="planner-close-card p-3 rounded-xl border border-emerald-200 bg-white shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-bold text-slate-800">{{ wo.display_work_order_code }}</div>
+              <span
+                class="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-full">{% tenant_trans "Completed" %}</span>
+            </div>
+            <div class="text-xs text-slate-600 mt-1 truncate">{{ wo.product_name|default:"Work Order" }}</div>
+            <div class="mt-2 grid grid-cols-2 gap-1.5 text-[11px]">
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "Qty" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700">{{ wo.close_completed_qty|default:wo.quantity }} / {{ wo.quantity }}</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "Final" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700 truncate">{{ wo.close_final_stage_name|default:"-" }}</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "Closed By" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700">{% tenant_trans "Planner" %}</div>
+              </div>
+              <div class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "Done" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700">{{ wo.end_date|date:"M d, H:i"|default:"-" }}</div>
+              </div>
+              <div class="col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5">
+                <div class="font-black uppercase tracking-[0.12em] text-slate-400">{% tenant_trans "Customer" %}</div>
+                <div class="mt-0.5 font-bold text-slate-700 truncate">{{ wo.close_customer_name|default:"-" }}</div>
+              </div>
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" aria-label="{% tenant_trans 'Open work order' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}'), { label: 'Opening...' })"
+                class="planner-action-btn px-2 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-xs font-bold hover:bg-emerald-50 transition">
+                {% tenant_trans "Open" %}
+              </button>
+              <button type="button" aria-label="{% tenant_trans 'Close work order' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => closePlannerAction('{{ wo.id }}'), { label: 'Closing...', restoreDelay: 1200 })"
+                class="planner-action-btn px-2 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition">
+                {% tenant_trans "Close WO" %}
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+            </div>
+          </div>
+          <div class="border-b border-slate-200/70 my-2"></div>
+          {% endif %}
+
+          {% if release_ready_tasks %}
+          <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
+            Planner Machine Assignment ({{ release_ready_count|default:"0" }})
+          </div>
+          {% for wo in release_ready_tasks|slice:":6" %}
+          <div class="p-3 rounded-xl border border-indigo-200 bg-indigo-50/40">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-bold text-slate-800">{{ wo.display_work_order_code }}</div>
+              <span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full">{% tenant_trans "Assign" %}</span>
+            </div>
+            <div class="text-xs text-slate-600 mt-1 truncate">{{ wo.product_name|default:"Work Order" }}</div>
+            <div class="text-[11px] text-slate-500 mt-1">
+              {% tenant_trans "Next" %}: {{ wo.next_stage_name|default:"Stage 2" }} - {% tenant_trans "Qty ready" %}: {{ wo.available_qty|default:0 }}
+            </div>
+            <div class="mt-2 grid grid-cols-2 gap-2">
+              <button type="button" aria-label="{% tenant_trans 'Open machine assignment for' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}'), { label: 'Opening...' })"
+                class="planner-action-btn px-2 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-bold hover:bg-indigo-50 transition">
+                {% tenant_trans "Open" %}
+              </button>
+              <button type="button" aria-label="{% tenant_trans 'Assign machine for' %} {{ wo.display_work_order_code }}" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ wo.id }}', { forceRoutePlanner: true }), { label: 'Opening...' })"
+                class="planner-action-btn px-2 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition">
+                {% tenant_trans "Assign Machine" %}
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+          <div class="border-b border-slate-200/70 my-2"></div>
+          {% endif %}
+
+          {% for wo in pending_wos|slice:":8" %}
+          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-bold text-slate-800">{{ wo.display_work_order_code }}</div>
+              <button type="button"
+                aria-label="{% tenant_trans 'Plan work order' %} {{ wo.display_work_order_code }}"
+                onclick="return window.runPlannerActionButton(this, () => { if (window.quickPlanPendingWorkOrder) { return quickPlanPendingWorkOrder('{{ wo.id }}'); } return window.openPlannerActionWorkOrder('{{ wo.id }}', { forceRoutePlanner: true }); }, { label: 'Planning...' })"
+                class="planner-action-btn px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition">
+                {% tenant_trans "Plan" %}
+              </button>
+            </div>
+            <div class="text-xs text-slate-600 mt-1 truncate">{{ wo.product_name|default:"Work Order" }}</div>
+            <div class="text-[11px] text-slate-500 mt-1">{% tenant_trans "Qty" %}: {{ wo.quantity|default:"-" }}</div>
+          </div>
+          {% empty %}
+          <div class="text-sm text-slate-400 py-10 text-center" aria-label="{% tenant_trans 'All orders scheduled' %}">
+            <i class="ph ph-check-circle text-2xl block mb-2"></i>
+            <span class="sr-only">{% tenant_trans "All orders scheduled" %}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <button type="button" @click="showAdvancedTools = true"
+          class="mt-3 w-full py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50">
+          {% tenant_trans "Open Full Queue" %}
+        </button>
+      </aside>
+    </div>
+  </section>
+
+  <section x-show="activeScreen === 'intake'" x-transition
+    class="bg-white rounded-2xl border border-slate-200 p-6 min-h-[560px]">
+    <div class="flex items-center justify-end mb-4">
+      <button type="button" @click="$dispatch('open-create-work-order')"
+        class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">
+        {% tenant_trans "Create Work Order" %}
+      </button>
+    </div>
+    {% include "manufacturing/partials/workorders_list.html" %}
+  </section>
+
+  <section x-show="activeScreen === 'approvals'" x-transition
+    class="bg-white rounded-2xl border border-slate-200 p-6 space-y-6 min-h-[560px]">
+    <div>
+      <h2 class="text-lg font-bold text-slate-800 mb-3">{% tenant_trans "Pending Production Approvals" %}</h2>
+      {% if pending_logs %}
+      <div class="space-y-3">
+        {% for log in pending_logs %}
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+          <div>
+            <div class="text-sm font-bold text-slate-800">{{ log.work_order.product_name }} <span
+                class="text-xs text-slate-400">#{{ log.work_order.id }}</span></div>
+            <div class="text-xs text-slate-500 mt-1">Qty: {{ log.quantity }} - {{ log.worker.username }}</div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="approveLog('{{ log.id }}', 'reject')"
+              class="px-3 py-1.5 text-xs font-bold text-red-600 bg-red-50 rounded-lg">Reject</button>
+            <button onclick="approveLog('{{ log.id }}', 'approve')"
+              class="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-lg">Approve</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-sm text-slate-500">No pending approvals.</div>
+      {% endif %}
+    </div>
+
+    <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+      {% tenant_trans "Planner close actions are handled in the Planner Closure Queue on the schedule rail." %}
+    </div>
+  </section>
+
+  <section x-show="activeScreen === 'pendingWos'" x-transition
+    x-data="{ pendingWoFilter: 'all' }"
+    class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 space-y-5 min-h-[560px]">
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div>
+        <h2 class="text-xl font-black text-slate-950">{% tenant_trans "Pending Work Orders" %}</h2>
+        <p class="mt-1 text-sm font-semibold text-slate-500">{% tenant_trans "A focused queue for planner actions already waiting in the system." %}</p>
+      </div>
+      <button type="button" @click="setScreen('schedule'); setPrimaryView('gantt')"
+        class="inline-flex items-center justify-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-black text-sky-700 shadow-sm transition hover:bg-sky-100">
+        <i class="ph ph-calendar-dots text-base"></i>
+        {% tenant_trans "Open Schedule" %}
+      </button>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <button type="button" @click="pendingWoFilter = 'material'"
+        :class="pendingWoFilter === 'material' ? 'ring-2 ring-sky-300' : ''"
+        class="rounded-xl border border-sky-200 bg-sky-50 p-3 text-left transition hover:bg-sky-100">
+        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-sky-700/80">{% tenant_trans "Awaiting Material" %}</div>
+        <div class="mt-2 text-2xl font-black text-sky-700">{{ pending_wos_queue_counts.material|default:0 }}</div>
+      </button>
+      <button type="button" @click="pendingWoFilter = 'ready_plan'"
+        :class="pendingWoFilter === 'ready_plan' ? 'ring-2 ring-blue-300' : ''"
+        class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-left transition hover:bg-blue-100">
+        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-blue-700/80">{% tenant_trans "Ready to Plan" %}</div>
+        <div class="mt-2 text-2xl font-black text-blue-700">{{ pending_wos_queue_counts.ready_plan|default:0 }}</div>
+      </button>
+      <button type="button" @click="pendingWoFilter = 'release'"
+        :class="pendingWoFilter === 'release' ? 'ring-2 ring-indigo-300' : ''"
+        class="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-left transition hover:bg-indigo-100">
+        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-indigo-700/80">{% tenant_trans "Ready to Release" %}</div>
+        <div class="mt-2 text-2xl font-black text-indigo-700">{{ pending_wos_queue_counts.release|default:0 }}</div>
+      </button>
+      <button type="button" @click="pendingWoFilter = 'approval'"
+        :class="pendingWoFilter === 'approval' ? 'ring-2 ring-fuchsia-300' : ''"
+        class="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-3 text-left transition hover:bg-fuchsia-100">
+        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-fuchsia-700/80">{% tenant_trans "Needs Approval" %}</div>
+        <div class="mt-2 text-2xl font-black text-fuchsia-700">{{ pending_wos_queue_counts.approval|default:0 }}</div>
+      </button>
+      <button type="button" @click="pendingWoFilter = 'blocked'"
+        :class="pendingWoFilter === 'blocked' ? 'ring-2 ring-amber-300' : ''"
+        class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left transition hover:bg-amber-100">
+        <div class="text-[10px] font-black uppercase tracking-[0.18em] text-amber-700/80">{% tenant_trans "Blocked" %}</div>
+        <div class="mt-2 text-sm font-black text-amber-800">
+          {{ pending_wos_queue_counts.blocked|default:0 }}
+        </div>
+      </button>
+    </div>
+
+    <div class="flex gap-2 overflow-x-auto pb-1">
+      <button type="button" @click="pendingWoFilter = 'all'"
+        :class="pendingWoFilter === 'all' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200'"
+        class="shrink-0 rounded-xl border px-3 py-2 text-xs font-black transition">{% tenant_trans "All" %}</button>
+      <button type="button" @click="pendingWoFilter = 'material'"
+        :class="pendingWoFilter === 'material' ? 'bg-sky-700 text-white border-sky-700' : 'bg-white text-sky-700 border-sky-200'"
+        class="shrink-0 rounded-xl border px-3 py-2 text-xs font-black transition">{% tenant_trans "Awaiting Material" %}</button>
+      <button type="button" @click="pendingWoFilter = 'ready_plan'"
+        :class="pendingWoFilter === 'ready_plan' ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-blue-700 border-blue-200'"
+        class="shrink-0 rounded-xl border px-3 py-2 text-xs font-black transition">{% tenant_trans "Ready to Plan" %}</button>
+      <button type="button" @click="pendingWoFilter = 'release'"
+        :class="pendingWoFilter === 'release' ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-white text-indigo-700 border-indigo-200'"
+        class="shrink-0 rounded-xl border px-3 py-2 text-xs font-black transition">{% tenant_trans "Ready to Release" %}</button>
+      <button type="button" @click="pendingWoFilter = 'approval'"
+        :class="pendingWoFilter === 'approval' ? 'bg-fuchsia-700 text-white border-fuchsia-700' : 'bg-white text-fuchsia-700 border-fuchsia-200'"
+        class="shrink-0 rounded-xl border px-3 py-2 text-xs font-black transition">{% tenant_trans "Needs Approval" %}</button>
+      <button type="button" @click="pendingWoFilter = 'blocked'"
+        :class="pendingWoFilter === 'blocked' ? 'bg-amber-700 text-white border-amber-700' : 'bg-white text-amber-700 border-amber-200'"
+        class="shrink-0 rounded-xl border px-3 py-2 text-xs font-black transition">{% tenant_trans "Blocked" %}</button>
+    </div>
+
+    <div class="overflow-hidden rounded-xl border border-slate-200">
+      <div class="hidden grid-cols-[1.1fr_1.5fr_0.6fr_1fr_1fr_1fr_0.9fr] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 lg:grid">
+        <div>{% tenant_trans "WO" %}</div>
+        <div>{% tenant_trans "Product" %}</div>
+        <div>{% tenant_trans "Qty" %}</div>
+        <div>{% tenant_trans "Stage" %}</div>
+        <div>{% tenant_trans "Status" %}</div>
+        <div>{% tenant_trans "Machine / Worker" %}</div>
+        <div class="text-right">{% tenant_trans "Action" %}</div>
+      </div>
+      <div class="divide-y divide-slate-100">
+        {% for row in pending_wos_queue|slice:":40" %}
+        <div x-show="pendingWoFilter === 'all' || pendingWoFilter === '{{ row.category }}'"
+          class="grid gap-3 px-4 py-3 lg:grid-cols-[1.1fr_1.5fr_0.6fr_1fr_1fr_1fr_0.9fr] lg:items-center">
+          <div class="font-black text-slate-900">{{ row.wo_code }}</div>
+          <div class="min-w-0 text-sm font-semibold text-slate-700">{{ row.product_name|default:"Work Order" }}</div>
+          <div class="text-sm font-black text-slate-700">{{ row.quantity|default:"-" }}</div>
+          <div class="text-sm font-semibold text-slate-500">{{ row.stage_name|default:"-" }}</div>
+          <div><span class="rounded-lg px-2 py-1 text-xs font-black {{ row.status_badge_class }}">{{ row.status_label }}</span></div>
+          <div class="text-sm font-semibold text-slate-500">{{ row.machine_label|default:"-" }}</div>
+          <div class="flex justify-end">
+            {% if row.action_screen %}
+            <button type="button" @click="setScreen('{{ row.action_screen }}')"
+              class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-black text-white hover:bg-slate-900">{{ row.action_label }}</button>
+            {% else %}
+            <button type="button" onclick="return window.runPlannerActionButton(this, () => window.openPlannerActionWorkOrder('{{ row.action_wo_id }}'), { label: 'Opening...' })"
+              class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-black text-white hover:bg-slate-900">{{ row.action_label }}</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if not pending_wos_queue %}
+    <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-12 text-center">
+      <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
+        <i class="ph ph-check-circle text-xl"></i>
+      </div>
+      <div class="mt-3 text-sm font-black text-slate-800">{% tenant_trans "No pending work orders" %}</div>
+      <div class="mt-1 text-sm font-semibold text-slate-500">{% tenant_trans "The planner queue is clear." %}</div>
+    </div>
+    {% endif %}
+  </section>
+
+  <div x-show="showFlowGuide" x-cloak class="fixed inset-0 z-[82]">
+    <div class="absolute inset-0 bg-slate-900/40" @click="showFlowGuide = false"></div>
+    <div
+      class="absolute right-0 top-0 h-full w-full max-w-lg bg-white border-l border-slate-200 shadow-2xl flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-start justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-sky-700">
+            <i class="ph ph-compass-tool text-sm"></i>
+            {% tenant_trans "Daily Flow" %}
+          </div>
+          <h3 class="mt-3 text-xl font-black tracking-[-0.03em] text-slate-950">{% tenant_trans "Use the planner in four moves" %}</h3>
+          <p class="mt-1 text-sm leading-6 text-slate-600">{% tenant_trans "This keeps the default planner state focused on the next decision instead of every available control." %}</p>
+        </div>
+        <button type="button" @click="showFlowGuide = false" class="mt-1 text-slate-400 hover:text-slate-700">
+          <i class="ph ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-3">
+        <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+          <i class="ph ph-sidebar-simple text-sm"></i>
+          <span x-text="showQueueRail ? '{% tenant_trans 'Pending queue visible' %}' : '{% tenant_trans 'Pending queue hidden' %}'"></span>
+        </div>
+
+        <button type="button" @click="setScreen('pendingWos'); showFlowGuide = false"
+          class="planner-flow-card w-full p-4 text-left transition hover:-translate-y-[1px] hover:border-cyan-200 hover:bg-cyan-50/60"
+          :class="activeScreen === 'pendingWos' ? 'border-cyan-300 bg-cyan-50/70 shadow-sm' : ''">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="planner-flow-card__eyebrow font-black uppercase text-cyan-700/80">{% tenant_trans "1. Review pending work" %}</div>
+              <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Open Pending WOs" %}</div>
+              <p class="mt-2 text-xs leading-5 text-slate-500">{% tenant_trans "Start with material gaps, ready-to-plan orders, approvals, and blocked work." %}</p>
+            </div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700"><i class="ph ph-list-checks text-lg"></i></span>
+          </div>
+        </button>
+
+        <button type="button" @click="setScreen('schedule'); setPrimaryView('gantt'); showFlowGuide = false"
+          class="planner-flow-card w-full p-4 text-left transition hover:-translate-y-[1px] hover:border-sky-200 hover:bg-sky-50/60"
+          :class="activeScreen === 'schedule' ? 'border-sky-300 bg-sky-50/70 shadow-sm' : ''">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="planner-flow-card__eyebrow font-black uppercase text-sky-700/80">{% tenant_trans "2. Assign machine and time" %}</div>
+              <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Stay in schedule" %}</div>
+              <p class="mt-2 text-xs leading-5 text-slate-500">{% tenant_trans "Use the queue rail, timeline, and smart search to place work with less switching." %}</p>
+            </div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-100 text-sky-700"><i class="ph ph-calendar-plus text-lg"></i></span>
+          </div>
+        </button>
+
+        <button type="button" @click="setScreen('approvals'); showFlowGuide = false"
+          class="planner-flow-card w-full p-4 text-left transition hover:-translate-y-[1px] hover:border-fuchsia-200 hover:bg-fuchsia-50/60"
+          :class="activeScreen === 'approvals' ? 'border-fuchsia-300 bg-fuchsia-50/70 shadow-sm' : ''">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="planner-flow-card__eyebrow font-black uppercase text-fuchsia-700/80">{% tenant_trans "3. Release and resolve" %}</div>
+              <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Handle approvals" %}</div>
+              <p class="mt-2 text-xs leading-5 text-slate-500">{% tenant_trans "Clear completion requests, exception items, and anything blocking the next stage." %}</p>
+            </div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-fuchsia-100 text-fuchsia-700"><i class="ph ph-seal-check text-lg"></i></span>
+          </div>
+        </button>
+
+        <button type="button" @click="setScreen('pendingWos'); showFlowGuide = false"
+          class="planner-flow-card w-full p-4 text-left transition hover:-translate-y-[1px] hover:border-emerald-200 hover:bg-emerald-50/60"
+          :class="activeScreen === 'pendingWos' ? 'border-emerald-300 bg-emerald-50/70 shadow-sm' : ''">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="planner-flow-card__eyebrow font-black uppercase text-emerald-700/80">{% tenant_trans "4. Monitor execution" %}</div>
+              <div class="mt-2 text-sm font-bold text-slate-900">{% tenant_trans "Recheck open work" %}</div>
+              <p class="mt-2 text-xs leading-5 text-slate-500">{% tenant_trans "Use the Pending WOs queue as the live checklist before moving into deeper controls." %}</p>
+            </div>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><i class="ph ph-list-magnifying-glass text-lg"></i></span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div x-show="showFilterDrawer" x-cloak class="fixed inset-0 z-[80]">
+    <div class="absolute inset-0 bg-slate-900/40" @click="showFilterDrawer = false"></div>
+    <div
+      class="absolute right-0 top-0 h-full w-full max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h3 class="sr-only">{% tenant_trans "Schedule Filters" %}</h3>
+        <button type="button" @click="showFilterDrawer = false" class="text-slate-400 hover:text-slate-700">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 overflow-y-auto">
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">{% tenant_trans "Status" %}</label>
+          <select id="plannerDrawerStatusFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            <option value="all">{% tenant_trans "All" %}</option>
+            <option value="active">{% tenant_trans "Active" %}</option>
+            <option value="pending">{% tenant_trans "Pending" %}</option>
+            <option value="completed">{% tenant_trans "Completed" %}</option>
+            <option value="canceled">{% tenant_trans "Canceled" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">{% tenant_trans "Machine" %}</label>
+          <select id="plannerDrawerMachineFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            <option value="all">{% tenant_trans "All" %}</option>
+            <option value="active">{% tenant_trans "Active only" %}</option>
+            <option value="idle">{% tenant_trans "Idle only" %}</option>
+            <option value="maintenance">{% tenant_trans "Maintenance" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">{% tenant_trans "Stage" %}</label>
+          <select id="plannerDrawerStageFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            <option value="all">{% tenant_trans "All Stages" %}</option>
+            <option value="__none__">{% tenant_trans "Unspecified" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">{% tenant_trans "Date" %}</label>
+          <input id="plannerDrawerDateFilter" type="date"
+            class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">{% tenant_trans "Shift" %}</label>
+          <select id="plannerDrawerShiftFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            <option value="all">{% tenant_trans "All" %}</option>
+            <option value="day">{% tenant_trans "Day" %}</option>
+            <option value="middle">{% tenant_trans "Mid" %}</option>
+            <option value="night">{% tenant_trans "Night" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase mb-1">{% tenant_trans "Time Scale" %}</label>
+          <select id="plannerDrawerScaleFilter" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm">
+            <option value="day">{% tenant_trans "Day" %}</option>
+            <option value="week">{% tenant_trans "Week" %}</option>
+            <option value="month">{% tenant_trans "Month" %}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+        <button type="button" @click="resetFilterDrawer()"
+          class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+          {% tenant_trans "Reset" %}
+        </button>
+        <button type="button" @click="applyFilterDrawer()"
+          class="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700">
+          {% tenant_trans "Apply Filters" %}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div x-show="showAdvancedTools" x-cloak class="fixed inset-0 z-[85]">
+    <div class="absolute inset-0 bg-slate-900/40" @click="showAdvancedTools = false"></div>
+    <div
+      class="absolute right-0 top-0 h-full w-full max-w-2xl bg-white border-l border-slate-200 shadow-2xl flex flex-col">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h3 class="text-sm font-bold text-slate-800">Advanced Tools</h3>
+        <button type="button" @click="showAdvancedTools = false" class="text-slate-400 hover:text-slate-700">
+          <i class="ph ph-x text-lg"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto space-y-4">
+        <div class="flex items-center gap-2">
+          <button onclick="window.initGanttChart && window.initGanttChart(true)"
+            class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700">
+            Refresh Timeline
+          </button>
+          <button onclick="window.exportTimelineData && window.exportTimelineData()"
+            class="px-3 py-2 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
+            Export CSV
+          </button>
+        </div>
+        {% include "manufacturing/partials/order_list_component.html" with full_width=True %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include "manufacturing/partials/create_work_order_modal.html" %}
+{% include "manufacturing/partials/split_work_order_modal.html" %}
+{% include "manufacturing/partials/release_next_stage_modal.html" %}
+
+<script>
+  async function approveLog(logId, action) {
+    const confirmed = typeof window.appConfirm === 'function'
+      ? await window.appConfirm(`Are you sure you want to ${action} this log?`, {
+        title: 'Log Approval',
+        confirmText: action === 'approve' ? 'Approve' : 'Reject',
+        kind: 'warning'
+      })
+      : window.confirm(`Are you sure you want to ${action} this log?`);
+    if (!confirmed) return;
+
+    const formData = new FormData();
+    formData.append('action', action);
+    if (action === 'reject') {
+      const reason = window.prompt('Enter rejection reason');
+      if (!reason || !reason.trim()) {
+        if (typeof window.appNotify === 'function') window.appNotify('Rejection reason is required.', 'error');
+        return;
+      }
+      formData.append('reason', reason.trim());
+    }
+    const csrfToken = (window.getCsrfToken && window.getCsrfToken()) || '{{ csrf_token }}';
+    fetch(`/manufacturing/approve-log/${logId}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+      body: formData
+    }).then(res => res.json()).then(data => {
+      if (data.success) {
+        if (typeof window.reloadPlannerWorkspacePreservingState === 'function') {
+          window.reloadPlannerWorkspacePreservingState();
+        } else {
+          location.reload();
+        }
+      }
+      else if (typeof window.appNotify === 'function') window.appNotify("Error: " + data.error, 'error');
+    });
+  }
+
+  window.syncPlannerStageFilterOptions = function () {
+    const source = document.getElementById('timelineStageFilter');
+    const target = document.getElementById('plannerDrawerStageFilter');
+    if (!source || !target) return;
+
+    const sourceValue = source.value || 'all';
+    target.innerHTML = source.innerHTML;
+    if (Array.from(target.options).some(opt => opt.value === sourceValue)) {
+      target.value = sourceValue;
+    }
+  };
+
+  window.syncPlannerFilterDrawer = function () {
+    const machine = document.getElementById('timelineMachineFilter');
+    const stage = document.getElementById('timelineStageFilter');
+    const date = document.getElementById('timelineDate');
+    const status = document.getElementById('timelineFilter');
+
+    const drawerStatus = document.getElementById('plannerDrawerStatusFilter');
+    const drawerMachine = document.getElementById('plannerDrawerMachineFilter');
+    const drawerStage = document.getElementById('plannerDrawerStageFilter');
+    const drawerDate = document.getElementById('plannerDrawerDateFilter');
+    const drawerShift = document.getElementById('plannerDrawerShiftFilter');
+    const drawerScale = document.getElementById('plannerDrawerScaleFilter');
+
+    if (drawerStatus && status) drawerStatus.value = status.value || 'all';
+    if (drawerMachine && machine) drawerMachine.value = machine.value || 'all';
+    if (drawerDate && date) drawerDate.value = date.value || '';
+    if (drawerShift && window.getTimelineShift) drawerShift.value = window.getTimelineShift() || 'all';
+    if (drawerScale && window.getTimelineScale) drawerScale.value = window.getTimelineScale() || 'day';
+
+    window.syncPlannerStageFilterOptions();
+    if (drawerStage && stage && Array.from(drawerStage.options).some(opt => opt.value === stage.value)) {
+      drawerStage.value = stage.value;
+    }
+  };
+
+  window.applyPlannerFilterDrawer = function () {
+    const machine = document.getElementById('timelineMachineFilter');
+    const stage = document.getElementById('timelineStageFilter');
+    const date = document.getElementById('timelineDate');
+    const status = document.getElementById('timelineFilter');
+
+    const drawerStatus = document.getElementById('plannerDrawerStatusFilter');
+    const drawerMachine = document.getElementById('plannerDrawerMachineFilter');
+    const drawerStage = document.getElementById('plannerDrawerStageFilter');
+    const drawerDate = document.getElementById('plannerDrawerDateFilter');
+    const drawerShift = document.getElementById('plannerDrawerShiftFilter');
+    const drawerScale = document.getElementById('plannerDrawerScaleFilter');
+
+    if (status && drawerStatus) status.value = drawerStatus.value || 'all';
+    if (machine && drawerMachine) machine.value = drawerMachine.value || 'all';
+    if (stage && drawerStage) stage.value = drawerStage.value || 'all';
+    if (date && drawerDate && drawerDate.value) {
+      date.value = drawerDate.value;
+      date.dispatchEvent(new Event('change'));
+    }
+    if (drawerScale && window.setGanttView) window.setGanttView(drawerScale.value || 'day');
+    if (drawerShift && window.setTimelineShift) window.setTimelineShift(drawerShift.value || 'all');
+    if (window.filterTimeline) window.filterTimeline();
+  };
+
+  window.resetPlannerFilterDrawer = function () {
+    const drawerStatus = document.getElementById('plannerDrawerStatusFilter');
+    const drawerMachine = document.getElementById('plannerDrawerMachineFilter');
+    const drawerStage = document.getElementById('plannerDrawerStageFilter');
+    const drawerDate = document.getElementById('plannerDrawerDateFilter');
+    const drawerShift = document.getElementById('plannerDrawerShiftFilter');
+    const drawerScale = document.getElementById('plannerDrawerScaleFilter');
+
+    if (drawerStatus) drawerStatus.value = 'all';
+    if (drawerMachine) drawerMachine.value = 'all';
+    if (drawerStage) drawerStage.value = 'all';
+    if (drawerDate) drawerDate.value = '';
+    if (drawerShift) drawerShift.value = 'all';
+    if (drawerScale) drawerScale.value = 'day';
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const src = document.getElementById('pending-wos-count');
+    let count = 0;
+    if (src) {
+      try {
+        count = JSON.parse(src.textContent || '0');
+      } catch (e) {
+        count = 0;
+      }
+    }
+    const badge = document.getElementById('pendingWosCountBadge');
+    if (badge) badge.textContent = count;
+  });
+</script>
+
+<script src="{% static 'js/manufacturing/timeline.js' %}?v=272"></script>
+<script>
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('plannerWorkspace', () => window.__plannerWorkspaceFactory());
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const savedState = window.loadPlannerWorkspaceState ? (window.loadPlannerWorkspaceState() || {}) : {};
+    const initialView = typeof savedState.currentView === 'string' ? savedState.currentView : 'gantt';
+    if (window.plannerSetView) window.plannerSetView(initialView);
+    setTimeout(() => {
+      if (window.restorePlannerWorkspaceRuntimeState) {
+        window.restorePlannerWorkspaceRuntimeState();
+      }
+      if (window.syncPlannerFilterDrawer) {
+        window.syncPlannerFilterDrawer();
+      }
+    }, 250);
+    const pendingWoId = sessionStorage.getItem('planner-open-wo-after-reload');
+    if (pendingWoId) {
+      sessionStorage.removeItem('planner-open-wo-after-reload');
+      setTimeout(() => {
+        if (window.openWorkOrderModal) {
+          window.openWorkOrderModal(pendingWoId);
+        }
+      }, 450);
+    }
+  });
+</script>
+{% endblock %}

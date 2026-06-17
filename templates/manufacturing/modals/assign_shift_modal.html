@@ -1,0 +1,100 @@
+<!-- Assign Shift Modal -->
+<div id="assignShiftModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+        onclick="document.getElementById('assignShiftModal').classList.add('hidden')"></div>
+
+    <!-- Modal Panel -->
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div
+                class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg border border-slate-200">
+
+                <!-- Header -->
+                <div class="bg-indigo-600 px-4 py-3 sm:px-6">
+                    <h3 class="text-base font-semibold leading-6 text-white flex items-center gap-2" id="modal-title">
+                        <i class="ph ph-users-three text-lg"></i>
+                        Assign Shift
+                    </h3>
+                </div>
+
+                <!-- Form Content -->
+                <div class="px-4 py-5 sm:p-6 space-y-4">
+                    <p class="text-sm text-slate-500">Select a date and shift to assign workers or configure production
+                        lines.</p>
+
+                    <!-- Date Picker -->
+                    <div>
+                        <label for="shift-date"
+                            class="block text-xs font-bold text-slate-700 uppercase mb-1">Date</label>
+                        <input type="date" id="shift-date" name="date"
+                            class="block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+
+                    <!-- Shift Select -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Select Shift</label>
+                        <div class="grid grid-cols-3 gap-3">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="shift_type" value="morning" class="peer sr-only" checked>
+                                <div
+                                    class="p-3 rounded-xl border border-slate-200 bg-slate-50 peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 text-center hover:bg-white transition-all">
+                                    <i class="ph ph-sun text-xl mb-1 block"></i>
+                                    <span class="text-xs font-bold">Morning</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="shift_type" value="afternoon" class="peer sr-only">
+                                <div
+                                    class="p-3 rounded-xl border border-slate-200 bg-slate-50 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 text-center hover:bg-white transition-all">
+                                    <i class="ph ph-sun-dim text-xl mb-1 block"></i>
+                                    <span class="text-xs font-bold">Afternoon</span>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="shift_type" value="night" class="peer sr-only">
+                                <div
+                                    class="p-3 rounded-xl border border-slate-200 bg-slate-50 peer-checked:bg-slate-800 peer-checked:border-slate-600 peer-checked:text-white text-center hover:bg-white hover:text-slate-800 transition-all">
+                                    <i class="ph ph-moon text-xl mb-1 block"></i>
+                                    <span class="text-xs font-bold">Night</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Notes (Optional) -->
+                    <div>
+                        <label for="shift-notes"
+                            class="block text-xs font-bold text-slate-700 uppercase mb-1">Notes</label>
+                        <textarea id="shift-notes" rows="2"
+                            class="block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-xs"
+                            placeholder="Optional notes for this shift..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="bg-slate-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="alert('Shift functionality to be implemented in backend.')"
+                        class="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto transition-all">
+                        Confirm Assignment
+                    </button>
+                    <button type="button" onclick="document.getElementById('assignShiftModal').classList.add('hidden')"
+                        class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Set default date to today
+    document.addEventListener('DOMContentLoaded', () => {
+        const dateInput = document.getElementById('shift-date');
+        if (dateInput) {
+            dateInput.valueAsDate = new Date();
+        }
+    });
+</script>

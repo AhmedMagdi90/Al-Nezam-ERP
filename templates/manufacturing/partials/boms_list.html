@@ -1,0 +1,48 @@
+{% comment %}
+This partial is dynamically loaded by the AJAX refreshBOMs() function.
+It lists all BOMs and allows viewing their detailed components in a modal.
+{% endcomment %}
+
+{% if boms %}
+{% for bom in boms %}
+<div class="border-b py-3">
+  <div class="flex justify-between items-center">
+    <div>
+      <div class="flex items-center gap-2">
+        <p class="font-semibold text-gray-800">{{ bom.product.name }}</p>
+        <span class="text-xs font-mono bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded border border-indigo-100">{{
+          bom.version }}</span>
+
+        {% if bom.status == 'active' %}
+        <span
+          class="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-green-200">Active</span>
+        {% elif bom.status == 'test' %}
+        <span
+          class="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-yellow-200">Test
+          Mode</span>
+        {% elif bom.status == 'archived' %}
+        <span
+          class="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-red-200">Archived</span>
+        {% else %}
+        <span
+          class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide border border-gray-200">Draft</span>
+        {% endif %}
+      </div>
+      <p class="text-sm text-gray-600 mt-1">
+        Base Qty: <span class="font-bold">{{ bom.base_quantity }} {{ bom.uom|default:"pcs" }}</span> |
+        Total Cost: <span class="font-bold text-green-600">${{ bom.total_cost }}</span>
+      </p>
+      <p class="text-xs text-gray-400 mt-0.5">👤 {{ bom.created_by.username }} • {{ bom.created_at|date:"M d, Y" }}</p>
+    </div>
+
+    <!-- 🔍 View Button -->
+    <button onclick="openBOMSimulation('{{ bom.id }}')"
+      class="text-indigo-600 hover:text-indigo-800 text-sm font-semibold flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded hover:bg-indigo-100 transition">
+      🔍 Manage
+    </button>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<p class="text-gray-500 text-sm italic">No BOMs found.</p>
+{% endif %}

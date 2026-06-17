@@ -1,0 +1,674 @@
+{% load i18n tenant_i18n static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% tenant_trans "Work Order Efficiency Report" %} | WO-{{ sheet.work_order.id }}</title>
+    <style>
+        :root {
+            --slate-950: #020617;
+            --slate-900: #0f172a;
+            --slate-700: #334155;
+            --slate-500: #64748b;
+            --slate-300: #cbd5e1;
+            --slate-200: #e2e8f0;
+            --slate-100: #f1f5f9;
+            --white: #ffffff;
+            --cyan-500: #06b6d4;
+            --blue-600: #2563eb;
+            --emerald-500: #10b981;
+            --amber-500: #f59e0b;
+            --rose-500: #f43f5e;
+            --violet-500: #a855f7;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(180deg, #f8fbff 0%, #ffffff 28%, #f8fafc 100%);
+            color: var(--slate-900);
+        }
+
+        .sheet-shell {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 28px 24px 48px;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .btn {
+            border: 1px solid var(--slate-200);
+            background: var(--white);
+            border-radius: 999px;
+            padding: 10px 16px;
+            font-weight: 700;
+            color: var(--slate-700);
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, var(--cyan-500), var(--violet-500));
+            border-color: transparent;
+            color: var(--white);
+        }
+
+        .report-card {
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid var(--slate-200);
+            border-radius: 28px;
+            box-shadow: 0 30px 90px -55px rgba(15, 23, 42, 0.35);
+            overflow: hidden;
+        }
+
+        .report-header {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 20px;
+            padding: 28px 30px 22px;
+            border-bottom: 1px solid var(--slate-200);
+        }
+
+        .brand-block {
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .brand-logo {
+            width: 68px;
+            height: 68px;
+            border-radius: 20px;
+            background: linear-gradient(145deg, var(--cyan-500), var(--violet-500));
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            font-weight: 900;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .brand-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .eyebrow {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.24em;
+            text-transform: uppercase;
+            color: var(--slate-500);
+        }
+
+        .title {
+            margin: 8px 0 0;
+            font-size: 38px;
+            line-height: 1.05;
+            font-weight: 900;
+            color: var(--slate-950);
+        }
+
+        .subtitle {
+            margin: 10px 0 0;
+            color: var(--slate-700);
+            font-size: 16px;
+            line-height: 1.45;
+        }
+
+        .header-meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .meta-tile {
+            border: 1px solid var(--slate-200);
+            border-radius: 18px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            padding: 16px 18px;
+        }
+
+        .meta-tile-label {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--slate-500);
+        }
+
+        .meta-tile-value {
+            margin: 10px 0 0;
+            font-size: 26px;
+            font-weight: 900;
+            color: var(--slate-950);
+        }
+
+        .meta-tile-note {
+            margin: 8px 0 0;
+            font-size: 13px;
+            color: var(--slate-600);
+        }
+
+        .meta-strip {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 14px;
+            padding: 22px 30px;
+            border-bottom: 1px solid var(--slate-200);
+        }
+
+        .meta-chip {
+            border: 1px solid var(--slate-200);
+            border-radius: 18px;
+            padding: 14px 16px;
+            background: #fff;
+        }
+
+        .meta-chip strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 24px;
+            color: var(--slate-950);
+        }
+
+        .sections {
+            display: grid;
+            gap: 18px;
+            padding: 24px 30px 30px;
+        }
+
+        .section-card {
+            border: 1px solid var(--slate-200);
+            border-radius: 24px;
+            padding: 20px 22px;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--slate-950);
+        }
+
+        .section-note {
+            margin: 0;
+            color: var(--slate-600);
+            font-size: 14px;
+        }
+
+        .section-warning {
+            margin: 0 0 14px;
+            border: 1px solid #fde68a;
+            background: #fffbeb;
+            color: #92400e;
+            border-radius: 16px;
+            padding: 12px 14px;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--slate-500);
+            padding: 12px 10px;
+            border-bottom: 1px solid var(--slate-200);
+            background: var(--slate-100);
+        }
+
+        td {
+            padding: 14px 10px;
+            border-bottom: 1px solid var(--slate-200);
+            font-size: 15px;
+            color: var(--slate-700);
+        }
+
+        tbody tr:nth-child(even) td {
+            background: rgba(248, 250, 252, 0.72);
+        }
+
+        .num {
+            text-align: right;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .label-strong {
+            font-weight: 800;
+            color: var(--slate-950);
+        }
+
+        .efficiency-cell {
+            min-width: 150px;
+        }
+
+        .bar-shell {
+            position: relative;
+            width: 100%;
+            height: 12px;
+            border-radius: 999px;
+            background: var(--slate-200);
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            position: absolute;
+            inset: 0 auto 0 0;
+            border-radius: 999px;
+            max-width: 100%;
+        }
+
+        .tone-emerald { background: linear-gradient(90deg, #34d399, #10b981); }
+        .tone-amber { background: linear-gradient(90deg, #fcd34d, #f59e0b); }
+        .tone-rose { background: linear-gradient(90deg, #fb7185, #e11d48); }
+        .tone-slate { background: linear-gradient(90deg, #cbd5e1, #94a3b8); }
+
+        .efficiency-line {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .efficiency-line span {
+            min-width: 48px;
+            text-align: right;
+            font-weight: 800;
+            color: var(--slate-950);
+        }
+
+        .summary-panel {
+            display: grid;
+            grid-template-columns: 1fr 1.6fr;
+            gap: 18px;
+        }
+
+        .overall-card {
+            border-radius: 24px;
+            padding: 22px;
+            background: linear-gradient(145deg, var(--blue-600), var(--cyan-500));
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 220px;
+        }
+
+        .overall-card h4,
+        .summary-card h4 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 900;
+        }
+
+        .overall-value {
+            font-size: 86px;
+            line-height: 1;
+            font-weight: 900;
+        }
+
+        .summary-card {
+            border: 1px solid var(--slate-200);
+            border-radius: 24px;
+            padding: 20px 22px;
+            background: var(--white);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 18px;
+        }
+
+        .summary-metric {
+            text-align: center;
+        }
+
+        .metric-ring {
+            width: 108px;
+            height: 108px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            border: 8px solid var(--slate-200);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 34px;
+            font-weight: 900;
+            color: var(--slate-950);
+        }
+
+        .metric-ring.emerald { border-color: #86efac; }
+        .metric-ring.amber { border-color: #fcd34d; }
+        .metric-ring.rose { border-color: #fda4af; }
+        .metric-ring.slate { border-color: #cbd5e1; }
+
+        .summary-metric p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--slate-700);
+            font-weight: 700;
+        }
+
+        @media (max-width: 960px) {
+            .report-header,
+            .meta-strip,
+            .summary-panel,
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-meta {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .sheet-shell {
+                max-width: none;
+                padding: 0;
+            }
+
+            .toolbar {
+                display: none;
+            }
+
+            .report-card {
+                box-shadow: none;
+                border-radius: 0;
+                border: none;
+            }
+
+            .section-card,
+            .summary-card,
+            .meta-chip,
+            .meta-tile {
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sheet-shell">
+        <div class="toolbar">
+            <a href="{% url 'reports_dashboard' %}?date={{ selected_date|date:'Y-m-d' }}&work_order={{ sheet.work_order.id }}" class="btn">{% tenant_trans "Back to Reports" %}</a>
+            <button class="btn btn-primary" onclick="window.print()">{% tenant_trans "Print / Save PDF" %}</button>
+        </div>
+
+        <div class="report-card">
+            <div class="report-header">
+                <div class="brand-block">
+                    <div class="brand-logo">
+                        {% if company.logo %}
+                        <img src="{{ company.logo.url }}" alt="{{ company.name }}">
+                        {% else %}
+                        {{ company.name|first|upper }}
+                        {% endif %}
+                    </div>
+                    <div>
+                        <p class="eyebrow">{% tenant_trans "Work Order Efficiency Report" %}</p>
+                        <h1 class="title">{{ company.name }}</h1>
+                        <p class="subtitle">{% tenant_trans "Variance sheet for staged execution, material draw, and final output." %}</p>
+                    </div>
+                </div>
+
+                <div class="header-meta">
+                    <div class="meta-tile">
+                        <p class="meta-tile-label">{% tenant_trans "Generated" %}</p>
+                        <p class="meta-tile-value">{{ generated_at|date:"Y-m-d" }}</p>
+                        <p class="meta-tile-note">{{ generated_at|date:"H:i" }}</p>
+                    </div>
+                    <div class="meta-tile">
+                        <p class="meta-tile-label">{% tenant_trans "Snapshot Date" %}</p>
+                        <p class="meta-tile-value">{{ selected_date|date:"Y-m-d" }}</p>
+                        <p class="meta-tile-note">{% tenant_trans "Report filter anchor" %}</p>
+                    </div>
+                    <div class="meta-tile">
+                        <p class="meta-tile-label">{% tenant_trans "Overall" %}</p>
+                        <p class="meta-tile-value">
+                            {% if sheet.summary_row.overall_efficiency_pct is not None %}{{ sheet.summary_row.overall_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                        </p>
+                        <p class="meta-tile-note">{% tenant_trans "Combined efficiency score" %}</p>
+                    </div>
+                    <div class="meta-tile">
+                        <p class="meta-tile-label">{% tenant_trans "Trust" %}</p>
+                        <p class="meta-tile-value">{{ sheet.summary_row.data_trust|default:"limited"|upper }}</p>
+                        <p class="meta-tile-note">{% tenant_trans "Time/material signal coverage" %}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="meta-strip">
+                <div class="meta-chip">
+                    <p class="eyebrow">{% tenant_trans "Work Order" %}</p>
+                    <strong>WO-{{ sheet.work_order.id }}</strong>
+                </div>
+                <div class="meta-chip">
+                    <p class="eyebrow">{% tenant_trans "Product" %}</p>
+                    <strong>{{ sheet.production_row.label }}</strong>
+                </div>
+                <div class="meta-chip">
+                    <p class="eyebrow">{% tenant_trans "Quantity" %}</p>
+                    <strong>{{ sheet.work_order.quantity }}</strong>
+                </div>
+                <div class="meta-chip">
+                    <p class="eyebrow">{% tenant_trans "Flow Mode" %}</p>
+                    <strong>{{ sheet.work_order.get_operation_flow_mode_display }}</strong>
+                </div>
+            </div>
+
+            <div class="sections">
+                <section class="section-card">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-title">{% tenant_trans "Time Variance" %}</h2>
+                            <p class="section-note">{% tenant_trans "Operation-level planned versus actual runtime." %}</p>
+                        </div>
+                    </div>
+                    {% if sheet.time_warning %}
+                    <p class="section-warning">{{ sheet.time_warning }}</p>
+                    {% endif %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{% tenant_trans "Machine / Stage" %}</th>
+                                <th class="num">{% tenant_trans "Planned" %}</th>
+                                <th class="num">{% tenant_trans "Actual" %}</th>
+                                <th class="num">{% tenant_trans "Unit" %}</th>
+                                <th class="num">{% tenant_trans "Variance" %}</th>
+                                <th>{% tenant_trans "Efficiency %" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sheet.time_rows %}
+                            <tr>
+                                <td class="label-strong">{{ item.label }}</td>
+                                <td class="num">{{ item.planned|floatformat:2 }}</td>
+                                <td class="num">{% if item.actual is not None %}{{ item.actual|floatformat:2 }}{% else %}--{% endif %}</td>
+                                <td class="num">{{ item.unit }}</td>
+                                <td class="num">{% if item.delta is not None %}{{ item.delta|floatformat:2 }}{% else %}--{% endif %}</td>
+                                <td class="efficiency-cell">
+                                    {% if item.efficiency_pct is not None %}
+                                    <div class="efficiency-line">
+                                        <div class="bar-shell">
+                                            <div class="bar-fill tone-{{ item.tone }}" style="width: {{ item.efficiency_pct }}%;"></div>
+                                        </div>
+                                        <span>{{ item.efficiency_pct|floatformat:0 }}%</span>
+                                    </div>
+                                    {% else %}
+                                    --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6">{% tenant_trans "No operation data available." %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="section-card">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-title">{% tenant_trans "Material Variance" %}</h2>
+                            <p class="section-note">{% tenant_trans "BOM-planned versus consumed material across routed tasks." %}</p>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{% tenant_trans "Material" %}</th>
+                                <th class="num">{% tenant_trans "Planned" %}</th>
+                                <th class="num">{% tenant_trans "Actual" %}</th>
+                                <th class="num">{% tenant_trans "Unit" %}</th>
+                                <th class="num">{% tenant_trans "Variance" %}</th>
+                                <th>{% tenant_trans "Efficiency %" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in sheet.material_rows %}
+                            <tr>
+                                <td class="label-strong">{{ item.label }}</td>
+                                <td class="num">{{ item.planned|floatformat:2 }}</td>
+                                <td class="num">{% if item.actual is not None %}{{ item.actual|floatformat:2 }}{% else %}--{% endif %}</td>
+                                <td class="num">{{ item.unit }}</td>
+                                <td class="num">{% if item.delta is not None %}{{ item.delta|floatformat:2 }}{% else %}--{% endif %}</td>
+                                <td class="efficiency-cell">
+                                    {% if item.efficiency_pct is not None %}
+                                    <div class="efficiency-line">
+                                        <div class="bar-shell">
+                                            <div class="bar-fill tone-{{ item.tone }}" style="width: {{ item.efficiency_pct }}%;"></div>
+                                        </div>
+                                        <span>{{ item.efficiency_pct|floatformat:0 }}%</span>
+                                    </div>
+                                    {% else %}
+                                    --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6">{% tenant_trans "No material data available." %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="section-card">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-title">{% tenant_trans "Production Variance" %}</h2>
+                            <p class="section-note">{% tenant_trans "Final routed output compared with the planned batch quantity." %}</p>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{% tenant_trans "Product" %}</th>
+                                <th class="num">{% tenant_trans "Planned" %}</th>
+                                <th class="num">{% tenant_trans "Actual" %}</th>
+                                <th class="num">{% tenant_trans "Unit" %}</th>
+                                <th class="num">{% tenant_trans "Variance" %}</th>
+                                <th>{% tenant_trans "Efficiency %" %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="label-strong">{{ sheet.production_row.label }}</td>
+                                <td class="num">{{ sheet.production_row.planned|floatformat:2 }}</td>
+                                <td class="num">{% if sheet.production_row.actual is not None %}{{ sheet.production_row.actual|floatformat:2 }}{% else %}--{% endif %}</td>
+                                <td class="num">{{ sheet.production_row.unit }}</td>
+                                <td class="num">{% if sheet.production_row.delta is not None %}{{ sheet.production_row.delta|floatformat:2 }}{% else %}--{% endif %}</td>
+                                <td class="efficiency-cell">
+                                    {% if sheet.production_row.efficiency_pct is not None %}
+                                    <div class="efficiency-line">
+                                        <div class="bar-shell">
+                                            <div class="bar-fill tone-{{ sheet.production_row.tone }}" style="width: {{ sheet.production_row.efficiency_pct }}%;"></div>
+                                        </div>
+                                        <span>{{ sheet.production_row.efficiency_pct|floatformat:0 }}%</span>
+                                    </div>
+                                    {% else %}
+                                    --
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="summary-panel">
+                    <div class="overall-card">
+                        <div>
+                            <h4>{% tenant_trans "Overall Efficiency" %}</h4>
+                        </div>
+                        <div class="overall-value">
+                            {% if sheet.summary_row.overall_efficiency_pct is not None %}{{ sheet.summary_row.overall_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <h4>{% tenant_trans "Total Work Order Efficiency" %}</h4>
+                        <div class="summary-grid">
+                            <div class="summary-metric">
+                                <div class="metric-ring {{ sheet.summary_row.time_tone }}">
+                                    {% if sheet.summary_row.time_efficiency_pct is not None %}{{ sheet.summary_row.time_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                                </div>
+                                <p>{% tenant_trans "Time Efficiency" %}</p>
+                            </div>
+                            <div class="summary-metric">
+                                <div class="metric-ring {{ sheet.summary_row.material_tone }}">
+                                    {% if sheet.summary_row.material_efficiency_pct is not None %}{{ sheet.summary_row.material_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                                </div>
+                                <p>{% tenant_trans "Material Efficiency" %}</p>
+                            </div>
+                            <div class="summary-metric">
+                                <div class="metric-ring {{ sheet.summary_row.production_tone }}">
+                                    {% if sheet.summary_row.production_efficiency_pct is not None %}{{ sheet.summary_row.production_efficiency_pct|floatformat:0 }}%{% else %}--{% endif %}
+                                </div>
+                                <p>{% tenant_trans "Production Efficiency" %}</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

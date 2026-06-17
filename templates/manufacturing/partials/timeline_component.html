@@ -1,0 +1,1140 @@
+{% load static %}
+{% load tenant_i18n %}
+<!-- Timeline Component (Gantt Only) -->
+
+<!-- FORCE LAYER CSS to fix Z-Index Issues -->
+<style>
+    /* CUSTOM VIS.JS OVERRIDES */
+    .vis-time-axis .vis-grid.vis-vertical {
+        border-left: 1px dashed #e2e8f0;
+        opacity: 0.5;
+    }
+
+    .vis-item {
+        border-color: transparent !important;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .vis-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .vis-item.vis-selected {
+        box-shadow: 0 0 0 3px #3b82f6, 0 6px 12px rgba(59, 130, 246, 0.2);
+        z-index: 100 !important;
+    }
+
+    .vis-item .vis-item-content {
+        padding: 6px 10px;
+    }
+
+    /* Custom Scrollbar for Timeline */
+    #timelineScrollWrapper::-webkit-scrollbar {
+        height: 12px;
+        /* Thicker for visibility */
+        width: 12px;
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+        border: 2px solid #f1f5f9;
+        /* Padding effect */
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Late Order Styling */
+    .late-order {
+        border: 2px solid #dc2626 !important;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1) !important;
+    }
+
+    .late-order:hover {
+        border-color: #b91c1c !important;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+    }
+
+    /* Collapse header (CSS-only fallback) */
+    #timelineHeaderCollapse:checked ~ #timelineHeaderBlock {
+        display: none !important;
+    }
+
+    #timelineHeaderCollapse:checked ~ .timeline-header-bar #timelineCollapseIcon {
+        transform: rotate(180deg);
+    }
+
+    .timeline-drop-conflict {
+        box-shadow: inset 0 0 0 2px rgba(220, 38, 38, 0.55);
+        background: rgba(254, 242, 242, 0.65) !important;
+    }
+
+    #timelineOverflowPanel {
+        max-height: min(60vh, 18rem);
+        overflow-y: auto;
+        top: calc(100% + 0.5rem);
+        bottom: auto;
+        z-index: 65;
+    }
+
+    #timelineOverflowMenu {
+        position: relative;
+        z-index: 64;
+    }
+
+    .timeline-overflow-action {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.72rem 0.85rem;
+        border: 0;
+        border-top: 1px solid #eef2f7;
+        background: #ffffff;
+        color: #334155;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-align: left;
+        transition: background-color 0.18s ease, color 0.18s ease;
+    }
+
+    .timeline-overflow-action:first-child {
+        border-top: 0;
+    }
+
+    .timeline-overflow-action:hover {
+        background: #f8fafc;
+        color: #0f172a;
+    }
+
+    .timeline-overflow-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        padding: 0.8rem 0.9rem;
+        border-bottom: 1px solid #eef2f7;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    .timeline-overflow-info__row {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        color: #475569;
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .timeline-overflow-info__row--subtle {
+        color: #64748b;
+    }
+
+    .timeline-header-bar {
+        position: relative;
+        z-index: 20;
+        isolation: isolate;
+    }
+
+    body.timeline-resizing,
+    body.timeline-resizing * {
+        cursor: col-resize !important;
+        user-select: none !important;
+    }
+
+    .timeline-resource-header-cell {
+        position: sticky;
+        left: 0;
+        z-index: 40;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.5rem 0.9rem;
+        padding-right: 1.35rem;
+        border-right: 1px solid #e5e7eb;
+        background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        overflow: visible;
+    }
+
+    .timeline-resource-resize-handle {
+        position: absolute;
+        top: 0;
+        right: -6px;
+        width: 12px;
+        height: 100%;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+        cursor: col-resize;
+        z-index: 60;
+    }
+
+    .timeline-resource-resize-handle::before {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 18%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 64%;
+        border-radius: 999px;
+        background: #cbd5e1;
+        transition: background-color 0.15s ease;
+    }
+
+    .timeline-resource-resize-handle:hover::before,
+    body.timeline-resizing .timeline-resource-resize-handle::before {
+        background: linear-gradient(180deg, #22d3ee 0%, #d946ef 100%);
+    }
+
+    body.route-planner-open .timeline-header-bar,
+    body.work-order-drawer-open .timeline-header-bar {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    .timeline-header-controls {
+        min-width: 0;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: stretch;
+        overflow: visible;
+    }
+
+    .timeline-header-controls::-webkit-scrollbar {
+        display: none;
+    }
+
+    #timelineControlRail {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.55rem;
+        flex-wrap: nowrap;
+        overflow: visible;
+        white-space: nowrap;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        margin-left: 0;
+        padding: 0.72rem 0.85rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1.1rem;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    #timelineControlRail::-webkit-scrollbar {
+        display: none;
+    }
+
+    .timeline-control-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+        flex: 0 0 auto;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .timeline-control-group--utility {
+        margin-left: auto;
+    }
+
+    .timeline-control-group--search {
+        flex: 1 1 auto;
+        min-width: 0;
+        justify-content: flex-end;
+    }
+
+    .timeline-meta-swatch {
+        width: 0.72rem;
+        height: 0.72rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #22d3ee 0%, #6366f1 52%, #d946ef 100%);
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+        flex: 0 0 auto;
+    }
+
+    .timeline-control-spacer {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .timeline-icon-pack {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-width: 0;
+        flex: 0 0 auto;
+    }
+
+    .timeline-search-field {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 2.25rem;
+        min-width: 14rem;
+        width: min(22rem, 100%);
+        padding: 0 0.72rem;
+        border: 1px solid #dbe2ea;
+        border-radius: 0.76rem;
+        background: #fff;
+        color: #475569;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .timeline-search-field input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        background: transparent;
+        color: #0f172a;
+        font-size: 0.84rem;
+        font-weight: 600;
+        outline: none;
+        box-shadow: none;
+    }
+
+    .timeline-search-field input::placeholder {
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    #timelineOptionalControls {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: nowrap;
+    }
+
+    .timeline-essential-select {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.42rem;
+        min-height: 2.25rem;
+        padding: 0 0.62rem;
+        border: 1px solid #dbe2ea;
+        border-radius: 0.76rem;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        flex: 0 0 auto;
+    }
+
+    .timeline-essential-select label {
+        flex: 0 0 auto;
+        color: #64748b;
+        font-size: 0.62rem;
+        font-weight: 900;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+    }
+
+    .timeline-essential-select select,
+    .timeline-essential-select input[type="date"],
+    .timeline-essential-select input[type="week"] {
+        min-width: 0;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        color: #0f172a;
+        font-size: 0.84rem;
+        font-weight: 700;
+        outline: none;
+        box-shadow: none;
+    }
+
+    .timeline-essential-select input[type="date"]::-webkit-calendar-picker-indicator,
+    .timeline-essential-select input[type="week"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+    }
+
+    .timeline-view-field {
+        min-width: 6.7rem;
+    }
+
+    .timeline-snap-field {
+        min-width: 4.8rem;
+    }
+
+    .timeline-date-field {
+        min-width: 7.75rem;
+    }
+
+    .timeline-window-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.32rem;
+        flex: 0 0 auto;
+    }
+
+    .timeline-window-nav .hidden,
+    .timeline-essential-select.hidden {
+        display: none !important;
+    }
+
+    .timeline-scale-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.18rem;
+        min-height: 2.25rem;
+        padding: 0.18rem;
+        border: 1px solid #dbe2ea;
+        border-radius: 0.76rem;
+        background: #f8fafc;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 1px 2px rgba(15, 23, 42, 0.04);
+        flex: 0 0 auto;
+    }
+
+    .timeline-scale-switch__button {
+        min-height: 1.85rem;
+        padding: 0 0.58rem;
+        border: 1px solid transparent;
+        border-radius: 0.58rem;
+        background: transparent;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.32rem;
+        font-size: 0.76rem;
+        font-weight: 900;
+        white-space: nowrap;
+        transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .timeline-scale-switch__button:hover {
+        color: #1d4ed8;
+        background: #eff6ff;
+    }
+
+    .timeline-scale-switch__button[aria-pressed="true"] {
+        border-color: #bfdbfe;
+        background: #ffffff;
+        color: #1d4ed8;
+        box-shadow: 0 6px 14px rgba(37, 99, 235, 0.12);
+    }
+
+    .timeline-week-field {
+        min-width: 7.15rem;
+    }
+
+    .timeline-month-field {
+        min-width: 7.15rem;
+    }
+
+    .timeline-step-btn {
+        height: 2.25rem;
+        width: 2.25rem;
+    }
+
+    .timeline-icon-btn {
+        height: 2.25rem;
+        width: 2.25rem;
+        border-radius: 0.76rem;
+        border: 1px solid #dbe2ea;
+        background: #fff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.18s ease;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        flex: 0 0 auto;
+    }
+
+    .timeline-icon-btn:hover {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+    }
+
+    .timeline-refresh-btn,
+    .timeline-refresh-btn:hover {
+        border-color: #10b981;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #ffffff;
+        box-shadow: 0 10px 22px rgba(16, 185, 129, 0.22);
+    }
+
+    .timeline-refresh-btn:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    }
+
+    .timeline-action-btn {
+        min-height: 2.25rem;
+        padding: 0 0.58rem;
+        border-radius: 0.76rem;
+        border: 1px solid #bfdbfe;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        color: #1d4ed8;
+        font-size: 0.62rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        transition: all 0.18s ease;
+        box-shadow: 0 1px 2px rgba(29, 78, 216, 0.08);
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+
+    .timeline-filter-btn {
+        min-height: 2.25rem;
+        padding: 0 0.62rem;
+        border-radius: 0.76rem;
+        border: 1px solid #dbe2ea;
+        background: #ffffff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.78rem;
+        font-weight: 800;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        transition: all 0.18s ease;
+        white-space: nowrap;
+        flex: 0 0 auto;
+    }
+
+    .timeline-filter-btn:hover {
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: #1d4ed8;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.1);
+    }
+
+    .timeline-action-btn:hover {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        border-color: #93c5fd;
+        transform: translateY(-1px);
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.12);
+    }
+
+    @media (min-width: 1025px) {
+        .timeline-header-bar {
+            display: flex !important;
+            align-items: center;
+            gap: 0.8rem;
+        }
+    }
+
+    @media (max-width: 1750px) {
+        .timeline-essential-select label {
+            display: none;
+        }
+
+        .timeline-view-field {
+            min-width: 5.8rem;
+        }
+
+        .timeline-date-field {
+            min-width: 7.2rem;
+        }
+
+        .timeline-week-field {
+            min-width: 6.55rem;
+        }
+
+        .timeline-month-field {
+            min-width: 6.55rem;
+        }
+
+        .timeline-snap-field {
+            min-width: 5.2rem;
+        }
+
+        .timeline-essential-select {
+            padding: 0 0.56rem;
+        }
+    }
+
+    @media (max-width: 1600px) and (min-width: 1025px) {
+        .timeline-view-field {
+            min-width: 5.3rem;
+        }
+
+        .timeline-date-field {
+            min-width: 6.8rem;
+        }
+
+        .timeline-week-field {
+            min-width: 6.15rem;
+        }
+
+        .timeline-month-field {
+            min-width: 6.15rem;
+        }
+
+        .timeline-snap-field {
+            min-width: 4.4rem;
+        }
+
+        .timeline-scale-switch__button {
+            padding-inline: 0.48rem;
+        }
+
+        .timeline-essential-select {
+            padding: 0 0.52rem;
+        }
+
+        .timeline-filter-btn {
+            padding: 0 0.56rem;
+        }
+
+        #timelineOptionalControls {
+            gap: 0.35rem;
+        }
+    }
+
+    .timeline-task-saving {
+        opacity: 0.7;
+        pointer-events: none !important;
+        filter: saturate(0.8);
+    }
+
+    #timelineRoot.timeline-maximized {
+        position: fixed;
+        top: var(--timeline-max-top, 12px);
+        right: 12px;
+        bottom: 12px;
+        left: 12px;
+        z-index: 90;
+        background: #f8fafc;
+        padding: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+    }
+
+    #plannerViewContainer.timeline-shell-maximized {
+        position: fixed !important;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 60;
+        background: #f8fafc;
+        border-radius: 0;
+        border: 0;
+        box-shadow: none;
+        overflow: hidden !important;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized #plannerViewArea {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-header-bar {
+        padding: 0;
+        border-radius: 0;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-header-controls {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized #timelineControlRail {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized > .p-4.pb-0 {
+        padding: 0.75rem 0.75rem 0;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized #plannerViewGantt > .h-full.p-4.box-border {
+        padding: 0.75rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-view-field {
+        min-width: 8.25rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-date-field {
+        min-width: 11rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-week-field {
+        min-width: 9rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-month-field {
+        min-width: 9rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-snap-field {
+        min-width: 7rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized .timeline-action-btn,
+    #plannerViewContainer.timeline-shell-maximized .timeline-filter-btn,
+    #plannerViewContainer.timeline-shell-maximized .timeline-icon-btn,
+    #plannerViewContainer.timeline-shell-maximized .timeline-essential-select {
+        min-height: 2.65rem;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized #timelineRoot.timeline-maximized {
+        position: relative;
+        top: auto;
+        right: auto;
+        bottom: auto;
+        left: auto;
+        z-index: auto;
+        background: transparent;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        height: 100%;
+        min-height: 0;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized #timelineRoot.timeline-maximized .timeline-main-card {
+        height: 100%;
+        min-height: 0;
+    }
+
+    #plannerViewContainer.timeline-shell-maximized #timelineRoot.timeline-maximized #timelineScrollWrapper {
+        max-height: none;
+        height: 100%;
+    }
+
+    #timelineRoot.timeline-maximized .timeline-main-card {
+        height: calc(100vh - 220px);
+        min-height: calc(100vh - 220px);
+    }
+
+    #timelineRoot.timeline-maximized #timelineScrollWrapper {
+        max-height: calc(100vh - 250px);
+    }
+
+    #timelineControlRail.timeline-controls-minimized #timelineOptionalControls {
+        display: none;
+    }
+
+    #timelineControlRail.timeline-controls-minimized .timeline-essential-select label {
+        display: none;
+    }
+
+    #timelineControlRail.timeline-controls-minimized .timeline-essential-select {
+        min-width: 126px !important;
+    }
+
+    @media (max-width: 1024px) {
+        .timeline-header-bar {
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+
+        .timeline-header-bar > div {
+            width: 100%;
+        }
+
+        .timeline-header-controls {
+            overflow: visible;
+        }
+
+        #timelineControlRail {
+            width: 100%;
+            margin-left: 0 !important;
+            flex-wrap: wrap;
+            overflow: visible;
+            white-space: normal;
+            justify-content: flex-start;
+            align-items: stretch;
+            gap: 0.5rem;
+            padding: 0.7rem;
+        }
+
+        .timeline-control-group {
+            flex-wrap: wrap;
+        }
+
+        .timeline-control-group--primary {
+            flex: 1 1 100%;
+        }
+
+        .timeline-control-group--secondary {
+            flex: 1 1 auto;
+        }
+
+        .timeline-control-group--utility {
+            margin-left: auto;
+            order: 3;
+        }
+
+        .timeline-control-group--search {
+            order: 4;
+            flex: 1 1 100%;
+            justify-content: stretch;
+        }
+
+        .timeline-control-spacer {
+            display: none;
+        }
+
+        .timeline-window-nav {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .timeline-scale-switch {
+            flex: 0 0 auto;
+        }
+
+        .timeline-search-field {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .timeline-filter-btn span {
+            display: inline;
+        }
+
+        #timelineRoot.timeline-maximized .timeline-main-card {
+            height: calc(100vh - 200px);
+            min-height: calc(100vh - 200px);
+        }
+
+        #timelineRoot.timeline-maximized #timelineScrollWrapper {
+            max-height: calc(100vh - 230px);
+        }
+    }
+
+    @media (max-width: 768px) {
+        #timelineControlRail {
+            border-radius: 1rem;
+            padding: 0.65rem;
+        }
+
+        .timeline-control-group--primary,
+        .timeline-control-group--secondary,
+        .timeline-control-group--search,
+        .timeline-control-group--utility {
+            width: 100%;
+        }
+
+        .timeline-control-group--utility {
+            justify-content: flex-end;
+        }
+
+        .timeline-view-field {
+            min-width: 5.4rem;
+        }
+
+        .timeline-date-field,
+        .timeline-week-field,
+        .timeline-month-field {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+
+        .timeline-scale-switch {
+            order: 3;
+            width: 100%;
+            justify-content: stretch;
+        }
+
+        .timeline-scale-switch__button {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        .timeline-snap-field {
+            min-width: 4.6rem;
+        }
+
+        .timeline-search-field {
+            min-height: 2.5rem;
+        }
+
+        .timeline-essential-select,
+        .timeline-filter-btn,
+        .timeline-icon-btn,
+        .timeline-step-btn {
+            min-height: 2.45rem;
+        }
+
+        .timeline-filter-btn {
+            padding-inline: 0.72rem;
+        }
+
+        #timelineOptionalControls {
+            gap: 0.35rem;
+        }
+
+        #timelineOverflowPanel {
+            right: 0;
+            left: auto;
+            width: min(18rem, calc(100vw - 2rem));
+        }
+    }
+
+    @media (max-width: 640px) {
+        #timelineRoot.timeline-maximized {
+            top: var(--timeline-max-top, 0px);
+            right: 0;
+            bottom: 0;
+            left: 0;
+            border-radius: 0;
+            border: 0;
+            padding: 8px;
+        }
+
+        #timelineRoot.timeline-maximized .timeline-main-card {
+            height: calc(100vh - 180px);
+            min-height: calc(100vh - 180px);
+        }
+
+        #timelineRoot.timeline-maximized #timelineScrollWrapper {
+            max-height: calc(100vh - 210px);
+        }
+
+        .timeline-essential-select {
+            min-width: 118px !important;
+        }
+
+        .timeline-control-group {
+            gap: 0.4rem;
+        }
+
+        .timeline-control-group--utility {
+            justify-content: space-between;
+        }
+
+        .timeline-main-card {
+            min-height: 420px;
+        }
+
+        #timelineHeaderBlock .flex-wrap {
+            gap: 0.5rem;
+        }
+
+        #timelineHeaderBlock .flex-wrap > .flex-1 {
+            display: none;
+        }
+
+        #plannerViewContainer.timeline-shell-maximized {
+            top: var(--timeline-max-top, 0px);
+            right: 0;
+            bottom: 0;
+            left: 0;
+            border-radius: 0;
+            border: 0;
+        }
+    }
+</style>
+
+
+<!-- Timeline Content Wrapper -->
+<div id="timelineRoot" class="flex-1 flex flex-col min-h-0 h-full scroll-mt-4">
+    {% if timeline_header_mode != "hidden" %}
+    <input id="timelineHeaderCollapse" type="checkbox" class="hidden" />
+    {% include "manufacturing/partials/timeline_header_bar.html" %}
+    <div id="timelineHeaderBlock">
+        <!-- Filters -->
+        <div class="bg-white border border-slate-200 rounded-2xl px-6 py-4 mt-4">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-500">{% tenant_trans "Search" %}</span>
+                <input type="text" id="timelineSmartSearch" placeholder="{% tenant_trans 'Search WO / product / machine' %}"
+                    oninput="window.filterTimeline && window.filterTimeline()"
+                    class="text-xs font-semibold border border-slate-200 rounded-full px-4 py-2 bg-slate-50 hover:bg-white transition-all w-64">
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-500">{% tenant_trans "Machine" %}</span>
+                <select id="timelineMachineFilter" onchange="filterTimeline()"
+                    class="text-xs font-semibold border border-slate-200 rounded-full px-4 py-2 bg-slate-50 hover:bg-white transition-all">
+                    <option value="all">{% tenant_trans "All" %}</option>
+                    <option value="active">{% tenant_trans "Active only" %}</option>
+                    <option value="idle">{% tenant_trans "Idle only" %}</option>
+                    <option value="maintenance">{% tenant_trans "Maintenance" %}</option>
+                </select>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-500">{% tenant_trans "Stage" %}</span>
+                <select id="timelineStageFilter" onchange="filterTimeline()"
+                    class="text-xs font-semibold border border-slate-200 rounded-full px-4 py-2 bg-slate-50 hover:bg-white transition-all min-w-[160px]">
+                    <option value="all">{% tenant_trans "All Stages" %}</option>
+                    <option value="__none__">{% tenant_trans "Unspecified" %}</option>
+                </select>
+            </div>
+            <div class="flex-1"></div>
+            <div class="flex items-center gap-2" x-data="{ selectedView: 'day' }">
+                <span class="text-[10px] font-bold text-slate-400">{% tenant_trans "View" %}</span>
+                <div class="flex bg-white p-0.5 rounded-full border border-slate-200 shadow-sm">
+                    <button @click="selectedView = 'day'; setGanttView('day')"
+                        :class="selectedView === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">{% tenant_trans "Day" %}</button>
+                    <button @click="selectedView = 'week'; setGanttView('week')"
+                        :class="selectedView === 'week' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">{% tenant_trans "Week" %}</button>
+                    <button @click="selectedView = 'month'; setGanttView('month')"
+                        :class="selectedView === 'month' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">{% tenant_trans "Month" %}</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-2" x-data="{ selectedShift: 'all' }">
+                <span class="text-[10px] font-bold text-slate-400">{% tenant_trans "Shift" %}</span>
+                <div class="flex bg-white p-0.5 rounded-full border border-slate-200 shadow-sm">
+                    <button @click="selectedShift = 'all'; setTimelineShift('all')"
+                        :class="selectedShift === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">{% tenant_trans "All" %}</button>
+                    <button @click="selectedShift = 'day'; setTimelineShift('day')"
+                        :class="selectedShift === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">{% tenant_trans "Day" %}</button>
+                    <button @click="selectedShift = 'middle'; setTimelineShift('middle')"
+                        :class="selectedShift === 'middle' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">{% tenant_trans "Mid" %}</button>
+                    <button @click="selectedShift = 'night'; setTimelineShift('night')"
+                        :class="selectedShift === 'night' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                        class="px-3 py-1 rounded-full text-xs font-bold transition-all">{% tenant_trans "Night" %}</button>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <!-- Status Legend -->
+        <div id="statusLegend" class="hidden flex items-center gap-3 text-xs px-2 mt-3 flex-shrink-0">
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Pending</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-blue-600 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Active</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Complete</span>
+        </div>
+        </div>
+
+        <input type="text" id="timelineSearch" class="hidden" />
+        <select id="timelineFilter" class="hidden">
+            <option value="all" selected>{% tenant_trans "All" %}</option>
+            <option value="open">Open</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="completed">{% tenant_trans "Completed" %}</option>
+            <option value="canceled">{% tenant_trans "Canceled" %}</option>
+            <option value="maintenance">{% tenant_trans "Maintenance" %}</option>
+        </select>
+
+        <div
+            class="flex flex-wrap justify-between items-start sm:items-center gap-2 mt-3 mb-1 p-3 bg-blue-50 rounded-xl border border-blue-100/50 flex-shrink-0">
+            <div class="flex items-center gap-2 text-xs text-blue-700 min-w-0">
+                <i class="ph ph-info text-sm"></i>
+                <span class="font-medium">Click empty slot to schedule. Drag to move orders.</span>
+            </div>
+            <div class="text-xs text-blue-600 font-medium shrink-0">
+                <i class="ph ph-clock text-sm"></i>
+                Current Time: {% now "H:i" %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <input type="text" id="timelineSearch" class="hidden" />
+    <select id="timelineFilter" class="hidden">
+        <option value="all" selected>{% tenant_trans "All" %}</option>
+        <option value="open">Open</option>
+        <option value="active">Active</option>
+        <option value="pending">Pending</option>
+        <option value="completed">{% tenant_trans "Completed" %}</option>
+        <option value="canceled">{% tenant_trans "Canceled" %}</option>
+        <option value="maintenance">{% tenant_trans "Maintenance" %}</option>
+    </select>
+    <select id="timelineMachineFilter" class="hidden">
+        <option value="all" selected>{% tenant_trans "All" %}</option>
+        <option value="active">{% tenant_trans "Active only" %}</option>
+        <option value="idle">{% tenant_trans "Idle only" %}</option>
+        <option value="maintenance">{% tenant_trans "Maintenance" %}</option>
+    </select>
+    <select id="timelineStageFilter" class="hidden">
+        <option value="all" selected>{% tenant_trans "All Stages" %}</option>
+        <option value="__none__">{% tenant_trans "Unspecified" %}</option>
+    </select>
+    {% endif %}
+
+    <div class="flex gap-4 flex-1 min-h-0">
+        <!-- Main Gantt Chart (Vis.js) -->
+        <!-- Custom CSS Grid Timeline -->
+        <div class="timeline-main-card flex-1 overflow-hidden border rounded-lg bg-white relative flex flex-col shadow-inner min-h-0">
+            <!-- Scroll Container (Fixed Height Fix) -->
+            <div class="w-full flex-1 overflow-y-auto overflow-x-auto" id="timelineScrollWrapper" style="height: 100%;">
+                <div id="customTimeline" class="w-full relative">
+                    <!-- Header (Time Axis) -->
+                    <div id="timelineHeader"
+                        class="sticky top-0 z-40 bg-gray-50 border-b border-gray-200 h-10 flex text-xs font-bold text-gray-500">
+                        <!-- JS will populate grid cols here -->
+                    </div>
+
+                    <!-- Body (Machine Rows) -->
+                    <div id="timelineBody" class="relative">
+                        <!-- JS will populate machine rows here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    window.toggleTimelineHeader = function () {
+        const block = document.getElementById('timelineHeaderBlock');
+        const icon = document.getElementById('timelineCollapseIcon');
+        const btn = document.getElementById('timelineHeaderToggle');
+        if (!block) return;
+        const isHidden = block.classList.contains('hidden') || block.dataset.collapsed === '1';
+        if (isHidden) {
+            block.classList.remove('hidden');
+            block.style.display = '';
+            block.dataset.collapsed = '0';
+            if (icon) {
+                icon.classList.remove('ph-caret-down');
+                icon.classList.add('ph-caret-up');
+            }
+            if (btn) btn.setAttribute('aria-expanded', 'true');
+        } else {
+            block.classList.add('hidden');
+            block.style.display = 'none';
+            block.dataset.collapsed = '1';
+            if (icon) {
+                icon.classList.remove('ph-caret-up');
+                icon.classList.add('ph-caret-down');
+            }
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+    };
+</script>

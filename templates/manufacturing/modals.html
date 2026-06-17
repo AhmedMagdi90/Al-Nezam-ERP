@@ -1,0 +1,853 @@
+{% load tenant_i18n %}
+<!-- Machine Modal -->
+<div id="machineModal" class="fixed inset-0 z-50 hidden overflow-y-auto bg-slate-950/60 px-4 py-6 backdrop-blur-sm sm:px-6">
+  <div class="flex min-h-full items-center justify-center">
+    <div class="w-full max-w-5xl overflow-hidden rounded-[30px] border border-white/70 bg-white shadow-[0_32px_80px_-28px_rgba(15,23,42,0.5)]">
+      <div class="flex items-start justify-between gap-4 border-b border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#ffffff_52%,#fff5fb_100%)] px-5 py-5 sm:px-7">
+        <div>
+          <p class="text-[11px] font-black uppercase tracking-[0.22em] text-cyan-600">Factory Asset</p>
+          <h2 id="machineModalTitle" class="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-900">{% tenant_trans "Create New Machine" %}</h2>
+          <p class="mt-2 max-w-2xl text-sm font-medium text-slate-600">Add a machine with a clean code, routing category, image, and working hours so setup, planning, and dashboards stay aligned.</p>
+        </div>
+        <button id="closeMachineModal" type="button" aria-label="Close machine form" class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition hover:border-slate-300 hover:text-slate-800">
+          <span class="sr-only">Close</span>
+          <i class="ph ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <form id="createMachineForm" class="grid xl:grid-cols-[1fr_1.28fr]">
+        {% csrf_token %}
+        <input type="hidden" name="machine_id" id="machineEditId" value="">
+        <input type="hidden" name="is_edit" id="machineEditMode" value="0">
+
+        <section class="border-b border-slate-200 bg-[linear-gradient(180deg,#f8fbff_0%,#eef6ff_46%,#ffffff_100%)] p-5 sm:p-7 xl:border-b-0 xl:border-r">
+          <div class="rounded-[28px] border border-cyan-100 bg-white/90 p-5 shadow-[0_24px_48px_-34px_rgba(14,165,233,0.45)]">
+            <div class="flex items-start gap-4">
+              <div id="machinePreviewMedia" class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-[24px] border border-cyan-100 bg-[linear-gradient(135deg,#ecfeff_0%,#dbeafe_100%)] text-cyan-700 shadow-inner">
+                <i id="machinePreviewIcon" class="ph ph-gear-six text-[2.3rem]"></i>
+                <img id="machinePreviewImage" alt="" class="hidden h-full w-full object-cover">
+              </div>
+              <div class="min-w-0 flex-1">
+                <div id="machinePreviewStatusBadge" class="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700">Operational</div>
+                <h3 id="machinePreviewName" class="mt-3 truncate text-2xl font-black tracking-[-0.04em] text-slate-900">New machine</h3>
+                <p id="machinePreviewCode" class="mt-1 font-mono text-sm font-bold uppercase tracking-[0.18em] text-slate-500">AUTO-CODE</p>
+                <p id="machinePreviewCategory" class="mt-3 text-sm font-semibold text-slate-600">Assign a category used in BOM routing and stage grouping.</p>
+              </div>
+            </div>
+
+            <div class="mt-5 grid gap-3 sm:grid-cols-2">
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Shift Source</p>
+                <p id="machinePreviewShiftSource" class="mt-2 text-sm font-bold text-slate-800">Factory shift calendar</p>
+              </div>
+              <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Working Hours</p>
+                <p id="machinePreviewShiftSummary" class="mt-2 text-sm font-bold text-slate-800">Morning, Afternoon, Night</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5 rounded-[26px] border border-slate-200 bg-white p-5">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">{% tenant_trans "Machine Image" %}</p>
+                <p class="mt-2 text-sm font-semibold text-slate-600">Optional image for setup, planner resource cards, and timeline surfaces.</p>
+              </div>
+              <div id="machineImageHint" class="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-slate-500">No file</div>
+            </div>
+            <label for="machineImageInput" class="mt-4 flex cursor-pointer items-center justify-between gap-3 rounded-[22px] border border-dashed border-slate-300 bg-slate-50 px-4 py-4 transition hover:border-cyan-300 hover:bg-cyan-50/60">
+              <div class="flex items-center gap-3">
+                <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white">
+                  <i class="ph ph-image text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">Choose machine image</p>
+                  <p class="text-xs font-semibold text-slate-500">PNG, JPG, or WEBP</p>
+                </div>
+              </div>
+              <span class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-slate-600">Browse</span>
+            </label>
+            <input id="machineImageInput" type="file" name="image" accept="image/*" class="sr-only">
+          </div>
+
+          <div class="mt-5 rounded-[26px] border border-slate-200 bg-white p-5">
+            <p class="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Suggested Categories</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button type="button" data-machine-category-preset="Cutting" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700">Cutting</button>
+              <button type="button" data-machine-category-preset="Machining" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700">Machining</button>
+              <button type="button" data-machine-category-preset="Assembly" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700">Assembly</button>
+              <button type="button" data-machine-category-preset="Packaging" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700">Packaging</button>
+              <button type="button" data-machine-category-preset="Quality" class="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-slate-600 transition hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700">Quality</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="flex min-h-0 flex-col bg-white">
+          <div class="flex-1 space-y-5 overflow-y-auto p-5 sm:p-7">
+            <div id="machineFormError" class="hidden rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700"></div>
+
+            <div class="grid gap-5 md:grid-cols-2">
+              <div class="md:col-span-2">
+                <label class="block text-sm font-black text-slate-800">{% tenant_trans "Machine Name" %} <span class="text-rose-500">*</span></label>
+                <input type="text" name="name" required autocomplete="off" class="mt-2 w-full rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-lg font-semibold text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100" placeholder='e.g. "CNC Machine 1", "Assembly Line A"'>
+                <p class="mt-2 text-xs font-semibold text-slate-500">Use the real floor label operators already recognize.</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-black text-slate-800">{% tenant_trans "Machine Code" %} <span class="text-rose-500">*</span></label>
+                <input type="text" name="code" required autocomplete="off" spellcheck="false" class="mt-2 w-full rounded-[20px] border border-slate-200 bg-white px-4 py-3 font-mono text-base font-bold uppercase tracking-[0.18em] text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100" placeholder="CNC-02">
+                <p class="mt-2 text-xs font-semibold text-slate-500">Uppercase code is normalized automatically and must be unique per company.</p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-black text-slate-800">{% tenant_trans "Status" %}</label>
+                <select name="status" class="mt-2 w-full rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                  <option value="operational">{% tenant_trans "Operational" %}</option>
+                  <option value="maintenance">{% tenant_trans "Under Maintenance" %}</option>
+                  <option value="broken">{% tenant_trans "Broken" %}</option>
+                  <option value="inactive">{% tenant_trans "Inactive" %}</option>
+                </select>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="block text-sm font-black text-slate-800">{% tenant_trans "Machine Category" %}</label>
+                <input type="text" name="category" list="machineCategorySuggestions" autocomplete="off" class="mt-2 w-full rounded-[20px] border border-slate-200 bg-white px-4 py-3 text-base font-semibold text-slate-900 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100" placeholder="e.g. Cutting, Machining, Assembly">
+                <datalist id="machineCategorySuggestions">
+                  <option value="Cutting"></option>
+                  <option value="Machining"></option>
+                  <option value="Assembly"></option>
+                  <option value="Packaging"></option>
+                  <option value="Quality"></option>
+                  {% for machine in machines %}
+                  {% if machine.category %}
+                  <option value="{{ machine.category }}"></option>
+                  {% elif machine.type %}
+                  <option value="{{ machine.type }}"></option>
+                  {% endif %}
+                  {% endfor %}
+                </datalist>
+                <p class="mt-2 text-xs font-semibold text-slate-500">This category links the machine to BOM operations, departments, and stage routing.</p>
+              </div>
+            </div>
+
+            <div class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+              <label class="flex items-start justify-between gap-4">
+                <div>
+                  <span class="block text-sm font-black text-slate-800">Use Factory Shift Calendar</span>
+                  <span class="mt-1 block text-sm font-medium text-slate-500">Turn this off only when the machine has its own working hours.</span>
+                </div>
+                <span class="relative mt-1 inline-flex">
+                  <input type="checkbox" name="use_factory_shifts" id="machineUseFactoryShifts" class="peer sr-only" checked>
+                  <span class="h-7 w-12 rounded-full bg-slate-300 transition peer-checked:bg-cyan-500"></span>
+                  <span class="absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+                </span>
+              </label>
+            </div>
+
+            <div class="rounded-[24px] border border-cyan-100 bg-cyan-50/60 p-4">
+              <label class="flex items-start gap-3">
+                <input type="checkbox" name="apply_shift_to_category" id="machineApplyShiftToCategory" class="mt-1 h-4 w-4 rounded border-cyan-300 text-cyan-600 focus:ring-cyan-500" checked>
+                <span>
+                  <span class="block text-sm font-black text-slate-800">Apply working hours to matching department/category machines</span>
+                  <span id="machineShiftPropagationHint" class="mt-1 block text-sm font-medium text-slate-500">Machines with the same category will receive the same working hours.</span>
+                </span>
+              </label>
+              <div id="machineShiftAffectedCount" class="mt-3 inline-flex rounded-full border border-cyan-200 bg-white px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-cyan-700">0 matching machines</div>
+            </div>
+
+            <div id="machineShiftOverrides" class="hidden rounded-[26px] border border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] p-4 sm:p-5">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">Machine Shift Overrides</p>
+                  <p class="mt-2 text-sm font-semibold text-slate-600">Configure only the shifts this machine can actually run.</p>
+                </div>
+                <div id="machineShiftChip" class="rounded-full bg-slate-900 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white">Custom hours</div>
+              </div>
+
+              <div class="mt-4 grid gap-3 xl:grid-cols-3">
+                <div data-shift-card="morning" class="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
+                  <label class="flex items-center justify-between gap-3 text-sm font-black text-slate-800">
+                    <span>Morning</span>
+                    <input type="checkbox" data-shift-enabled="morning" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" checked>
+                  </label>
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Start</label>
+                      <input type="time" data-shift-start="morning" value="06:00" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">End</label>
+                      <input type="time" data-shift-end="morning" value="14:00" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                    </div>
+                  </div>
+                </div>
+
+                <div data-shift-card="afternoon" class="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
+                  <label class="flex items-center justify-between gap-3 text-sm font-black text-slate-800">
+                    <span>Afternoon</span>
+                    <input type="checkbox" data-shift-enabled="afternoon" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" checked>
+                  </label>
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Start</label>
+                      <input type="time" data-shift-start="afternoon" value="14:00" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">End</label>
+                      <input type="time" data-shift-end="afternoon" value="22:00" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                    </div>
+                  </div>
+                </div>
+
+                <div data-shift-card="night" class="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
+                  <label class="flex items-center justify-between gap-3 text-sm font-black text-slate-800">
+                    <span>Night</span>
+                    <input type="checkbox" data-shift-enabled="night" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" checked>
+                  </label>
+                  <div class="mt-3 grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">Start</label>
+                      <input type="time" data-shift-start="night" value="22:00" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                    </div>
+                    <div>
+                      <label class="block text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">End</label>
+                      <input type="time" data-shift-end="night" value="06:00" class="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="machineSaveImpactSummary" class="rounded-[24px] border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-600">
+              Save summary will appear here after you edit machine details.
+            </div>
+          </div>
+
+          <div class="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50/90 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <p id="machineSubmitHelper" class="text-sm font-semibold text-slate-500">Required fields: machine name and machine code.</p>
+            <div class="flex gap-3">
+              <button id="machineCancelBtn" type="button" class="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-100">Cancel</button>
+              <button id="machineSubmitBtn" type="submit" class="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
+                <span id="machineSubmitText">{% tenant_trans "Save Machine" %}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Stage Modal -->
+<div id="stageModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center hidden z-50">
+  <div class="bg-white rounded-lg p-6 w-96 shadow-xl relative">
+    <button id="closeStageModal" type="button" aria-label="Close stage form" class="absolute top-2 right-3 text-gray-500 hover:text-black text-xl">&times;</button>
+    <h2 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-1">{% tenant_trans "Create New Stage" %}</h2>
+
+    <form id="createStageForm">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="block text-sm font-semibold text-gray-700">Stage Name <span class="text-red-500">*</span></label>
+        <input type="text" name="name" required class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500">
+        <p class="text-xs text-gray-500 mt-1">e.g., "Cutting", "Assembly", "Quality Check"</p>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-sm font-semibold text-gray-700">Stage Category <span class="text-red-500">*</span></label>
+        <input type="text" name="category" required class="w-full border p-2 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="e.g., Sewing, Packaging, Cutting">
+        <p class="text-xs text-gray-500 mt-1">Used to group the stage and auto-link it to the closest machine category.</p>
+        {% if not machines %}
+        <p class="text-xs text-amber-600 mt-1">No machines available. Please create a machine first.</p>
+        {% endif %}
+      </div>
+
+      <div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Auto Defaults</p>
+        <p class="mt-1 text-sm text-slate-600">Machine, order, color, and QA settings are assigned automatically.</p>
+        <p class="text-xs text-slate-500 mt-1">You only need the stage name and category here.</p>
+      </div>
+
+      <button type="submit" {% if not machines %}disabled{% endif %} class="bg-blue-600 text-white w-full py-2 rounded-lg hover:bg-blue-700 transition font-semibold">
+        Save Stage
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const machineModal = document.getElementById('machineModal');
+  const openMachineModalBtn = document.getElementById('openMachineModal');
+  const closeMachineModalBtn = document.getElementById('closeMachineModal');
+  const machineCancelBtn = document.getElementById('machineCancelBtn');
+  const machineModalTitle = document.getElementById('machineModalTitle');
+  const machineSubmitBtn = document.getElementById('machineSubmitBtn');
+  const machineSubmitText = document.getElementById('machineSubmitText');
+  const machineSubmitHelper = document.getElementById('machineSubmitHelper');
+  const machineFormError = document.getElementById('machineFormError');
+  const createMachineForm = document.getElementById('createMachineForm');
+  const machineEditIdInput = document.getElementById('machineEditId');
+  const machineEditModeInput = document.getElementById('machineEditMode');
+  const machineUseFactoryShifts = document.getElementById('machineUseFactoryShifts');
+  const machineApplyShiftToCategory = document.getElementById('machineApplyShiftToCategory');
+  const machineShiftPropagationHint = document.getElementById('machineShiftPropagationHint');
+  const machineShiftOverrides = document.getElementById('machineShiftOverrides');
+  const machineImageInput = document.getElementById('machineImageInput');
+  const machineImageHint = document.getElementById('machineImageHint');
+  const machinePreviewName = document.getElementById('machinePreviewName');
+  const machinePreviewCode = document.getElementById('machinePreviewCode');
+  const machinePreviewCategory = document.getElementById('machinePreviewCategory');
+  const machinePreviewStatusBadge = document.getElementById('machinePreviewStatusBadge');
+  const machinePreviewShiftSource = document.getElementById('machinePreviewShiftSource');
+  const machinePreviewShiftSummary = document.getElementById('machinePreviewShiftSummary');
+  const machinePreviewImage = document.getElementById('machinePreviewImage');
+  const machinePreviewIcon = document.getElementById('machinePreviewIcon');
+  const machineShiftChip = document.getElementById('machineShiftChip');
+  const machineShiftAffectedCount = document.getElementById('machineShiftAffectedCount');
+  const machineSaveImpactSummary = document.getElementById('machineSaveImpactSummary');
+  let machineCodeTouched = false;
+
+  function getCsrfTokenForModal() {
+    if (typeof window.getCsrfToken === 'function') return window.getCsrfToken();
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : '';
+  }
+
+  function normalizeMachineCode(value) {
+    return String(value || '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-')
+      .slice(0, 32);
+  }
+
+  function generateMachineCodeFromName(value) {
+    const seed = normalizeMachineCode(value);
+    return seed || 'AUTO-CODE';
+  }
+
+  function setMachineFormError(message) {
+    if (!machineFormError) return;
+    const text = String(message || '').trim();
+    if (!text) {
+      machineFormError.classList.add('hidden');
+      machineFormError.textContent = '';
+      return;
+    }
+    machineFormError.textContent = text;
+    machineFormError.classList.remove('hidden');
+  }
+
+  function formatApiError(payload) {
+    if (!payload) return 'Unknown error.';
+    if (typeof payload === 'string') return payload;
+    if (Array.isArray(payload)) return payload.map(formatApiError).filter(Boolean).join(' ');
+    if (payload.error) return formatApiError(payload.error);
+    if (payload.detail) return formatApiError(payload.detail);
+
+    const chunks = Object.entries(payload).map(([key, value]) => {
+      const formatted = formatApiError(value);
+      return formatted ? `${key}: ${formatted}` : '';
+    }).filter(Boolean);
+    return chunks.join(' | ') || 'Unknown error.';
+  }
+
+  function updateMachineImagePreview(imageUrl, fileName) {
+    if (machineImageHint) {
+      machineImageHint.textContent = fileName || (imageUrl ? 'Current image' : 'No file');
+    }
+    if (!machinePreviewImage || !machinePreviewIcon) return;
+    if (imageUrl) {
+      machinePreviewImage.src = imageUrl;
+      machinePreviewImage.classList.remove('hidden');
+      machinePreviewIcon.classList.add('hidden');
+    } else {
+      machinePreviewImage.removeAttribute('src');
+      machinePreviewImage.classList.add('hidden');
+      machinePreviewIcon.classList.remove('hidden');
+    }
+  }
+
+  function collectMachineShiftConfigFromForm() {
+    const config = {};
+    ['morning', 'afternoon', 'night'].forEach((shiftKey) => {
+      const enabledInput = document.querySelector(`[data-shift-enabled="${shiftKey}"]`);
+      const startInput = document.querySelector(`[data-shift-start="${shiftKey}"]`);
+      const endInput = document.querySelector(`[data-shift-end="${shiftKey}"]`);
+      config[shiftKey] = {
+        enabled: !!enabledInput?.checked,
+        start: startInput?.value || startInput?.defaultValue || '06:00',
+        end: endInput?.value || endInput?.defaultValue || '14:00',
+      };
+    });
+    return config;
+  }
+
+  function summarizeMachineShiftConfig(useFactory) {
+    if (useFactory) return 'Morning, Afternoon, Night';
+    const config = collectMachineShiftConfigFromForm();
+    const enabled = Object.entries(config)
+      .filter(([, entry]) => entry && entry.enabled)
+      .map(([shiftKey, entry]) => {
+        const label = shiftKey.charAt(0).toUpperCase() + shiftKey.slice(1);
+        return `${label} ${entry.start}-${entry.end}`;
+      });
+    return enabled.length ? enabled.join(' | ') : 'No active shift selected';
+  }
+
+  function countMatchingCategoryMachines() {
+    if (!createMachineForm) return 0;
+    const categoryValue = String(createMachineForm.elements.category?.value || '').trim().toLowerCase();
+    const currentId = String(machineEditIdInput?.value || '').trim();
+    if (!categoryValue) return 0;
+    return Array.from(document.querySelectorAll('[data-machine-id][data-machine-category]')).filter((node) => {
+      const nodeId = String(node.dataset.machineId || '').trim();
+      const nodeCategory = String(node.dataset.machineCategory || '').trim().toLowerCase();
+      const nodeType = String(node.dataset.machineType || '').trim().toLowerCase();
+      return (nodeCategory === categoryValue || nodeType === categoryValue) && nodeId !== currentId;
+    }).length;
+  }
+
+  function updateMachineShiftPropagationHint() {
+    if (!machineShiftPropagationHint) return;
+    const count = countMatchingCategoryMachines();
+    const categoryValue = String(createMachineForm?.elements.category?.value || '').trim();
+    if (machineShiftAffectedCount) {
+      machineShiftAffectedCount.textContent = `${count} matching machine${count === 1 ? '' : 's'}`;
+    }
+    if (!machineApplyShiftToCategory?.checked) {
+      machineShiftPropagationHint.textContent = 'Only this machine will be updated.';
+      return;
+    }
+    if (!categoryValue) {
+      machineShiftPropagationHint.textContent = 'Add a department/category to apply these hours to matching machines.';
+      return;
+    }
+    machineShiftPropagationHint.textContent = count
+      ? `Saving custom hours will also update ${count} machine${count === 1 ? '' : 's'} in ${categoryValue}.`
+      : `No other machines currently match ${categoryValue}.`;
+  }
+
+  function updateMachineSaveImpactSummary() {
+    if (!machineSaveImpactSummary || !createMachineForm) return;
+    const isEdit = machineEditModeInput && machineEditModeInput.value === '1';
+    const nameValue = String(createMachineForm.elements.name?.value || '').trim() || 'Unnamed machine';
+    const codeValue = normalizeMachineCode(createMachineForm.elements.code?.value || '') || 'No code';
+    const categoryValue = String(createMachineForm.elements.category?.value || '').trim() || 'No department/category';
+    const statusValue = String(createMachineForm.elements.status?.value || 'operational');
+    const useFactory = !!machineUseFactoryShifts?.checked;
+    const matchingCount = countMatchingCategoryMachines();
+    const propagationText = (!useFactory && machineApplyShiftToCategory?.checked && matchingCount > 0)
+      ? ` Working hours will also update ${matchingCount} matching machine${matchingCount === 1 ? '' : 's'}.`
+      : ' Only this machine record will be updated.';
+    machineSaveImpactSummary.textContent = `${isEdit ? 'Update' : 'Create'} ${nameValue} (${codeValue}) as ${statusValue} in ${categoryValue}. ${useFactory ? 'It will use factory hours.' : 'It will use custom machine hours.'}${propagationText}`;
+  }
+
+  function updateMachineShiftFieldState(shiftKey) {
+    const enabledInput = document.querySelector(`[data-shift-enabled="${shiftKey}"]`);
+    const startInput = document.querySelector(`[data-shift-start="${shiftKey}"]`);
+    const endInput = document.querySelector(`[data-shift-end="${shiftKey}"]`);
+    const card = document.querySelector(`[data-shift-card="${shiftKey}"]`);
+    const enabled = !!enabledInput?.checked;
+    if (startInput) startInput.disabled = !enabled;
+    if (endInput) endInput.disabled = !enabled;
+    if (card) {
+      card.classList.toggle('opacity-60', !enabled);
+      card.classList.toggle('border-slate-200', !enabled);
+      card.classList.toggle('border-cyan-200', enabled);
+      card.classList.toggle('bg-cyan-50/40', enabled);
+    }
+  }
+
+  function updateMachinePreview() {
+    if (!createMachineForm) return;
+    const nameValue = String(createMachineForm.elements.name?.value || '').trim();
+    const codeValue = normalizeMachineCode(createMachineForm.elements.code?.value || '');
+    const categoryValue = String(createMachineForm.elements.category?.value || '').trim();
+    const statusValue = String(createMachineForm.elements.status?.value || 'operational');
+    const useFactory = !!machineUseFactoryShifts?.checked;
+
+    if (machinePreviewName) machinePreviewName.textContent = nameValue || 'New machine';
+    if (machinePreviewCode) machinePreviewCode.textContent = codeValue || 'AUTO-CODE';
+    if (machinePreviewCategory) {
+      machinePreviewCategory.textContent = categoryValue
+        ? `Routing category: ${categoryValue}`
+        : 'Assign a category used in BOM routing and stage grouping.';
+    }
+    if (machinePreviewShiftSource) {
+      machinePreviewShiftSource.textContent = useFactory ? 'Factory shift calendar' : 'Machine-level shift hours';
+    }
+    if (machinePreviewShiftSummary) {
+      machinePreviewShiftSummary.textContent = summarizeMachineShiftConfig(useFactory);
+    }
+    if (machineShiftChip) {
+      machineShiftChip.textContent = useFactory ? 'Factory hours' : 'Custom hours';
+    }
+    if (machineSubmitHelper) {
+      machineSubmitHelper.textContent = useFactory
+        ? 'Required fields: machine name and machine code.'
+        : 'Custom hours enabled. At least one machine shift must stay active.';
+    }
+    updateMachineShiftPropagationHint();
+    updateMachineSaveImpactSummary();
+
+    if (machinePreviewStatusBadge) {
+      const statusMap = {
+        operational: {
+          label: 'Operational',
+          classes: ['bg-emerald-50', 'text-emerald-700'],
+        },
+        maintenance: {
+          label: 'Under Maintenance',
+          classes: ['bg-amber-50', 'text-amber-700'],
+        },
+        broken: {
+          label: 'Broken',
+          classes: ['bg-rose-50', 'text-rose-700'],
+        },
+        inactive: {
+          label: 'Inactive',
+          classes: ['bg-slate-200', 'text-slate-700'],
+        },
+      };
+      const current = statusMap[statusValue] || statusMap.operational;
+      machinePreviewStatusBadge.textContent = current.label;
+      machinePreviewStatusBadge.className = `inline-flex items-center rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${current.classes.join(' ')}`;
+    }
+  }
+
+  function toggleMachineShiftOverrides() {
+    if (!machineUseFactoryShifts || !machineShiftOverrides) return;
+    machineShiftOverrides.classList.toggle('hidden', machineUseFactoryShifts.checked);
+    updateMachinePreview();
+  }
+
+  function applyMachineShiftConfigToForm(useFactory, config) {
+    const normalized = (config && typeof config === 'object') ? config : {};
+    if (machineUseFactoryShifts) {
+      machineUseFactoryShifts.checked = !!useFactory;
+    }
+    ['morning', 'afternoon', 'night'].forEach((shiftKey) => {
+      const entry = normalized[shiftKey] || {};
+      const enabledInput = document.querySelector(`[data-shift-enabled="${shiftKey}"]`);
+      const startInput = document.querySelector(`[data-shift-start="${shiftKey}"]`);
+      const endInput = document.querySelector(`[data-shift-end="${shiftKey}"]`);
+      if (enabledInput) enabledInput.checked = !!entry.enabled;
+      if (startInput) startInput.value = entry.start || startInput.defaultValue || '06:00';
+      if (endInput) endInput.value = entry.end || endInput.defaultValue || '14:00';
+      updateMachineShiftFieldState(shiftKey);
+    });
+    toggleMachineShiftOverrides();
+    updateMachinePreview();
+  }
+
+  function setMachineSubmitting(isSubmitting, isEdit) {
+    if (machineSubmitBtn) machineSubmitBtn.disabled = isSubmitting;
+    if (machineSubmitText) {
+      machineSubmitText.textContent = isSubmitting
+        ? (isEdit ? 'Updating...' : 'Saving...')
+        : (isEdit ? '{% tenant_trans "Update Machine" %}' : '{% tenant_trans "Save Machine" %}');
+    }
+  }
+
+  window.openMachineCreateModal = function () {
+    if (!machineModal || !createMachineForm) return;
+    createMachineForm.reset();
+    machineCodeTouched = false;
+    setMachineFormError('');
+    if (machineEditIdInput) machineEditIdInput.value = '';
+    if (machineEditModeInput) machineEditModeInput.value = '0';
+    if (machineModalTitle) machineModalTitle.textContent = '{% tenant_trans "Create New Machine" %}';
+    updateMachineImagePreview('', '');
+    applyMachineShiftConfigToForm(true, {
+      morning: { enabled: true, start: '06:00', end: '14:00' },
+      afternoon: { enabled: true, start: '14:00', end: '22:00' },
+      night: { enabled: true, start: '22:00', end: '06:00' },
+    });
+    setMachineSubmitting(false, false);
+    updateMachinePreview();
+    machineModal.classList.remove('hidden');
+    createMachineForm.elements.name?.focus();
+  };
+
+  window.openMachineEditModal = function (triggerOrId, name, code, category, status) {
+    if (!machineModal || !createMachineForm) return;
+    createMachineForm.reset();
+    setMachineFormError('');
+    let id = triggerOrId;
+    let useFactoryShifts = true;
+    let shiftConfiguration = {};
+    let imageUrl = '';
+    if (triggerOrId && typeof triggerOrId === 'object' && triggerOrId.dataset) {
+      id = triggerOrId.dataset.machineId || '';
+      name = triggerOrId.dataset.machineName || '';
+      code = triggerOrId.dataset.machineCode || '';
+      category = triggerOrId.dataset.machineCategory || '';
+      status = triggerOrId.dataset.machineStatus || 'operational';
+      imageUrl = triggerOrId.dataset.machineImageUrl || '';
+      useFactoryShifts = triggerOrId.dataset.machineUseFactoryShifts !== '0';
+      try {
+        shiftConfiguration = JSON.parse(triggerOrId.dataset.machineShiftConfiguration || '{}');
+      } catch (e) {
+        shiftConfiguration = {};
+      }
+    }
+    machineCodeTouched = true;
+    if (machineEditIdInput) machineEditIdInput.value = id || '';
+    if (machineEditModeInput) machineEditModeInput.value = '1';
+    if (machineModalTitle) machineModalTitle.textContent = '{% tenant_trans "Edit Machine" %}';
+
+    if (createMachineForm.elements.name) createMachineForm.elements.name.value = name || '';
+    if (createMachineForm.elements.code) createMachineForm.elements.code.value = normalizeMachineCode(code || '');
+    if (createMachineForm.elements.category) createMachineForm.elements.category.value = category || '';
+    if (createMachineForm.elements.status) createMachineForm.elements.status.value = status || 'operational';
+    updateMachineImagePreview(imageUrl, imageUrl ? 'Current image' : '');
+    applyMachineShiftConfigToForm(useFactoryShifts, shiftConfiguration);
+    setMachineSubmitting(false, true);
+    updateMachinePreview();
+
+    machineModal.classList.remove('hidden');
+    createMachineForm.elements.name?.focus();
+  };
+
+  if (openMachineModalBtn) {
+    openMachineModalBtn.onclick = () => window.openMachineCreateModal();
+  }
+
+  function closeMachineModal() {
+    if (!machineModal) return;
+    machineModal.classList.add('hidden');
+    setMachineFormError('');
+  }
+
+  if (closeMachineModalBtn) closeMachineModalBtn.onclick = closeMachineModal;
+  if (machineCancelBtn) machineCancelBtn.onclick = closeMachineModal;
+
+  if (createMachineForm) {
+    const machineNameInput = createMachineForm.elements.name;
+    const machineCodeInput = createMachineForm.elements.code;
+    const machineCategoryInput = createMachineForm.elements.category;
+    const machineStatusInput = createMachineForm.elements.status;
+
+    if (machineNameInput) {
+      machineNameInput.addEventListener('input', () => {
+        if (machineCodeInput && !machineCodeTouched) {
+          machineCodeInput.value = generateMachineCodeFromName(machineNameInput.value);
+        }
+        updateMachinePreview();
+      });
+    }
+
+    if (machineCodeInput) {
+      machineCodeInput.addEventListener('input', () => {
+        machineCodeTouched = String(machineCodeInput.value || '').trim().length > 0;
+        machineCodeInput.value = normalizeMachineCode(machineCodeInput.value);
+        updateMachinePreview();
+      });
+      machineCodeInput.addEventListener('blur', () => {
+        machineCodeInput.value = normalizeMachineCode(machineCodeInput.value);
+        updateMachinePreview();
+      });
+    }
+
+    if (machineCategoryInput) {
+      machineCategoryInput.addEventListener('input', updateMachinePreview);
+    }
+    if (machineStatusInput) {
+      machineStatusInput.addEventListener('change', updateMachinePreview);
+    }
+
+    createMachineForm.onsubmit = async (e) => {
+      e.preventDefault();
+      setMachineFormError('');
+
+      const formData = new FormData(createMachineForm);
+      const machineId = machineEditIdInput ? machineEditIdInput.value : '';
+      const isEdit = machineEditModeInput && machineEditModeInput.value === '1' && !!machineId;
+
+      formData.delete('machine_id');
+      formData.delete('is_edit');
+      formData.set('name', String(formData.get('name') || '').trim());
+      formData.set('code', normalizeMachineCode(formData.get('code') || ''));
+      formData.set('category', String(formData.get('category') || '').trim());
+      formData.set('use_factory_shifts', machineUseFactoryShifts && machineUseFactoryShifts.checked ? 'true' : 'false');
+      formData.set('apply_shift_to_category', machineApplyShiftToCategory && machineApplyShiftToCategory.checked ? 'true' : 'false');
+      formData.set('shift_configuration', JSON.stringify(collectMachineShiftConfigFromForm()));
+      if (!(machineImageInput && machineImageInput.files && machineImageInput.files.length)) {
+        formData.delete('image');
+      }
+
+      if (!String(formData.get('name') || '').trim() || !String(formData.get('code') || '').trim()) {
+        setMachineFormError('Machine name and machine code are required.');
+        return;
+      }
+
+      const matchingCount = countMatchingCategoryMachines();
+      const isCustomHours = formData.get('use_factory_shifts') === 'false';
+      const willPropagateHours = isCustomHours && formData.get('apply_shift_to_category') === 'true' && matchingCount > 0;
+      if (willPropagateHours) {
+        const categoryValue = String(formData.get('category') || '').trim();
+        const confirmMessage = `This will apply the same working hours to ${matchingCount} matching machine${matchingCount === 1 ? '' : 's'} in ${categoryValue}. Continue?`;
+        const confirmed = typeof window.appConfirm === 'function'
+          ? await window.appConfirm(confirmMessage, {
+              title: 'Apply Working Hours',
+              confirmText: 'Apply Hours',
+              kind: 'warning',
+            })
+          : window.confirm(confirmMessage);
+        if (!confirmed) return;
+      }
+
+      const endpoint = isEdit
+        ? `/manufacturing/api/v1/machines/${machineId}/`
+        : "{% url 'create_machine' %}";
+      const method = isEdit ? 'PATCH' : 'POST';
+
+      setMachineSubmitting(true, isEdit);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: method,
+          headers: {
+            'X-CSRFToken': getCsrfTokenForModal()
+          },
+          body: formData
+        });
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          data = {};
+        }
+
+        if (response.ok && (data.success !== false)) {
+          const propagated = Number(data.shift_propagated_count || 0);
+          const message = propagated
+            ? `Machine ${isEdit ? 'updated' : 'created'} successfully. Working hours applied to ${propagated} matching machine${propagated === 1 ? '' : 's'}.`
+            : (isEdit ? 'Machine updated successfully.' : (data.message || 'Machine created successfully.'));
+          if (window.appNotify) {
+            window.appNotify(message, 'success');
+          }
+          try {
+            localStorage.setItem('factorySetup.machineSaveNotice', message);
+          } catch (storageErr) {}
+          try {
+            localStorage.setItem('machines_updated_at', Date.now().toString());
+          } catch (storageErr) {}
+          location.reload();
+          return;
+        }
+
+        const error = formatApiError(data) || `HTTP ${response.status}`;
+        setMachineFormError(error);
+        if (window.appNotify) window.appNotify(error, 'error');
+      } catch (error) {
+        const message = `Request failed: ${error.message}`;
+        setMachineFormError(message);
+        if (window.appNotify) window.appNotify(message, 'error');
+      } finally {
+        setMachineSubmitting(false, isEdit);
+      }
+    };
+  }
+
+  if (machineImageInput) {
+    machineImageInput.addEventListener('change', () => {
+      const file = machineImageInput.files && machineImageInput.files[0];
+      if (!file) {
+        updateMachineImagePreview('', '');
+        updateMachinePreview();
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        updateMachineImagePreview(event.target?.result || '', file.name);
+        updateMachinePreview();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  if (machineUseFactoryShifts) {
+    machineUseFactoryShifts.addEventListener('change', toggleMachineShiftOverrides);
+    toggleMachineShiftOverrides();
+  }
+  if (machineApplyShiftToCategory) {
+    machineApplyShiftToCategory.addEventListener('change', updateMachinePreview);
+  }
+
+  ['morning', 'afternoon', 'night'].forEach((shiftKey) => {
+    const enabledInput = document.querySelector(`[data-shift-enabled="${shiftKey}"]`);
+    const startInput = document.querySelector(`[data-shift-start="${shiftKey}"]`);
+    const endInput = document.querySelector(`[data-shift-end="${shiftKey}"]`);
+
+    if (enabledInput) {
+      enabledInput.addEventListener('change', () => {
+        updateMachineShiftFieldState(shiftKey);
+        updateMachinePreview();
+      });
+    }
+    if (startInput) startInput.addEventListener('input', updateMachinePreview);
+    if (endInput) endInput.addEventListener('input', updateMachinePreview);
+    updateMachineShiftFieldState(shiftKey);
+  });
+
+  document.querySelectorAll('[data-machine-category-preset]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!createMachineForm?.elements.category) return;
+      createMachineForm.elements.category.value = button.dataset.machineCategoryPreset || '';
+      updateMachinePreview();
+      createMachineForm.elements.category.focus();
+    });
+  });
+
+  // Stage Modal
+  const stageModal = document.getElementById('stageModal');
+  const openStageModalBtn = document.getElementById('openStageModal');
+  const closeStageModalBtn = document.getElementById('closeStageModal');
+  const createStageForm = document.getElementById('createStageForm');
+
+  if (openStageModalBtn && stageModal) {
+    openStageModalBtn.onclick = () => stageModal.classList.remove('hidden');
+  }
+  if (closeStageModalBtn && stageModal) {
+    closeStageModalBtn.onclick = () => stageModal.classList.add('hidden');
+  }
+
+  if (createStageForm) {
+    createStageForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+
+      try {
+        const response = await fetch("{% url 'create_stage' %}", {
+          method: "POST",
+          body: formData
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          if (window.appNotify) window.appNotify(data.message || "Stage created successfully.", 'success');
+          location.reload();
+        } else {
+          if (window.appNotify) window.appNotify("Failed to create stage: " + (data.error || "Unknown error"), 'error');
+        }
+      } catch (error) {
+        if (window.appNotify) window.appNotify("Error: " + error.message, 'error');
+      }
+    };
+  }
+
+  // Close modals when clicking outside
+  if (machineModal) {
+    machineModal.onclick = (e) => {
+      if (e.target === machineModal) closeMachineModal();
+    };
+  }
+  if (stageModal) {
+    stageModal.onclick = (e) => {
+      if (e.target === stageModal) stageModal.classList.add('hidden');
+    };
+  }
+</script>

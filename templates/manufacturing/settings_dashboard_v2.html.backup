@@ -1,0 +1,589 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}System Settings - Kemet ERP{% endblock %}
+
+{% block app_header %}{% endblock %}
+
+{% block content %}
+<div class="h-full flex flex-col relative overflow-hidden" x-data="{ 
+    activeTab: '{{ active_tab|default:'general' }}',
+    showInviteModal: false
+}">
+
+    <!-- Header Section -->
+    <div
+        class="px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 flex-shrink-0 animate-fade-in-up">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                <i class="ph ph-gear-six text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-3xl font-black text-slate-800 tracking-tight">System Settings</h1>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Adjust general info and system
+                    preferences</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
+            <button @click="activeTab = 'general'"
+                :class="activeTab === 'general' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                class="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
+                General
+            </button>
+            <button @click="activeTab = 'system'"
+                :class="activeTab === 'system' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                class="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
+                System
+            </button>
+            <button @click="activeTab = 'members'"
+                :class="activeTab === 'members' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                class="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
+                Team
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar relative z-10 animate-fade-in-up delay-100">
+
+        <!-- 1. GENERAL TAB -->
+        <div x-show="activeTab === 'general'" x-transition class="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-8">
+            <div class="space-y-8">
+                <!-- Company Details -->
+                <div class="glass-panel-premium rounded-[40px] p-10 bg-white shadow-2xl shadow-slate-200/50">
+                    <h3 class="text-xl font-black text-slate-800 mb-8">Company Information</h3>
+                    <form method="POST" action="{% url 'settings_dashboard' %}"
+                        class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_profile">
+
+                        <div class="md:col-span-2 flex items-center gap-8 mb-4">
+                            <div class="relative group">
+                                {% if request.user.profile.profile_image %}
+                                <img src="{{ request.user.profile.profile_image.url }}"
+                                    class="w-24 h-24 rounded-[32px] object-cover ring-4 ring-slate-50 shadow-xl">
+                                {% else %}
+                                <div
+                                    class="w-24 h-24 rounded-[32px] bg-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-xl shadow-blue-100">
+                                    {{ request.user.username|slice:":1"|upper }}
+                                </div>
+                                {% endif %}
+                                <label
+                                    class="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center cursor-pointer border border-slate-100 hover:bg-slate-50 transition-all">
+                                    <i class="ph ph-camera text-slate-600"></i>
+                                    <input type="file" class="hidden">
+                                </label>
+                            </div>
+                            <div>
+                                <p class="text-sm font-black text-slate-800">Company Logo</p>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">JPG, PNG, max
+                                    2MB</p>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label
+                                class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Company
+                                Name</label>
+                            <input type="text" name="company_name"
+                                value="{{ request.user.profile.company.name|default:'Kemet ERP' }}"
+                                class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all">
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Support
+                                Email</label>
+                            <input type="email" name="email" value="{{ request.user.email }}"
+                                class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all">
+                        </div>
+
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Phone
+                                Line</label>
+                            <input type="text" name="phone" value="{{ request.user.profile.phone|default:'' }}"
+                                class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all">
+                        </div>
+
+                        <div class="md:col-span-2 flex justify-end pt-4">
+                            <button type="submit"
+                                class="px-8 py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl hover:-translate-y-0.5 transition-all">
+                                Save Company Data
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                <!-- Regional Settings -->
+                <div class="glass-panel-premium rounded-[32px] p-8 bg-white/60 shadow-xl shadow-slate-200/30">
+                    <h4 class="text-sm font-black text-slate-800 mb-6">Regional & Localization</h4>
+                    <div class="space-y-6">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Default
+                                Language</label>
+                            <select
+                                class="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl font-bold text-xs ring-0 outline-none">
+                                <option>English (United States)</option>
+                                <option>Arabic (Egypt)</option>
+                                <option>German (Germany)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-400 uppercase mb-2">Timezone</label>
+                            <select
+                                class="w-full px-4 py-3 bg-white border border-slate-100 rounded-xl font-bold text-xs ring-0 outline-none">
+                                <option>UTC+02:00 (Cairo)</option>
+                                <option>UTC+00:00 (GMT)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Quick Card -->
+                <div
+                    class="p-8 bg-gradient-to-br from-slate-900 to-slate-800 rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
+                    <div
+                        class="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700">
+                    </div>
+                    <i class="ph ph-shield-check text-4xl mb-4 text-blue-400"></i>
+                    <h4 class="text-lg font-black leading-tight mb-2">Security & Access</h4>
+                    <p class="text-xs text-slate-400 mb-6 font-bold uppercase tracking-widest">Enhanced Protection</p>
+                    <button
+                        class="w-full py-4 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/10 transition-all">
+                        Update Security
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SYSTEM TAB -->
+        <div x-show="activeTab === 'system'" x-transition class="space-y-8 max-w-5xl">
+            <div class="glass-panel-premium rounded-[40px] p-10 bg-white shadow-2xl shadow-slate-200/50">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 class="text-xl font-black text-slate-800">System Rules & Logistics</h3>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Core Logic Controller
+                        </p>
+                    </div>
+                    <div
+                        class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-[10px] font-black uppercase border border-blue-100">
+                        Live ⚡</div>
+                </div>
+
+                <form id="mainSystemForm" method="POST" action="{% url 'settings_dashboard' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_system_rules">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        <!-- Scheduling Rules -->
+                        <section class="space-y-6">
+                            <h4
+                                class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                                Scheduling Automation</h4>
+                            <div class="space-y-4">
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">Auto-assign Workers</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">Based on skills and availability
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="auto_assign_workers" {% if
+ settings.auto_assign_workers %}checked{% endif %} class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                        </div>
+                                    </div>
+                                </label>
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">Predictive Maintenance</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">Smart machine downtime
+                                            forecasting
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="predictive_maintenance" {% if
+ settings.predictive_maintenance %}checked{% endif %} class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </section>
+
+                        <!-- Maintenance Settings -->
+                        <section class="space-y-6">
+                            <h4
+                                class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                                Maintenance Logistics</h4>
+                            <div class="space-y-4">
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">Automatic Fault Lockdown</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">Halt production on active faults
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="auto_fault_lockdown" {% if
+ settings.auto_fault_lockdown %}checked{% endif %} class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                        </div>
+                                    </div>
+                                </label>
+                                <label
+                                    class="flex items-center justify-between p-5 bg-slate-50/50 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all border border-transparent hover:border-slate-200 group">
+                                    <div>
+                                        <p class="text-sm font-black text-slate-800">Trouble Ticket Integration</p>
+                                        <p class="text-[10px] text-slate-400 font-bold">Sync with global maintenance hub
+                                        </p>
+                                    </div>
+                                    <div class="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" name="trouble_ticket_integration" {% if
+ settings.trouble_ticket_integration %}checked{% endif %}
+                                            class="sr-only peer">
+                                        <div
+                                            class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600">
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="mt-12 pt-8 border-t border-slate-100 flex justify-end">
+                        <button type="button" onclick="saveSystemSettings(this)"
+                            class="px-10 py-4 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all">
+                            Apply System Configuration
+                        </button>
+                    </div>
+                </form>
+
+                <!-- NEW: Shift & Holiday Settings -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 pt-8 border-t border-slate-100">
+
+                    <!-- Shift Configuration -->
+                    <section class="space-y-6">
+                        <h4
+                            class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                            Shift Schedule
+                        </h4>
+                        <form id="shiftForm" method="POST" action="{% url 'settings_dashboard' %}" class="space-y-4">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="update_shifts">
+
+                            <!-- Morning -->
+                            <div class="flex items-center gap-4">
+                                <span class="w-20 text-xs font-bold text-slate-700">Morning</span>
+                                <input type="time" name="morning_start"
+                                    value="{{ settings.shift_configuration.morning.start|default:'06:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+                                <span class="text-slate-400">-</span>
+                                <input type="time" name="morning_end"
+                                    value="{{ settings.shift_configuration.morning.end|default:'14:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+                            </div>
+
+                            <!-- Evening -->
+                            <div class="flex items-center gap-4">
+                                <span class="w-20 text-xs font-bold text-slate-700">Evening</span>
+                                <input type="time" name="evening_start"
+                                    value="{{ settings.shift_configuration.evening.start|default:'14:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+                                <span class="text-slate-400">-</span>
+                                <input type="time" name="evening_end"
+                                    value="{{ settings.shift_configuration.evening.end|default:'22:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+                            </div>
+
+                            <!-- Night -->
+                            <div class="flex items-center gap-4">
+                                <span class="w-20 text-xs font-bold text-slate-700">Night</span>
+                                <input type="time" name="night_start"
+                                    value="{{ settings.shift_configuration.night.start|default:'22:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+                                <span class="text-slate-400">-</span>
+                                <input type="time" name="night_end"
+                                    value="{{ settings.shift_configuration.night.end|default:'06:00' }}"
+                                    class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs">
+                            </div>
+
+                            <button type="submit"
+                                class="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                                <i class="ph ph-floppy-disk"></i> Save Shifts
+                            </button>
+                        </form>
+                    </section>
+
+                    <!-- Holiday Calendar -->
+                    <section class="space-y-6">
+                        <h4
+                            class="text-xs font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 pb-2">
+                            Holiday Calendar
+                        </h4>
+
+                        <!-- Weekly Holidays -->
+                        <div class="mb-6">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Weekly Recurring</p>
+                            <form method="POST" action="{% url 'settings_dashboard' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_weekly_holidays">
+                                <div class="flex flex-wrap gap-2">
+                                    {% for idx, name, short in week_days %}
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox" name="weekly_holidays" value="{{ idx }}"
+                                            class="peer sr-only" {% if idx in settings.weekly_holidays %}checked{% endif %}>
+                                        <div
+                                            class="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-500 peer-checked:bg-slate-800 peer-checked:text-white peer-checked:border-slate-800 transition-all hover:border-slate-400">
+                                            {{ short }}
+                                        </div>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                                <button type="submit"
+                                    class="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-700">Save
+                                    Weekly</button>
+                            </form>
+                        </div>
+
+                        <!-- Yearly Holidays -->
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Yearly Dates</p>
+                            <div class="space-y-2 mb-3 max-h-32 overflow-y-auto">
+                                {% for h in settings.holidays %}
+                                <div
+                                    class="flex justify-between items-center bg-slate-50 px-3 py-2 rounded border border-slate-200">
+                                    <div class="flex items-center gap-2">
+                                        <i class="ph ph-calendar-x text-slate-400"></i>
+                                        <span class="text-xs font-bold text-slate-700">{{ h.name }}</span>
+                                        <span class="text-[10px] text-slate-500">({{ h.date }})</span>
+                                    </div>
+                                    <form method="POST" action="{% url 'settings_dashboard' %}" class="inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="remove_holiday">
+                                        <input type="hidden" name="holiday_idx" value="{{ forloop.counter0 }}">
+                                        <button type="submit" class="text-slate-400 hover:text-red-500"><i
+                                                class="ph ph-trash"></i></button>
+                                    </form>
+                                </div>
+                                {% empty %}
+                                <p class="text-xs text-slate-400 italic">No holidays added.</p>
+                                {% endfor %}
+                            </div>
+
+                            <form method="POST" action="{% url 'settings_dashboard' %}" class="flex gap-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="add_holiday">
+                                <input type="text" name="name" placeholder="Name"
+                                    class="flex-1 bg-white border border-slate-200 rounded px-2 py-1 text-xs" required>
+                                <input type="date" name="date"
+                                    class="bg-white border border-slate-200 rounded px-2 py-1 text-xs" required>
+                                <button type="submit"
+                                    class="bg-slate-800 text-white px-3 py-1 rounded text-xs font-bold hover:bg-slate-700">+</button>
+                            </form>
+                        </div>
+                    </section>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 3. TEAM TAB -->
+        <div x-show="activeTab === 'members'" x-transition class="space-y-10">
+            <div class="flex items-center justify-between px-4">
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">Expert Management Pool</h2>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Control access for {{
+                        team_members|length }} professionals</p>
+                </div>
+                <button @click="showInviteModal = true"
+                    class="px-8 py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-slate-200 hover:bg-slate-800 flex items-center gap-3 transition-all">
+                    <i class="ph ph-user-plus text-xl"></i> Onboard Expert
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {% for member in team_members %}
+                <div
+                    class="group relative bg-white/50 border border-slate-100 rounded-[48px] p-8 hover:bg-white hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden">
+                    <!-- Background Decor -->
+                    <div
+                        class="absolute -top-12 -right-12 w-32 h-32 bg-slate-50 rounded-full group-hover:scale-150 transition-transform duration-700">
+                    </div>
+
+                    <div class="relative flex flex-col items-center text-center">
+                        <div class="relative mb-6">
+                            {% if member.profile.profile_image %}
+                            <img src="{{ member.profile.profile_image.url }}"
+                                class="w-24 h-24 rounded-[32px] object-cover ring-8 ring-white shadow-xl">
+                            {% else %}
+                            <div
+                                class="w-24 h-24 rounded-[32px] bg-slate-100 text-slate-400 flex items-center justify-center text-3xl font-black ring-8 ring-white shadow-xl">
+                                {{ member.username|slice:":1"|upper }}
+                            </div>
+                            {% endif %}
+                            <div
+                                class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full border-4 border-white {% if member.is_active %}bg-emerald-500{% else %}bg-slate-300{% endif %}">
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <h5 class="text-xl font-black text-slate-800">{{
+                                member.get_full_name|default:member.username }}</h5>
+                            <span
+                                class="inline-block mt-2 px-3 py-1 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                                {{ member.profile.role.name|default:"Specialist" }}
+                            </span>
+                        </div>
+
+                        <div class="w-full grid grid-cols-2 gap-3">
+                            <button
+                                class="py-3 bg-white border border-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all">
+                                Profile
+                            </button>
+                            {% if member.id != request.user.id %}
+                            <button
+                                class="py-3 bg-rose-50 text-rose-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all">
+                                Remove
+                            </button>
+                            {% else %}
+                            <button
+                                class="py-3 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed">
+                                Current
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- INVITE MODAL Overlay -->
+    <div x-show="showInviteModal" x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-xl p-6">
+
+        <div class="bg-white rounded-[56px] shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in duration-300"
+            @click.away="showInviteModal = false">
+
+            <div class="p-12">
+                <div class="flex justify-between items-start mb-10">
+                    <div>
+                        <h3 class="text-3xl font-black text-slate-800 tracking-tight">Onboard Member</h3>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Expanding the
+                            workforce</p>
+                    </div>
+                    <button @click="showInviteModal = false"
+                        class="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-600">
+                        <i class="ph ph-x text-2xl"></i>
+                    </button>
+                </div>
+
+                <form method="POST" action="{% url 'settings_dashboard' %}" class="space-y-6">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="invite_user">
+
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">First
+                                Name</label>
+                            <input type="text" name="first_name" required
+                                class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 transition-all">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Last
+                                Name</label>
+                            <input type="text" name="last_name" required
+                                class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 transition-all">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Official
+                            Email</label>
+                        <input type="email" name="email" required
+                            class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-100 transition-all">
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Functional
+                            Role</label>
+                        <select name="role" required
+                            class="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-xs uppercase outline-none focus:ring-4 focus:ring-blue-100 transition-all cursor-pointer">
+                            {% for role in available_roles %}
+                            <option value="{{ role.id }}">{{ role.name|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="pt-6">
+                        <button type="submit"
+                            class="w-full py-5 bg-blue-600 text-white rounded-3xl text-sm font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all">
+                            Send Invitations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    async function saveSystemSettings(btn) {
+        const originalText = btn.innerText;
+        btn.innerText = "Saving...";
+        btn.disabled = true;
+        btn.classList.add('opacity-75');
+
+        // 1. Submit Shifts (Silent Background)
+        const shiftForm = document.getElementById('shiftForm');
+        if (shiftForm) {
+            try {
+                const formData = new FormData(shiftForm);
+                // Extract CSRF token from the form
+                const csrfToken = shiftForm.querySelector('[name=csrfmiddlewaretoken]').value;
+
+                await fetch(shiftForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+                console.log("✓ Shifts saved successfully.");
+            } catch (e) {
+                console.error("✗ Failed to save shifts:", e);
+            }
+        }
+
+        // 2. Submit Main Config (Real Page Reload)
+        const mainForm = document.getElementById('mainSystemForm');
+        if (mainForm) {
+            mainForm.submit();
+        } else {
+            // Fallback if main form missing (unlikely)
+            location.reload();
+        }
+    }
+</script>
+{% endblock %}

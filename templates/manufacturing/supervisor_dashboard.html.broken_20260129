@@ -1,0 +1,585 @@
+<!-- DEBUG: SUPERVISOR_DASHBOARD_V4_TOGGLE -->
+{% extends "manufacturing/base_dashboard.html" %}
+{% load static i18n %}
+
+{% block title %}Supervisor Dashboard - Kemet ERP{% endblock %}
+
+{% block content %}
+<!-- MAIN CONTAINER WITH VIEW TOGGLE -->
+<div class="min-h-screen flex flex-col" x-data="supervisorDashboard()">
+
+    <!-- 🚨 EMERGENCY ACTION STRIP (Always Visible) -->
+    {% if machine_stats.1 > 0 %}
+    <div
+        class="bg-red-600 rounded-2xl p-4 flex items-center justify-between text-white shadow-xl shadow-red-200 animate-pulse-slow mx-4 mt-4">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <i class="ph-fill ph-warning-octagon text-2xl"></i>
+            </div>
+            <div>
+                <h3 class="font-black uppercase tracking-widest text-sm leading-none mb-1">{% trans "Critical Response
+                    Required" %}</h3>
+                <p class="text-[11px] text-white/80 font-bold uppercase tracking-tighter">{{ machine_stats.1 }} {% trans
+                    "Machines reporting faults or stoppage." %}</p>
+            </div>
+        </div>
+        <button onclick="document.getElementById('approvals-section')?.scrollIntoView({ behavior: 'smooth' })"
+            class="px-6 py-2 bg-white text-red-600 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-transform active:scale-95">
+            {% trans "Resolve Now" %}
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- VIEW TOGGLE BAR -->
+    <div class="px-4 pt-4">
+        <div class="bg-white rounded-2xl border border-slate-200 p-2 shadow-sm">
+            <div class="flex gap-2">
+                <!-- Ground Readings Toggle -->
+                <button @click="activeView = 'readings'" :class="activeView === 'readings' 
+                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    class="flex-1 flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                    <i class="ph-fill ph-gauge text-lg"></i>
+                    <span>{% trans "Ground Readings" %}</span>
+                    {% if pending_tasks_count or pending_logs_count %}
+                    <span class="bg-white/20 text-[10px] px-2 py-0.5 rounded-full" x-show="activeView === 'readings'"
+                        x-text="'{{ pending_tasks_count|default:0|add:pending_logs_count|default:0 }}'"></span>
+                    {% endif %}
+                </button>
+
+                <!-- Production Lines Toggle -->
+                <button @click="activeView = 'lines'" :class="activeView === 'lines' 
+                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    class="flex-1 flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                    <i class="ph-fill ph-factory text-lg"></i>
+                    <span>{% trans "Production Lines" %}</span>
+                </button>
+
+                <!-- Timeline Toggle -->
+                <button @click="activeView = 'timeline'" :class="activeView === 'timeline' 
+                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' 
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    class="flex-1 flex items-center justify-center gap-3 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all">
+                    <i class="ph-fill ph-chart-bar-horizontal text-lg"></i>
+                    <span>{% trans "Timeline" %}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW 1: GROUND READINGS (Default - Action Cards) -->
+    <!-- ============================================== -->
+    <div x-show="activeView === 'readings'" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 transform translate-y-4"
+        x-transition:enter-end="opacity-100 transform translate-y-0" class="flex-1 p-4 space-y-4 overflow-y-auto">
+
+        <!-- Action Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+            <!-- Card 1: Assign Workers -->
+            <div class="bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl p-6 text-white shadow-xl shadow-amber-200 hover:shadow-2xl hover:shadow-amber-300 transition-all cursor-pointer group"
+                @click="showAssignPanel = !showAssignPanel">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                        <i class="ph-fill ph-user-plus text-3xl"></i>
+                    </div>
+                    <div class="bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                        <span class="text-[10px] font-black uppercase tracking-widest">{% trans "Action Required"
+                            %}</span>
+                    </div>
+                </div>
+                <div class="text-5xl font-black mb-2 group-hover:scale-105 transition-transform origin-left">{{
+                    pending_tasks_count|default:0 }}</div>
+                <div class="text-sm font-bold text-white/80 uppercase tracking-widest">{% trans "Tasks Need Workers" %}
+                </div>
+                <div class="mt-4 flex items-center gap-2 text-white/60 text-xs font-bold">
+                    <i class="ph ph-arrow-right"></i>
+                    <span>{% trans "Click to assign" %}</span>
+                </div>
+            </div>
+
+            <!-- Card 2: Approvals Pending -->
+            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-6 text-white shadow-xl shadow-emerald-200 hover:shadow-2xl hover:shadow-emerald-300 transition-all cursor-pointer group"
+                @click="showApprovalsPanel = !showApprovalsPanel">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                        <i class="ph-fill ph-check-circle text-3xl"></i>
+                    </div>
+                    <div class="bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                        <span class="text-[10px] font-black uppercase tracking-widest">{% trans "Review" %}</span>
+                    </div>
+                </div>
+                <div class="text-5xl font-black mb-2 group-hover:scale-105 transition-transform origin-left">{{
+                    pending_logs_count|default:0 }}</div>
+                <div class="text-sm font-bold text-white/80 uppercase tracking-widest">{% trans "Logs to Approve" %}
+                </div>
+                <div class="mt-4 flex items-center gap-2 text-white/60 text-xs font-bold">
+                    <i class="ph ph-arrow-right"></i>
+                    <span>{% trans "Click to review" %}</span>
+                </div>
+            </div>
+
+            <!-- Card 3: Split WOs -->
+            <div class="bg-gradient-to-br from-violet-500 to-purple-600 rounded-3xl p-6 text-white shadow-xl shadow-violet-200 hover:shadow-2xl hover:shadow-violet-300 transition-all cursor-pointer group"
+                @click="showSplitsPanel = !showSplitsPanel">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                        <i class="ph-fill ph-git-branch text-3xl"></i>
+                    </div>
+                    <div class="bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                        <span class="text-[10px] font-black uppercase tracking-widest">{% trans "Splits" %}</span>
+                    </div>
+                </div>
+                <div class="text-5xl font-black mb-2 group-hover:scale-105 transition-transform origin-left">{{
+                    split_pending_count|default:0 }}</div>
+                <div class="text-sm font-bold text-white/80 uppercase tracking-widest">{% trans "Split WOs Pending" %}
+                </div>
+                <div class="mt-4 flex items-center gap-2 text-white/60 text-xs font-bold">
+                    <i class="ph ph-arrow-right"></i>
+                    <span>{% trans "Click to assign" %}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floor Status Summary -->
+        <div class="bg-slate-900 rounded-3xl p-6 text-white shadow-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
+                        <i class="ph-fill ph-factory text-xl"></i>
+                    </div>
+                    <h3 class="font-black uppercase tracking-widest text-xs text-slate-400">{% trans "Floor Status" %}
+                    </h3>
+                </div>
+                <div class="flex items-center gap-4">
+                    <!-- Machine Status Pills -->
+                    <div class="flex items-center gap-2 bg-emerald-500/20 px-3 py-1.5 rounded-full">
+                        <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                        <span class="text-xs font-bold text-emerald-400">{{ machine_stats.0|default:0 }} {% trans
+                            "Active" %}</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-slate-500/20 px-3 py-1.5 rounded-full">
+                        <div class="w-2 h-2 rounded-full bg-slate-400"></div>
+                        <span class="text-xs font-bold text-slate-400">{{ machine_stats.2|default:0 }} {% trans "Idle"
+                            %}</span>
+                    </div>
+                    {% if machine_stats.1 > 0 %}
+                    <div class="flex items-center gap-2 bg-red-500/20 px-3 py-1.5 rounded-full animate-pulse">
+                        <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                        <span class="text-xs font-bold text-red-400">{{ machine_stats.1 }} {% trans "Down" %}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- KPI Row -->
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{% trans "Total
+                        OEE" %}</div>
+                    <div class="text-3xl font-black text-indigo-400">{{ utilization_rate|default:0 }}<span
+                            class="text-lg text-indigo-400/50">%</span></div>
+                </div>
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{% trans "Backlog"
+                        %}</div>
+                    <div class="text-3xl font-black text-amber-400">{{ pending_orders.count|default:0 }}</div>
+                </div>
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{% trans "In
+                        Progress" %}</div>
+                    <div class="text-3xl font-black text-emerald-400">{{ active_orders.count|default:0 }}</div>
+                </div>
+                <div class="bg-white/5 rounded-2xl p-4 border border-white/10">
+                    <div class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{% trans
+                        "Operators" %}</div>
+                    <div class="text-3xl font-black text-purple-400">{{ users.count|default:0 }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== EXPANDABLE PANELS ===== -->
+
+        <!-- Assign Workers Panel -->
+        <div x-show="showAssignPanel" x-collapse
+            class="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50">
+                <h3 class="font-black text-amber-800 uppercase tracking-widest text-xs flex items-center gap-2">
+                    <i class="ph-fill ph-user-plus"></i>
+                    {% trans "Tasks Awaiting Worker Assignment" %}
+                </h3>
+                <button @click="showAssignPanel = false" class="text-amber-400 hover:text-amber-600">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {% for task in pending_tasks %}
+                <div
+                    class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center font-black text-sm">
+                            #{{ task.id }}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">{{
+                                task.product_name|default:task.bom.product.name|default:"Work Order" }}</div>
+                            <div class="text-xs text-slate-500">
+                                <i class="ph ph-gear"></i> {{ task.machine.name }} &bull;
+                                <i class="ph ph-package"></i> {{ task.quantity }} units
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="openWorkerAssignModal({{ task.id }})"
+                        class="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-amber-600 shadow-lg shadow-amber-200 opacity-0 group-hover:opacity-100 transition-all">
+                        {% trans "Assign" %}
+                    </button>
+                </div>
+                {% empty %}
+                <div class="text-center py-8 text-slate-400">
+                    <i class="ph ph-check-circle text-4xl mb-2"></i>
+                    <p class="font-bold">{% trans "All tasks have workers assigned!" %}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Approvals Panel -->
+        <div x-show="showApprovalsPanel" x-collapse
+            class="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-50">
+                <h3 class="font-black text-emerald-800 uppercase tracking-widest text-xs flex items-center gap-2">
+                    <i class="ph-fill ph-check-circle"></i>
+                    {% trans "Production Logs Pending Approval" %}
+                </h3>
+                <button @click="showApprovalsPanel = false" class="text-emerald-400 hover:text-emerald-600">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {% for log in pending_logs %}
+                <div
+                    class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                            <i class="ph-fill ph-file-text"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">WO #{{ log.work_order.id }} - {{
+                                log.work_order.product_name|default:"Unknown" }}</div>
+                            <div class="text-xs text-slate-500">
+                                <i class="ph ph-user"></i> {{ log.worker.username|default:"Unknown" }} &bull;
+                                <i class="ph ph-package"></i> {{ log.quantity_produced }} produced
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <button onclick="approveLog({{ log.id }}, 'approve')"
+                            class="px-3 py-2 bg-emerald-500 text-white rounded-xl text-xs font-bold hover:bg-emerald-600">
+                            <i class="ph-fill ph-check"></i>
+                        </button>
+                        <button onclick="approveLog({{ log.id }}, 'reject')"
+                            class="px-3 py-2 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600">
+                            <i class="ph-fill ph-x"></i>
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-8 text-slate-400">
+                    <i class="ph ph-check-circle text-4xl mb-2"></i>
+                    <p class="font-bold">{% trans "No pending approvals!" %}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Splits Panel -->
+        <div x-show="showSplitsPanel" x-collapse
+            class="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-violet-50">
+                <h3 class="font-black text-violet-800 uppercase tracking-widest text-xs flex items-center gap-2">
+                    <i class="ph-fill ph-git-branch"></i>
+                    {% trans "Split Work Orders Pending Assignment" %}
+                </h3>
+                <button @click="showSplitsPanel = false" class="text-violet-400 hover:text-violet-600">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+            <div class="p-4 space-y-2 max-h-80 overflow-y-auto">
+                {% for task in split_pending_tasks %}
+                <div
+                    class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-violet-200 hover:bg-violet-50/30 transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="w-10 h-10 bg-violet-100 text-violet-600 rounded-xl flex items-center justify-center font-black text-sm">
+                            #{{ task.id }}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-900">
+                                {{ task.product_name|default:"Split Task" }}
+                                <span class="text-xs text-violet-500 ml-2">
+                                    (from WO #{{ task.parent.id }})
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-500">
+                                <i class="ph ph-gear"></i> {{ task.machine.name }} &bull;
+                                <i class="ph ph-package"></i> {{ task.quantity }} units
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="openWorkerAssignModal({{ task.id }})"
+                        class="px-4 py-2 bg-violet-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-violet-600 shadow-lg shadow-violet-200 opacity-0 group-hover:opacity-100 transition-all">
+                        {% trans "Assign" %}
+                    </button>
+                </div>
+                {% empty %}
+                <div class="text-center py-8 text-slate-400">
+                    <i class="ph ph-check-circle text-4xl mb-2"></i>
+                    <p class="font-bold">{% trans "No split tasks pending!" %}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW 2: PRODUCTION LINES (Full Machine View) -->
+    <!-- ============================================== -->
+    <div x-show="activeView === 'lines'" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 transform translate-y-4"
+        x-transition:enter-end="opacity-100 transform translate-y-0" class="flex-1 p-4 overflow-y-auto">
+
+        <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                <h3 class="font-black text-slate-800 uppercase tracking-widest text-xs flex items-center gap-2">
+                    <i class="ph-fill ph-factory text-emerald-600"></i>
+                    {% trans "Live Production Lines" %}
+                </h3>
+                <div class="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100">
+                    <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-[10px] font-black text-emerald-700 uppercase">{% trans "Live" %}</span>
+                </div>
+            </div>
+            <div class="p-4 space-y-3">
+                {% for machine in machines %}
+                <div
+                    class="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between hover:border-indigo-200 hover:bg-white transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-3 h-12 rounded-full {{ machine.status|yesno:'bg-emerald-500,bg-red-500' }}"></div>
+                        <div>
+                            <div class="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">{{
+                                machine.code }}</div>
+                            <div class="text-sm font-black text-slate-900 leading-none">{{ machine.name }}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <div class="text-right">
+                            <div class="text-[10px] font-black text-indigo-600 uppercase">
+                                {% if machine.current_wo %}{% trans "Active" %}{% else %}{% trans "Idle" %}{% endif %}
+                            </div>
+                            <div class="text-xs font-bold text-slate-700">
+                                {% if machine.current_wo %}
+                                WO #{{ machine.current_wo.id }} - {{ machine.current_wo.product_name|truncatechars:15 }}
+                                {% else %}
+                                --
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if machine.current_wo and not machine.current_wo.assigned_worker %}
+                        <button onclick="openWorkerAssignModal({{ machine.current_wo.id }})"
+                            class="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-amber-600 shadow-lg shadow-amber-200 opacity-0 group-hover:opacity-100 transition-all">
+                            {% trans "Assign Worker" %}
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- VIEW 3: TIMELINE (Gantt/Kanban/Calendar) -->
+    <!-- ============================================== -->
+    <div x-show="activeView === 'timeline'" x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 transform translate-y-4"
+        x-transition:enter-end="opacity-100 transform translate-y-0" class="flex-1 p-4 overflow-hidden">
+
+        <div class="h-full flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+            x-data="{ currentView: 'gantt' }"
+            x-effect="if(currentView === 'kanban' && window.renderPlannerKanban) window.renderPlannerKanban(); if(currentView === 'calendar' && window.renderPlannerCalendar) window.renderPlannerCalendar()">
+
+            <!-- View Switcher & Title -->
+            <div
+                class="px-4 py-3 border-b border-slate-200 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph ph-chart-bar-horizontal text-indigo-600"></i>
+                    Production Timeline
+                </h3>
+                <div class="flex bg-slate-200/50 p-1 rounded-lg">
+                    <button @click="currentView = 'gantt'; if(window.setGanttView) window.setGanttView('day');"
+                        :class="currentView === 'gantt' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-3 py-1.5 rounded-md text-xs font-bold transition-all">Gantt</button>
+                    <button @click="currentView = 'kanban'"
+                        :class="currentView === 'kanban' ? 'bg-white shadow text-purple-600' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-3 py-1.5 rounded-md text-xs font-bold transition-all">Kanban</button>
+                    <button @click="currentView = 'calendar'"
+                        :class="currentView === 'calendar' ? 'bg-white shadow text-amber-600' : 'text-slate-500 hover:text-slate-700'"
+                        class="px-3 py-1.5 rounded-md text-xs font-bold transition-all">Calendar</button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 relative min-h-0">
+                <!-- GANTT VIEW -->
+                <div x-show="currentView === 'gantt'" class="absolute inset-0 flex flex-col">
+                    {% include "manufacturing/partials/timeline_v3_final.html" %}
+                </div>
+
+                <!-- KANBAN VIEW -->
+                <div id="plannerViewKanban" x-show="currentView === 'kanban'"
+                    class="absolute inset-0 p-4 bg-slate-50 overflow-auto" x-cloak>
+                    <div id="plannerKanbanMount">
+                        {% include "manufacturing/partials/timeline_kanban.html" %}
+                    </div>
+                </div>
+
+                <!-- CALENDAR VIEW -->
+                <div id="plannerViewCalendar" x-show="currentView === 'calendar'"
+                    class="absolute inset-0 p-4 bg-slate-50 overflow-auto" x-cloak>
+                    <div id="plannerCalendarMount">
+                        {% include "manufacturing/partials/timeline_calendar.html" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DATA INJECTION FOR JS -->
+<script id="data-machines" type="application/json">
+  {{ machines_json|safe }}
+</script>
+<script id="data-tasks" type="application/json">
+  {{ tasks_json|safe }}
+</script>
+<script id="data-shift-config" type="application/json">
+  {{ shift_config_json|default:"{}"|safe }}
+</script>
+
+{% include "manufacturing/modals/production_log_modal.html" %}
+{% include "manufacturing/modals/assign_shift_modal.html" %}
+{% include "manufacturing/modals/worker_assign_modal.html" %}
+{% include "manufacturing/modals/report_fault_modal.html" %}
+{% include "manufacturing/partials/split_work_order_modal.html" %}
+{% include "manufacturing/partials/release_next_stage_modal.html" %}
+
+<!-- Reuse Timeline JS -->
+<script src="{% static 'js/manufacturing/timeline.js' %}?v=4.0"></script>
+
+<!-- Supervisor Dashboard Logic -->
+<script>
+    function supervisorDashboard() {
+        return {
+            activeView: 'readings',  // Default to Ground Readings
+            showAssignPanel: false,
+            showApprovalsPanel: false,
+            showSplitsPanel: false,
+
+            init() {
+                // Restore last view from localStorage
+                const savedView = localStorage.getItem('supervisor_active_view');
+                if (savedView && ['readings', 'lines', 'timeline'].includes(savedView)) {
+                    this.activeView = savedView;
+                }
+
+                // Watch for view changes and persist
+                this.$watch('activeView', (value) => {
+                    localStorage.setItem('supervisor_active_view', value);
+
+                    // Initialize timeline when switching to it
+                    if (value === 'timeline') {
+                        this.$nextTick(() => {
+                            if (window.initGanttChart) window.initGanttChart();
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // 30s Polling for live status
+        setInterval(() => {
+            fetch("{% url 'get_timeline_data' %}")
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        // Live data refresh
+                    }
+                });
+        }, 30000);
+
+        // Keybind for Search
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                const search = document.getElementById('globalSmartSearch');
+                if (search) search.focus();
+            }
+        });
+    });
+
+    // Approval API
+    function approveLog(logId, action) {
+        if (!confirm(`Are you sure you want to ${action} this log?`)) return;
+
+        const formData = new FormData();
+        formData.append('action', action);
+
+        fetch(`/manufacturing/approve-log/${logId}/`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("An error occurred.");
+            });
+    }
+
+    // Worker Assignment Modal
+    function openWorkerAssignModal(woId) {
+        const modal = document.getElementById('workerAssignModal');
+        if (modal) {
+            // Set the work order ID
+            const woIdInput = modal.querySelector('[name="work_order_id"]') || modal.querySelector('#wo_id_input');
+            if (woIdInput) woIdInput.value = woId;
+
+            // Show modal
+            modal.classList.remove('hidden');
+
+            // Trigger Alpine if needed
+            if (modal.__x) {
+                modal.__x.$data.show = true;
+            }
+        } else {
+            console.error('Worker assign modal not found');
+            alert('Please refresh the page and try again.');
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,569 @@
+{% load static i18n tenant_i18n %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr' }}" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kemet ERP{% endblock %}</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Vis.js (for Timeline) -->
+    <script type="text/javascript"
+        src="https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js"></script>
+    <link href="https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css" rel="stylesheet"
+        type="text/css" />
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Cairo', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-in': 'slideIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateX(-20px)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Fallback CSS if Tailwind fails */
+        .hidden {
+            display: none !important;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .gap-3 {
+            gap: 0.75rem;
+        }
+
+        .gap-4 {
+            gap: 1rem;
+        }
+
+        .p-4 {
+            padding: 1rem;
+        }
+
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .py-2 {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+
+        .rounded-xl {
+            border-radius: 0.75rem;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+        }
+
+        .dark .glass-header {
+            background: rgba(15, 23, 42, 0.85);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-gray-50 h-full text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors duration-300">
+
+    <!-- 🌟 NAVBAR -->
+    <nav
+        class="glass-header border-b border-slate-200 dark:border-slate-800 fixed w-full top-0 z-50 transition-all duration-300">
+        <div class="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+
+                <!-- Logo & Brand -->
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/20">
+                        K
+                    </div>
+                    <span
+                        class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300">
+                        Kemet ERP
+                    </span>
+                </div>
+
+                <!-- Nav Links (Desktop) -->
+                <div class="hidden md:flex items-center space-x-1">
+                    {% with role=request.user.profile.role.name|lower %}
+
+                    <!-- PLANNER Links -->
+                    {% if role == 'planner' or role == 'admin' %}
+                    <a href="{% url 'create_workorder' %}"
+                        class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        {% tenant_trans "Planning" %}
+                    </a>
+                    <a href="{% url 'bulk_import_dashboard' %}"
+                        class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        {% tenant_trans "Bulk Import" %}
+                    </a>
+                    {% endif %}
+
+                    <!-- SUPERVISOR Links -->
+                    {% if role == 'supervisor' or role == 'admin' %}
+                    <a href="{% url 'supervisor_dashboard' %}"
+                        class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        {% tenant_trans "Control Tower" %}
+                    </a>
+                    <a href="{% url 'reports_dashboard' %}"
+                        class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        {% tenant_trans "Reports" %}
+                    </a>
+                    {% endif %}
+
+                    <!-- MAINTENANCE Links -->
+                    {% if role == 'maintenance' or role == 'worker' or role == 'admin' %}
+                    <a href="{% url 'maintenance_dashboard' %}"
+                        class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        {% tenant_trans "Maintenance" %}
+                    </a>
+                    {% endif %}
+
+                    <!-- QUALITY Links -->
+                    {% if role == 'quality' or role == 'admin' %}
+                    <a href="{% url 'quality_check' %}"
+                        class="px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-brand-600 hover:bg-brand-50 transition-colors">
+                        {% tenant_trans "Quality" %}
+                    </a>
+                    {% endif %}
+
+                    {% endwith %}
+                </div>
+
+                <!-- User Profile & Actions -->
+                <div class="flex items-center gap-4">
+
+                    <!-- 🌍 Language Switcher -->
+                    <form action="{% url 'set_language' %}" method="post" class="flex items-center">
+                        {% csrf_token %}
+                        <input name="next" type="hidden" value="{{ redirect_to }}">
+
+                        {% get_current_language as LANGUAGE_CODE %}
+                        {% get_available_languages as LANGUAGES %}
+                        {% get_language_info_list for LANGUAGES as languages %}
+
+                        <div class="relative group">
+                            <button type="button"
+                                class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500 dark:text-slate-400 font-bold text-xs uppercase flex items-center gap-1">
+                                🌐 {{ LANGUAGE_CODE }}
+                            </button>
+
+                            <!-- Lang Dropdown -->
+                            <div
+                                class="hidden group-hover:block absolute right-0 mt-0 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-1 z-50 animate-fade-in-up">
+                                {% for language in languages %}
+                                <button type="submit" name="language" value="{{ language.code }}"
+                                    class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                                    <span class="text-lg">
+                                        {% if language.code == 'en' %}
+                                        🇺🇸
+                                        {% else %}
+                                        🇪🇬
+                                        {% endif %}
+                                    </span>
+                                    {{ language.name_local }}
+                                    {% if language.code == LANGUAGE_CODE %}
+                                    <span class="ml-auto text-indigo-500 text-xs">✓</span>
+                                    {% endif %}
+                                </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Theme Switcher Dropdown -->
+                    <div class="relative">
+                        <button id="theme-menu-btn"
+                            class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition text-slate-500 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+                            <!-- Icon changes via JS -->
+                            <svg id="icon-sun" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <svg id="icon-moon" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                            <svg id="icon-system" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+
+                        <!-- Dropdown -->
+                        <div id="theme-menu"
+                            class="hidden absolute right-0 mt-2 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 py-1 z-50 animate-fade-in-up">
+                            <button onclick="setTheme('light')"
+                                class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 group">
+                                <span class="text-amber-500">☀️</span> Light
+                                <span id="check-light" class="ml-auto text-indigo-500 hidden text-xs">✓</span>
+                            </button>
+                            <button onclick="setTheme('dark')"
+                                class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 group">
+                                <span class="text-indigo-400">🌙</span> Dark
+                                <span id="check-dark" class="ml-auto text-indigo-500 hidden text-xs">✓</span>
+                            </button>
+                            <button onclick="setTheme('system')"
+                                class="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 group">
+                                <span class="text-slate-400">🖥️</span> System
+                                <span id="check-system" class="ml-auto text-indigo-500 hidden text-xs">✓</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {% if request.user.is_authenticated %}
+                    <div
+                        class="flex items-center gap-3 px-3 py-1.5 rounded-full bg-white/50 border border-white/60 shadow-sm">
+                        <div
+                            class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold ring-2 ring-white">
+                            {{ request.user.username|slice:":2"|upper }}
+                        </div>
+                        <span class="text-xs font-semibold text-slate-700">
+                            {{ request.user.username }}
+                        </span>
+                        <div class="h-4 w-px bg-slate-300 mx-1"></div>
+                        <a href="{% url 'logout' %}"
+                            class="flex items-center gap-2 text-slate-500 hover:text-red-600 transition-colors hover:bg-red-50 px-3 py-1.5 rounded-lg group">
+                            <span class="text-xs font-bold group-hover:underline">{% tenant_trans "Sign Out" %}</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1">
+                                </path>
+                            </svg>
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <!-- Mobile Menu Button -->
+                    <button id="mobile-menu-btn"
+                        class="md:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu"
+            class="hidden md:hidden glass-header border-t border-slate-200 dark:border-slate-700 px-4 pt-2 pb-4 shadow-lg absolute w-full z-40 top-16 left-0">
+            <div class="flex flex-col space-y-2 mt-2">
+                {% with role=request.user.profile.role.name|lower %}
+                {% if role == 'planner' or role == 'admin' %}
+                <a href="{% url 'create_workorder' %}"
+                    class="block px-3 py-2 rounded-lg text-base font-medium text-slate-700 hover:text-brand-600 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-800">{% tenant_trans "Planning" %}</a>
+                <a href="{% url 'bulk_import_dashboard' %}"
+                    class="block px-3 py-2 rounded-lg text-base font-medium text-slate-700 hover:text-brand-600 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-800">{% tenant_trans "Bulk Import" %}</a>
+                {% endif %}
+                {% if role == 'supervisor' or role == 'admin' %}
+                <a href="{% url 'supervisor_dashboard' %}"
+                    class="block px-3 py-2 rounded-lg text-base font-medium text-slate-700 hover:text-brand-600 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-800">{% tenant_trans "Control Tower" %}</a>
+                <a href="{% url 'reports_dashboard' %}"
+                    class="block px-3 py-2 rounded-lg text-base font-medium text-slate-700 hover:text-brand-600 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-800">{% tenant_trans "Reports" %}</a>
+                {% endif %}
+                {% if role == 'maintenance' or role == 'worker' or role == 'admin' %}
+                <a href="{% url 'maintenance_dashboard' %}"
+                    class="block px-3 py-2 rounded-lg text-base font-medium text-slate-700 hover:text-brand-600 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-800">{% tenant_trans "Maintenance" %}</a>
+                {% endif %}
+                {% if role == 'quality' or role == 'admin' %}
+                <a href="{% url 'quality_check' %}"
+                    class="block px-3 py-2 rounded-lg text-base font-medium text-slate-700 hover:text-brand-600 hover:bg-brand-50 dark:text-slate-200 dark:hover:bg-slate-800">{% tenant_trans "Quality" %}</a>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- 📦 Main Content Wrapper -->
+    <div class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-[1600px] mx-auto min-h-screen">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- 📜 Scripts -->
+    {% block extra_scripts %}{% endblock %}
+
+    <style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+    </style>
+
+    <!-- Global Scripts -->
+    {% include "manufacturing/partials/toast.html" %}
+
+    <!-- Pass Django Messages to JS (Manual JSON Construction) -->
+    <script id="django-messages-json" type="application/json">
+        [
+            {% for message in messages %}
+                {
+                    "level": "{{ message.level }}",
+                    "tags": "{{ message.tags }}",
+                    "message": "{{ message.message|escapejs }}"
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ]
+    </script>
+
+    <script>
+        (function () {
+            function getCookie(name) {
+                const cookieValue = document.cookie
+                    .split('; ')
+                    .find(row => row.startsWith(name + '='));
+                return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : '';
+            }
+
+            window.getCsrfToken = window.getCsrfToken || function () {
+                return getCookie('csrftoken');
+            };
+
+            if (!window.__csrfFetchPatched && window.fetch) {
+                const originalFetch = window.fetch.bind(window);
+                window.fetch = function (input, init) {
+                    const options = init ? Object.assign({}, init) : {};
+                    const method = (options.method || (input && input.method) || 'GET').toUpperCase();
+                    const isUnsafeMethod = !['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method);
+
+                    let isSameOrigin = true;
+                    try {
+                        const rawUrl = typeof input === 'string' ? input : (input && input.url) || '';
+                        isSameOrigin = new URL(rawUrl, window.location.href).origin === window.location.origin;
+                    } catch (error) {
+                        isSameOrigin = true;
+                    }
+
+                    if (isUnsafeMethod && isSameOrigin) {
+                        const csrfToken = window.getCsrfToken();
+                        if (csrfToken) {
+                            const headers = new Headers(options.headers || (input && input.headers) || undefined);
+                            if (!headers.has('X-CSRFToken')) {
+                                headers.set('X-CSRFToken', csrfToken);
+                            }
+                            options.headers = headers;
+                        }
+                        if (!options.credentials) {
+                            options.credentials = 'same-origin';
+                        }
+                    }
+
+                    return originalFetch(input, options);
+                };
+                window.__csrfFetchPatched = true;
+            }
+        })();
+    </script>
+
+    <script>
+        // Theme Management
+        const themeMenuBtn = document.getElementById('theme-menu-btn');
+        const themeMenu = document.getElementById('theme-menu');
+        const icons = {
+            light: document.getElementById('icon-sun'),
+            dark: document.getElementById('icon-moon'),
+            system: document.getElementById('icon-system')
+        };
+        const checks = {
+            light: document.getElementById('check-light'),
+            dark: document.getElementById('check-dark'),
+            system: document.getElementById('check-system')
+        };
+
+        // Initialize UI
+        function updateThemeUI() {
+            // Hide all icons and checks
+            Object.values(icons).forEach(el => el.classList.add('hidden'));
+            Object.values(checks).forEach(el => el.classList.add('hidden'));
+
+            const stored = localStorage.getItem('theme'); // 'light', 'dark', or null (system)
+
+            if (stored === 'dark') {
+                icons.dark.classList.remove('hidden');
+                checks.dark.classList.remove('hidden');
+            } else if (stored === 'light') {
+                icons.light.classList.remove('hidden');
+                checks.light.classList.remove('hidden');
+            } else {
+                icons.system.classList.remove('hidden');
+                checks.system.classList.remove('hidden');
+            }
+        }
+
+        // Apply Theme
+        function applyTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            updateThemeUI();
+        }
+
+        // Set Theme (called by buttons)
+        window.setTheme = function (mode) {
+            if (mode === 'system') {
+                localStorage.removeItem('theme');
+            } else {
+                localStorage.setItem('theme', mode);
+            }
+            applyTheme();
+            themeMenu.classList.add('hidden'); // Close menu
+        }
+
+        // Initial Run
+        applyTheme();
+
+        // Event Listeners
+        if (themeMenuBtn) {
+            themeMenuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                themeMenu.classList.toggle('hidden');
+            });
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!themeMenu.contains(e.target) && !themeMenuBtn.contains(e.target)) {
+                themeMenu.classList.add('hidden');
+            }
+        });
+
+        // Watch System Changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+        // Mobile Menu Logic
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        if (mobileMenuBtn) {
+            mobileMenuBtn.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+        }
+    </script>
+</body>
+
+</html>

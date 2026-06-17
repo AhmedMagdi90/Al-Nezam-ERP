@@ -1,0 +1,42 @@
+{% load static %}
+<div class="bg-white shadow-lg rounded-xl p-6 border border-gray-100">
+    <h2 class="text-2xl font-bold text-gray-800 mb-4">Test Timeline</h2>
+    
+    <div class="mb-4">
+        <button onclick="testClick()" class="px-4 py-2 bg-blue-500 text-white rounded">Test Click</button>
+    </div>
+    
+    <div class="mb-4">
+        <p>Work Orders:</p>
+        {% for wo in work_orders %}
+        <div class="border p-2 mb-2">
+            <span>WO #{{ wo.id }}: {{ wo.product_name }}</span>
+            <button onclick="testEdit('{{ wo.id }}')" class="ml-2 px-2 py-1 bg-green-500 text-white rounded text-xs">Edit</button>
+        </div>
+        {% empty %}
+        <p>No work orders found</p>
+        {% endfor %}
+    </div>
+    
+    <div id="debug-output"></div>
+</div>
+
+<script>
+// Simple test functions
+function testClick() {
+    console.log('Test button clicked!');
+    alert('Test button works!');
+    document.getElementById('debug-output').innerHTML = 'Test button clicked at ' + new Date().toLocaleTimeString();
+}
+
+function testEdit(woId) {
+    console.log('Edit clicked for WO:', woId);
+    alert('Edit clicked for WO #' + woId);
+    document.getElementById('debug-output').innerHTML = 'Edit clicked for WO #' + woId + ' at ' + new Date().toLocaleTimeString();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Test timeline loaded');
+    document.getElementById('debug-output').innerHTML = 'Timeline loaded at ' + new Date().toLocaleTimeString();
+});
+</script>

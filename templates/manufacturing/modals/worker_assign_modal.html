@@ -1,0 +1,154 @@
+<!-- Worker Assignment Modal -->
+<div id="workerAssignModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title-worker" role="dialog"
+    aria-modal="true">
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+        onclick="document.getElementById('workerAssignModal').classList.add('hidden')"></div>
+
+    <!-- Modal Panel -->
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div
+                class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-md border border-slate-200">
+
+                <!-- Header -->
+                <div class="bg-indigo-600 px-4 py-3 sm:px-6">
+                    <h3 class="text-base font-semibold leading-6 text-white flex items-center gap-2"
+                        id="modal-title-worker">
+                        <i class="ph ph-user-plus text-lg"></i>
+                        Assign Worker
+                    </h3>
+                </div>
+
+                <!-- Content -->
+                <div class="px-4 py-5 sm:p-6 space-y-4">
+                    <!-- Context Info -->
+                    <div class="bg-indigo-50 rounded-lg p-3 border border-indigo-100 mb-4">
+                        <div class="text-xs text-indigo-600 font-bold uppercase tracking-wide mb-1">Target Order</div>
+                        <div class="font-bold text-slate-800" id="assignModalProduct">Product Name</div>
+                        <div class="text-sm text-slate-600 flex items-center gap-1 mt-1">
+                            <i class="ph ph-factory"></i>
+                            <span id="assignModalMachine">Machine Name</span>
+                        </div>
+                    </div>
+
+                    <form id="workerAssignForm" method="POST" action="/manufacturing/api/assign-worker/">
+                        <!-- Placeholder Action -->
+                        {% csrf_token %}
+                        <input type="hidden" name="work_order_id" id="assignModalWoId">
+
+                        <!-- Worker Select -->
+                        <div>
+                            <label for="workerSelect"
+                                class="block text-xs font-bold text-slate-700 uppercase mb-1">Select Worker</label>
+                            <select id="workerSelect" name="worker_id"
+                                class="block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <option value="" disabled selected>Choose a certified worker...</option>
+                                {% for worker in workers %}
+                                <option value="{{ worker.id }}">{{ worker.get_full_name|default:worker.username }}</option>
+                                {% empty %}
+                                <option value="" disabled>No available workers found</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mt-4">
+                            <label for="assignNotes"
+                                class="block text-xs font-bold text-slate-700 uppercase mb-1">Instructions
+                                (Optional)</label>
+                            <textarea id="assignNotes" name="notes" rows="2"
+                                class="block w-full rounded-lg border-slate-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-xs"
+                                placeholder="Add specific instructions for this shift..."></textarea>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Footer -->
+                <div class="bg-slate-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 border-t border-slate-100">
+                    <button type="button" onclick="submitWorkerAssignment()"
+                        class="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto transition-all">
+                        Assign
+                    </button>
+                    <button type="button" onclick="document.getElementById('workerAssignModal').classList.add('hidden')"
+                        class="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50 sm:mt-0 sm:w-auto transition-all">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function workerAssignNotify(message, type = 'info') {
+        const text = String(message || 'Updated');
+        if (typeof window.appNotify === 'function') {
+            window.appNotify(text, type);
+            return;
+        }
+        if (window.Toast && typeof window.Toast.show === 'function') {
+            const toastType = type === 'error' ? 'danger' : type;
+            window.Toast.show(text, toastType);
+            return;
+        }
+        window.alert(text);
+    }
+
+    function openWorkerAssignModal(woId, productName, machineName) {
+        document.getElementById('assignModalWoId').value = woId;
+        document.getElementById('assignModalProduct').innerText = productName;
+        document.getElementById('assignModalMachine').innerText = machineName;
+        document.getElementById('workerAssignModal').classList.remove('hidden');
+    }
+
+    function submitWorkerAssignment() {
+        const woId = document.getElementById('assignModalWoId').value;
+        const workerId = document.getElementById('workerSelect').value;
+        const notes = document.getElementById('assignNotes').value;
+
+        if (!woId) {
+            workerAssignNotify("Please select a work order.", 'warning');
+            return;
+        }
+        if (!workerId) {
+            workerAssignNotify("Please select a worker.", 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('work_order_id', woId);
+        formData.append('worker_id', workerId);
+        formData.append('notes', notes);
+
+        fetch("{% url 'assign_worker_api' %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Determine if we need to reload or just update UI
+                    // For now, reload to clear the unassigned list
+                    workerAssignNotify(data.message, 'success');
+                    document.getElementById('workerAssignModal').classList.add('hidden');
+                    if (typeof reloadSupervisorDashboardPreservingTab === 'function') {
+                        reloadSupervisorDashboardPreservingTab();
+                    } else if (typeof reloadPlannerWorkspacePreservingState === 'function') {
+                        reloadPlannerWorkspacePreservingState();
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    workerAssignNotify("Error: " + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                workerAssignNotify("An error occurred while assigning the worker.", 'error');
+            });
+    }
+</script>

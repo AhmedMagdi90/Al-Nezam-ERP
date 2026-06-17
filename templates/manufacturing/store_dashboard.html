@@ -1,0 +1,227 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% load static i18n tenant_i18n %}
+
+{% block title %}{% tenant_trans "Store Workspace" %} - Nezam{% endblock %}
+{% block app_header %}{% endblock %}
+{% block sidebar %}{% endblock %}
+
+{% block content %}
+<div class="min-h-full bg-slate-50 -m-6 p-6">
+  <div class="mx-auto flex max-w-7xl flex-col gap-5">
+    <section class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div>
+        <p class="text-xs font-black uppercase tracking-[0.18em] text-sky-700">{% tenant_trans "Store" %}</p>
+        <h1 class="mt-1 text-2xl font-black text-slate-950">{% tenant_trans "Store control" %}</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-black text-amber-800">
+          <i class="ph ph-package"></i>{{ material_requests_count }} {% tenant_trans "Material Requests" %}
+        </span>
+        <span class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-800">
+          <i class="ph ph-check-square"></i>{{ receipt_requests_count }} {% tenant_trans "Receipts" %}
+        </span>
+      </div>
+    </section>
+
+    <div class="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+      <section class="min-h-[72vh] rounded-lg border border-slate-200 bg-white">
+        <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div>
+            <h2 class="text-lg font-black text-slate-950">{% tenant_trans "BOM Material Requests" %}</h2>
+            <p class="mt-1 text-sm font-semibold text-slate-500">{% tenant_trans "Confirm OK, Partially OK, or Not Available before the planner routes work." %}</p>
+          </div>
+        </div>
+        <div class="max-h-[68vh] overflow-y-auto p-5">
+          {% for wo in material_requests %}
+          <article class="mb-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm" data-material-card="{{ wo.id }}">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">WO #{{ wo.id }}</div>
+                <h3 class="mt-1 text-xl font-black text-slate-950">{{ wo.product_name }}</h3>
+                <p class="mt-1 text-sm font-semibold text-slate-500">{{ wo.display_quantity }} pcs{% if wo.bom_version %} · BOM {{ wo.bom_version }}{% endif %}</p>
+              </div>
+              <span class="rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.12em]
+                {% if wo.material_readiness_status == 'shortage' %}bg-rose-50 text-rose-700 border border-rose-200{% elif wo.material_readiness_status == 'partial' %}bg-amber-50 text-amber-700 border border-amber-200{% else %}bg-slate-100 text-slate-600 border border-slate-200{% endif %}">
+                {{ wo.material_payload.status_label }}
+              </span>
+            </div>
+
+            {% if wo.material_payload.materials %}
+            <div class="mt-4 overflow-hidden rounded-lg border border-slate-200">
+              <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50 text-left text-xs font-black uppercase tracking-[0.14em] text-slate-500">
+                  <tr>
+                    <th class="px-3 py-2">{% tenant_trans "Material" %}</th>
+                    <th class="px-3 py-2 text-right">{% tenant_trans "Required" %}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  {% for item in wo.material_payload.materials %}
+                  <tr>
+                    <td class="px-3 py-2 font-bold text-slate-800">{{ item.name }}</td>
+                    <td class="px-3 py-2 text-right font-black text-slate-900">{{ item.required_quantity }} {{ item.unit }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+
+            <form class="mt-4 grid gap-3 md:grid-cols-[180px_160px_180px_1fr_auto]" data-order-qty="{{ wo.quantity }}" oninput="window.previewStoreMaterial && window.previewStoreMaterial(this)" onsubmit="return window.submitStoreMaterial(event, {{ wo.id }});">
+              <select name="status" class="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800">
+                <option value="ready">{% tenant_trans "OK" %}</option>
+                <option value="partial">{% tenant_trans "Partially OK" %}</option>
+                <option value="shortage">{% tenant_trans "Not Available" %}</option>
+              </select>
+              <input name="available_percent" type="number" min="1" max="99" step="1" placeholder="{% tenant_trans 'Available %' %}"
+                class="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800">
+              <input name="expected_delivery_date" type="date" aria-label="{% tenant_trans 'Expected delivery date' %}"
+                class="h-11 rounded-lg border border-slate-300 px-3 text-sm font-bold text-slate-800">
+              <input name="note" type="text" value="{{ wo.material_shortage_note }}" placeholder="{% tenant_trans 'Note: ready in one week, one item missing, alternative sent...' %}"
+                class="h-11 rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-800">
+              <div class="text-xs font-bold text-slate-500 md:col-span-4" data-material-preview>
+                {% tenant_trans "OK needs no extra data. Partial uses percent to calculate available and shortfall quantities." %}
+              </div>
+              <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 text-sm font-black text-white shadow-sm hover:bg-sky-700">
+                <i class="ph ph-paper-plane-tilt"></i>{% tenant_trans "Send" %}
+              </button>
+            </form>
+          </article>
+          {% empty %}
+          <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+            <i class="ph ph-package text-3xl text-slate-400"></i>
+            <p class="mt-2 text-sm font-bold text-slate-500">{% tenant_trans "No BOM material requests waiting." %}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="min-h-[72vh] rounded-lg border border-slate-200 bg-white">
+        <div class="border-b border-slate-200 px-5 py-4">
+          <h2 class="text-lg font-black text-slate-950">{% tenant_trans "Finished Goods Receipt" %}</h2>
+          <p class="mt-1 text-sm font-semibold text-slate-500">{% tenant_trans "Confirm final received and scrap quantities before planner close." %}</p>
+        </div>
+        <div class="max-h-[68vh] overflow-y-auto p-5">
+          {% for wo in receipt_requests %}
+          <article class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4" data-receipt-card="{{ wo.id }}">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">WO #{{ wo.id }}</div>
+                <h3 class="mt-1 text-lg font-black text-slate-950">{{ wo.product_name }}</h3>
+                <p class="mt-1 text-sm font-semibold text-slate-600">{% tenant_trans "Approved" %}: {{ wo.receipt_approved_qty|default:0 }} · {% tenant_trans "Reported" %}: {{ wo.receipt_reported_qty|default:0 }}</p>
+              </div>
+              <i class="ph ph-clipboard-text text-2xl text-emerald-700"></i>
+            </div>
+            <form class="mt-4 grid gap-3 sm:grid-cols-2" onsubmit="return window.submitStoreReceipt(event, {{ wo.id }});">
+              <input name="received_qty" type="number" min="0" value="{{ wo.receipt_approved_qty|default:wo.quantity }}"
+                class="h-11 rounded-lg border border-emerald-200 px-3 text-sm font-bold text-slate-800" placeholder="{% tenant_trans 'Received qty' %}">
+              <input name="scrap_qty" type="number" min="0" value="0"
+                class="h-11 rounded-lg border border-emerald-200 px-3 text-sm font-bold text-slate-800" placeholder="{% tenant_trans 'Scrap qty' %}">
+              <input name="note" type="text" class="h-11 rounded-lg border border-emerald-200 px-3 text-sm font-semibold text-slate-800 sm:col-span-2" placeholder="{% tenant_trans 'Receipt note' %}">
+              <button type="submit" class="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-black text-white shadow-sm hover:bg-emerald-700 sm:col-span-2">
+                <i class="ph ph-check-fat"></i>{% tenant_trans "Approve Receipt" %}
+              </button>
+            </form>
+          </article>
+          {% empty %}
+          <div class="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+            <i class="ph ph-check-square text-3xl text-slate-400"></i>
+            <p class="mt-2 text-sm font-bold text-slate-500">{% tenant_trans "No finished goods receipts waiting." %}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+  function storeCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+  }
+
+  function storeNotify(message, type) {
+    if (window.appNotify) window.appNotify(message, type || 'info');
+    else alert(message);
+  }
+
+  window.submitStoreMaterial = async function (event, woId) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const status = form.status.value;
+    const availablePercent = form.available_percent.value;
+    const expectedDeliveryDate = form.expected_delivery_date.value;
+    const note = form.note.value;
+    try {
+      const response = await fetch(`/manufacturing/api/work-order/${woId}/material-readiness/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': storeCsrfToken() },
+        body: JSON.stringify({
+          status,
+          available_percent: availablePercent,
+          expected_delivery_date: expectedDeliveryDate,
+          note,
+          shortage_note: note
+        })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Material response failed.');
+      document.querySelector(`[data-material-card="${woId}"]`)?.remove();
+      storeNotify('Material response sent.', 'success');
+    } catch (error) {
+      storeNotify(error.message || 'Material response failed.', 'warning');
+    }
+    return false;
+  };
+
+  window.previewStoreMaterial = function (form) {
+    const preview = form.querySelector('[data-material-preview]');
+    if (!preview) return;
+    const status = form.status.value;
+    const orderQty = Number.parseInt(form.dataset.orderQty || '0', 10) || 0;
+    const percent = Number.parseFloat(form.available_percent.value || '0') || 0;
+    form.available_percent.disabled = status !== 'partial';
+    form.expected_delivery_date.disabled = status === 'ready' || status === 'not_checked';
+    if (status === 'ready') {
+      preview.textContent = 'OK selected: planner can route the full work order quantity.';
+      return;
+    }
+    if (status === 'shortage') {
+      preview.textContent = 'Not Available selected: planner will wait for store update before scheduling.';
+      return;
+    }
+    if (status === 'partial' && percent > 0 && orderQty > 0) {
+      const availableQty = Math.floor(orderQty * percent / 100);
+      const shortfallQty = Math.max(orderQty - availableQty, 0);
+      preview.textContent = `Partial selected: ${availableQty} available, ${shortfallQty} shortfall from ${orderQty}.`;
+      return;
+    }
+    preview.textContent = 'Enter available percent. The system will calculate available and shortfall quantities.';
+  };
+
+  document.querySelectorAll('[data-order-qty]').forEach((form) => window.previewStoreMaterial(form));
+
+  window.submitStoreReceipt = async function (event, woId) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    try {
+      const response = await fetch(`/manufacturing/api/work-order/${woId}/store-receipt/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': storeCsrfToken() },
+        body: JSON.stringify({
+          received_qty: form.received_qty.value,
+          scrap_qty: form.scrap_qty.value,
+          note: form.note.value
+        })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Receipt approval failed.');
+      document.querySelector(`[data-receipt-card="${woId}"]`)?.remove();
+      storeNotify('Receipt approved. Planner can close the WO.', 'success');
+    } catch (error) {
+      storeNotify(error.message || 'Receipt approval failed.', 'warning');
+    }
+    return false;
+  };
+</script>
+{% endblock %}

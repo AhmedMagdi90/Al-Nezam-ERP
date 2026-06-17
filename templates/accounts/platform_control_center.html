@@ -1,0 +1,943 @@
+{% extends "manufacturing/base_public.html" %}
+
+{% block title %}Al Nezam Control Center{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-[radial-gradient(circle_at_top_left,#ecfeff,transparent_35%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-8 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-7xl">
+        <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div class="max-w-3xl">
+                <div class="text-xs font-black uppercase tracking-[0.28em] text-cyan-700">Control Plane</div>
+                <h1 class="mt-2 text-2xl font-black tracking-[-0.05em] text-slate-950 sm:text-3xl">Al Nezam Control Center</h1>
+                <p class="mt-2 text-sm font-semibold text-slate-600">
+                    Internal customer operations panel for first-line support. Review customers, control environment availability, and open the right support entry point fast.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <a href="{% url 'organization_bootstrap' %}" class="inline-flex items-center rounded-2xl border border-cyan-200 bg-white px-4 py-3 text-sm font-black text-cyan-700 shadow-sm transition hover:border-cyan-300 hover:text-cyan-800">
+                    Bootstrap Customer
+                </a>
+                <a href="{% url 'logout' %}" class="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-600 shadow-sm transition hover:border-slate-300 hover:text-slate-900">
+                    Sign Out
+                </a>
+            </div>
+        </div>
+
+        {% if messages %}
+        <div class="mb-6 space-y-2">
+            {% for message in messages %}
+            <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="space-y-6 lg:flex lg:items-start lg:gap-6 lg:space-y-0">
+            <aside class="lg:sticky lg:top-6 lg:w-80 lg:shrink-0 lg:self-start">
+                <div class="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="rounded-[28px] bg-[radial-gradient(circle_at_top_left,#22d3ee,transparent_40%),linear-gradient(135deg,#0f172a_0%,#111827_48%,#164e63_100%)] p-5 text-white shadow-sm">
+                        <div class="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100/80">Support Sidebar</div>
+                        <div class="mt-3 text-2xl font-black tracking-[-0.04em]">Customer Ops</div>
+                        <div class="mt-2 text-sm font-semibold text-slate-200">Search customers, open a workspace, and move across billing, activity, environments, and delete controls from one rail.</div>
+                        {% if selected_card %}
+                        <div class="mt-4 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
+                            <div class="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-100/70">Selected Customer</div>
+                            <div class="mt-2 truncate text-lg font-black">{{ selected_card.organization.name }}</div>
+                            <div class="mt-1 text-xs font-semibold text-slate-200">{{ selected_card.organization.slug }} | {{ selected_card.owner_label }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if selected_card %}
+                    <div class="mt-6 rounded-[28px] border border-slate-200 bg-slate-50/70 p-4">
+                        <div class="mb-4 text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Tabs</div>
+                        <div class="space-y-2">
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=overview"
+                                class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black transition {% if selected_tab == 'overview' %}border-cyan-300 bg-cyan-50 text-cyan-800{% else %}border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50{% endif %}">
+                                <span>Overview</span>
+                                <span class="text-[10px] uppercase tracking-[0.18em]">Customer</span>
+                            </a>
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=environments"
+                                class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black transition {% if selected_tab == 'environments' %}border-cyan-300 bg-cyan-50 text-cyan-800{% else %}border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50{% endif %}">
+                                <span>Environments</span>
+                                <span class="text-[10px] uppercase tracking-[0.18em]">{{ selected_card.tenant_count }}</span>
+                            </a>
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=billing"
+                                class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black transition {% if selected_tab == 'billing' %}border-cyan-300 bg-cyan-50 text-cyan-800{% else %}border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50{% endif %}">
+                                <span>Billing</span>
+                                <span class="text-[10px] uppercase tracking-[0.18em]">{% if selected_billing and selected_billing.available %}Live{% else %}Setup{% endif %}</span>
+                            </a>
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=activity"
+                                class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black transition {% if selected_tab == 'activity' %}border-cyan-300 bg-cyan-50 text-cyan-800{% else %}border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50{% endif %}">
+                                <span>Activity</span>
+                                <span class="text-[10px] uppercase tracking-[0.18em]">Log</span>
+                            </a>
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=support"
+                                class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black transition {% if selected_tab == 'support' %}border-cyan-300 bg-cyan-50 text-cyan-800{% else %}border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50{% endif %}">
+                                <span>Support Notes</span>
+                                <span class="text-[10px] uppercase tracking-[0.18em]">Notes</span>
+                            </a>
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=danger"
+                                class="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black transition {% if selected_tab == 'danger' %}border-rose-300 bg-rose-50 text-rose-700{% else %}border-slate-200 bg-white text-slate-700 hover:border-rose-200 hover:bg-rose-50/60{% endif %}">
+                                <span>Danger</span>
+                                <span class="text-[10px] uppercase tracking-[0.18em]">Delete</span>
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <form method="get" class="mt-6 space-y-3 rounded-[28px] border border-slate-200 bg-slate-50/70 p-4">
+                        <div>
+                            <label for="control-center-search" class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Search Customers</label>
+                            <input id="control-center-search" type="text" name="q" value="{{ search_query }}" placeholder="Company, owner email, tenant code, hostname"
+                                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                        </div>
+                        <select name="status" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                            <option value="">All statuses</option>
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>Suspended</option>
+                        </select>
+                        {% if selected_card %}
+                        <input type="hidden" name="org" value="{{ selected_card.organization.id }}">
+                        {% endif %}
+                        <input type="hidden" name="tab" value="{{ selected_tab }}">
+                        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                            <button type="submit" class="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-black text-white transition hover:bg-cyan-700">Apply Filters</button>
+                            <a href="{% url 'platform_control_center' %}" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-black text-slate-600 transition hover:border-slate-300 hover:text-slate-900">Reset</a>
+                        </div>
+                    </form>
+
+                    <div class="mt-6 rounded-[28px] border border-slate-200 bg-slate-50/70 p-4">
+                        <div class="mb-4 flex items-center justify-between">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Customer Queue</div>
+                            <div class="text-xs font-bold text-slate-500">{{ organization_cards|length }} visible</div>
+                        </div>
+                        <div class="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                            {% for card in organization_cards %}
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}tab={{ selected_tab|urlencode }}&org={{ card.organization.id }}"
+                                class="block rounded-[24px] border px-4 py-4 transition {% if selected_card and selected_card.organization.id == card.organization.id %}border-cyan-300 bg-cyan-50 shadow-sm{% else %}border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50{% endif %}">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="truncate text-base font-black text-slate-900">{{ card.organization.name }}</div>
+                                        <div class="mt-1 truncate text-xs font-semibold text-slate-500">{{ card.owner_label }}</div>
+                                    </div>
+                                    <span class="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] {% if card.organization.status == 'active' %}bg-emerald-100 text-emerald-700{% elif card.organization.status == 'suspended' %}bg-rose-100 text-rose-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                        {{ card.organization.status }}
+                                    </span>
+                                </div>
+                                <div class="mt-4 grid grid-cols-3 gap-2 text-xs font-semibold text-slate-500">
+                                    <div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Code</div>
+                                        <div class="mt-1 truncate text-slate-700">{{ card.organization.slug }}</div>
+                                    </div>
+                                    <div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Seats</div>
+                                        <div class="mt-1 text-slate-700">{{ card.organization.seat_limit }}</div>
+                                    </div>
+                                    <div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2">
+                                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Env</div>
+                                        <div class="mt-1 text-slate-700">{{ card.active_tenant_count }}/{{ card.tenant_count }}</div>
+                                    </div>
+                                </div>
+                            </a>
+                            {% empty %}
+                            <div class="rounded-[24px] border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                                No customers match the current filters.
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="min-w-0 flex-1 rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div class="mb-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5 shadow-sm">
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Customers</div>
+                        <div class="mt-3 text-3xl font-black text-slate-900">{{ summary.customer_count }}</div>
+                        <div class="mt-2 text-sm font-semibold text-slate-500">{{ summary.active_customer_count }} active, {{ summary.suspended_customer_count }} suspended</div>
+                    </div>
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5 shadow-sm">
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Environments</div>
+                        <div class="mt-3 text-3xl font-black text-slate-900">{{ summary.tenant_count }}</div>
+                        <div class="mt-2 text-sm font-semibold text-slate-500">{{ summary.inactive_tenant_count }} inactive environments need attention</div>
+                    </div>
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5 shadow-sm">
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Demo Risk</div>
+                        <div class="mt-3 text-3xl font-black text-slate-900">{{ summary.expiring_demo_count }}</div>
+                        <div class="mt-2 text-sm font-semibold text-slate-500">Demos with 3 days or less remaining</div>
+                    </div>
+                    <div class="rounded-[28px] border border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-fuchsia-50/70 p-5 shadow-sm">
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-700">Support Launch</div>
+                        <div class="mt-3 text-lg font-black text-slate-900">Portal And Tenant Access</div>
+                        <a href="{{ portal_login_url }}" target="_blank" rel="noreferrer" class="mt-3 inline-flex rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800">
+                            Open Shared Portal
+                        </a>
+                    </div>
+                </div>
+
+                {% if selected_card %}
+                <div class="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,#cffafe,transparent_30%),linear-gradient(135deg,#ffffff_0%,#f8fafc_45%,#eef2ff_100%)] p-5">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-700">Customer Workspace</div>
+                            <h2 class="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">{{ selected_card.organization.name }}</h2>
+                            <div class="mt-2 text-sm font-semibold text-slate-500">
+                                {{ selected_card.organization.slug }} | Owner {{ selected_card.owner_label }}
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600 shadow-sm">{{ selected_card.tenant_count }} environments</span>
+                            <span class="rounded-full {% if selected_card.organization.status == 'active' %}bg-emerald-100 text-emerald-700{% elif selected_card.organization.status == 'suspended' %}bg-rose-100 text-rose-700{% else %}bg-amber-100 text-amber-700{% endif %} px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em]">{{ selected_card.organization.status }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-5 rounded-[24px] border border-slate-200 bg-slate-50/70 p-4">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                {% if selected_tab == 'overview' %}Overview
+                                {% elif selected_tab == 'environments' %}Environments
+                                {% elif selected_tab == 'billing' %}Billing
+                                {% elif selected_tab == 'activity' %}Activity
+                                {% elif selected_tab == 'support' %}Support Notes
+                                {% else %}Danger Zone{% endif %}
+                            </div>
+                            <div class="mt-1 text-sm font-semibold text-slate-600">
+                                {% if selected_tab == 'overview' %}Manage customer status, seats, and support shortcuts.
+                                {% elif selected_tab == 'environments' %}Operate customer environments and launch access points.
+                                {% elif selected_tab == 'billing' %}Review hosting visibility and billing readiness.
+                                {% elif selected_tab == 'activity' %}Track support history and customer timeline.
+                                {% elif selected_tab == 'support' %}Capture first-line notes, risks, and follow-up commitments.
+                                {% else %}Handle destructive offboarding actions with explicit confirmation.{% endif %}
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            {% if selected_tab == 'overview' %}
+                            <button form="customer-controls-form" type="submit" class="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800">Save Controls</button>
+                            {% elif selected_tab == 'support' %}
+                            <button form="support-notes-form" type="submit" class="rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-black text-white transition hover:bg-cyan-700">Save Notes</button>
+                            {% elif selected_tab == 'environments' %}
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=environments" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">Refresh Environment View</a>
+                            {% elif selected_tab == 'activity' %}
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=support" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">Open Support Notes</a>
+                            {% elif selected_tab == 'billing' %}
+                            <a href="?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if status_filter %}status={{ status_filter|urlencode }}&{% endif %}org={{ selected_card.organization.id }}&tab=billing" class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">Refresh Billing</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+                    <div class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 xl:col-span-1">
+                        <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Seat Limit</div>
+                        <div class="mt-2 text-2xl font-black text-slate-900">{{ selected_card.organization.seat_limit }}</div>
+                    </div>
+                    <div class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 xl:col-span-1">
+                        <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Owner</div>
+                        <div class="mt-2 truncate text-sm font-black text-slate-900">{{ selected_card.owner_label }}</div>
+                    </div>
+                    <div class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 xl:col-span-1">
+                        <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Active Environments</div>
+                        <div class="mt-2 text-2xl font-black text-slate-900">{{ selected_card.active_tenant_count }}/{{ selected_card.tenant_count }}</div>
+                    </div>
+                    <div class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 xl:col-span-1">
+                        <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Test Flow</div>
+                        <div class="mt-2 text-sm font-black {% if selected_card.organization.wants_test_environment %}text-emerald-700{% else %}text-slate-700{% endif %}">
+                            {% if selected_card.organization.wants_test_environment %}Enabled{% else %}Not requested{% endif %}
+                        </div>
+                    </div>
+                    <div class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-4 xl:col-span-1">
+                        <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Last Support Action</div>
+                        <div class="mt-2 text-sm font-black text-slate-900">
+                            {% if latest_support_entry %}{{ latest_support_entry.action_type|cut:"_"|title }}{% else %}No recent action{% endif %}
+                        </div>
+                        <div class="mt-1 text-xs font-semibold text-slate-500">
+                            {% if latest_support_entry %}{{ latest_support_entry.created_at|date:"M d, H:i" }}{% else %}Support log is empty{% endif %}
+                        </div>
+                    </div>
+                    <div class="rounded-[24px] border {% if open_risk_summary.tone == 'rose' %}border-rose-200 bg-rose-50/70{% elif open_risk_summary.tone == 'amber' %}border-amber-200 bg-amber-50/70{% elif open_risk_summary.tone == 'cyan' %}border-cyan-200 bg-cyan-50/70{% else %}border-emerald-200 bg-emerald-50/70{% endif %} p-4 xl:col-span-1">
+                        <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Open Risk</div>
+                        <div class="mt-2 text-sm font-black {% if open_risk_summary.tone == 'rose' %}text-rose-700{% elif open_risk_summary.tone == 'amber' %}text-amber-700{% elif open_risk_summary.tone == 'cyan' %}text-cyan-700{% else %}text-emerald-700{% endif %}">
+                            {{ open_risk_summary.label }}
+                        </div>
+                    </div>
+                </div>
+
+                {% if selected_tab == 'overview' %}
+                <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <form id="customer-controls-form" method="post" class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_organization">
+                        <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                        <input type="hidden" name="q" value="{{ search_query }}">
+                        <input type="hidden" name="status" value="{{ status_filter }}">
+                        <input type="hidden" name="tab" value="{{ selected_tab }}">
+
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Customer Controls</div>
+                        <div class="mt-4 grid gap-4">
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Company Name</label>
+                                    <input type="text" name="organization_name" value="{{ selected_card.organization.name }}"
+                                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Owner Email</label>
+                                    <input type="email" name="owner_email" value="{{ selected_card.organization.owner_email }}"
+                                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Company Code</label>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700">{{ selected_card.organization.slug }}</div>
+                                <div class="mt-2 text-[11px] font-semibold text-slate-500">Company code stays read-only here to avoid unsafe tenant and hostname drift.</div>
+                            </div>
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Status</label>
+                                    <select name="organization_status" class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                                        <option value="active" {% if selected_card.organization.status == 'active' %}selected{% endif %}>Active</option>
+                                        <option value="pending" {% if selected_card.organization.status == 'pending' %}selected{% endif %}>Pending</option>
+                                        <option value="suspended" {% if selected_card.organization.status == 'suspended' %}selected{% endif %}>Suspended</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Seat Limit</label>
+                                    <input type="number" min="1" name="seat_limit" value="{{ selected_card.organization.seat_limit }}"
+                                        class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                                </div>
+                            </div>
+                            <label class="inline-flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                                <input type="checkbox" name="wants_test_environment" {% if selected_card.organization.wants_test_environment %}checked{% endif %}
+                                    class="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400">
+                                <span>
+                                    <span class="block text-sm font-black text-slate-800">Customer needs test environment</span>
+                                    <span class="mt-1 block text-xs font-semibold text-slate-500">Keep this enabled when the customer validation flow should retain a dedicated test phase.</span>
+                                </span>
+                            </label>
+                        </div>
+                    </form>
+
+                    <div class="space-y-6">
+                        <div class="rounded-[28px] border border-cyan-200 bg-gradient-to-br from-cyan-50 via-white to-fuchsia-50/60 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-cyan-700">Support Shortcuts</div>
+                            <div class="mt-4 grid gap-3">
+                                <form method="post" class="rounded-2xl border border-white/80 bg-white/90 px-4 py-4">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="resend_access_email">
+                                    <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                    <input type="hidden" name="q" value="{{ search_query }}">
+                                    <input type="hidden" name="status" value="{{ status_filter }}">
+                                    <input type="hidden" name="tab" value="{{ selected_tab }}">
+                                    <div class="text-sm font-black text-slate-900">Resend Access Email</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">Send the environment access email again to {{ selected_card.owner_label }}.</div>
+                                    <button type="submit" class="mt-4 inline-flex rounded-2xl bg-cyan-600 px-4 py-3 text-sm font-black text-white transition hover:bg-cyan-700">
+                                        Resend Access Email
+                                    </button>
+                                </form>
+                                <form method="post" class="rounded-2xl border border-white/80 bg-white/90 px-4 py-4">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="send_recovery_access_email">
+                                    <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                    <input type="hidden" name="q" value="{{ search_query }}">
+                                    <input type="hidden" name="status" value="{{ status_filter }}">
+                                    <input type="hidden" name="tab" value="{{ selected_tab }}">
+                                    <div class="text-sm font-black text-slate-900">Send Recovery Access Email</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">Send the same access package to a temporary recovery recipient without changing the owner email on file.</div>
+                                    <label class="mt-4 block">
+                                        <span class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Recovery Recipient</span>
+                                        <input type="email" name="recovery_email" placeholder="support-contact@customer.com"
+                                            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">
+                                    </label>
+                                    <button type="submit" class="mt-4 inline-flex rounded-2xl border border-cyan-200 bg-white px-4 py-3 text-sm font-black text-cyan-700 transition hover:border-cyan-300 hover:text-cyan-800">
+                                        Send Recovery Email
+                                    </button>
+                                </form>
+                                <a href="{% url 'organization_bootstrap' %}" class="rounded-2xl border border-white/80 bg-white/90 px-4 py-4 transition hover:border-cyan-200">
+                                    <div class="text-sm font-black text-slate-900">Bootstrap Another Customer</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">Open the organization bootstrap tool for new customer provisioning.</div>
+                                </a>
+                                <a href="{% url 'login' %}?tenant_code={{ selected_card.organization.slug|urlencode }}" class="rounded-2xl border border-white/80 bg-white/90 px-4 py-4 transition hover:border-cyan-200">
+                                    <div class="text-sm font-black text-slate-900">Portal Login Shortcut</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">Open the shared login page. Use tenant-specific links in the Environments tab for direct support entry.</div>
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Support Snapshot</div>
+                            <div class="mt-4 grid gap-3">
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                    <div class="text-sm font-black text-slate-900">Current Notes</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">{{ selected_card.organization.support_notes|default:"No support notes yet." }}</div>
+                                </div>
+                                <div class="grid gap-3 md:grid-cols-2">
+                                    <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                        <div class="text-sm font-black text-slate-900">Next Best Action</div>
+                                        <div class="mt-1 text-xs font-semibold text-slate-500">
+                                            {% if support_environment_actions %}
+                                            Provision the next missing environment to complete the customer stack.
+                                            {% elif selected_billing and not selected_billing.available %}
+                                            Finish billing setup so support can see real hosting cost.
+                                            {% elif selected_card.active_tenant_count == 0 %}
+                                            Reactivate at least one environment before customer access resumes.
+                                            {% else %}
+                                            Customer workspace is operational. Use activity and notes tabs for follow-up.
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                        <div class="text-sm font-black text-slate-900">Open Risk Status</div>
+                                        <div class="mt-1 text-xs font-semibold {% if open_risk_summary.tone == 'rose' %}text-rose-600{% elif open_risk_summary.tone == 'amber' %}text-amber-700{% elif open_risk_summary.tone == 'cyan' %}text-cyan-700{% else %}text-emerald-700{% endif %}">
+                                            {{ open_risk_summary.label }}
+                                        </div>
+                                        <div class="mt-2 text-[11px] font-semibold text-slate-500">
+                                            {% if latest_support_entry %}
+                                            Last support update by {{ latest_support_entry.actor_email|default:"support" }} on {{ latest_support_entry.created_at|date:"M d, H:i" }}.
+                                            {% else %}
+                                            No support activity has been recorded for this customer yet.
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif selected_tab == 'environments' %}
+                <div class="mt-6 space-y-6">
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                        <div class="grid gap-4 md:grid-cols-3">
+                            <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Active</div>
+                                <div class="mt-2 text-2xl font-black text-slate-900">{{ selected_card.active_tenant_count }}</div>
+                            </div>
+                            <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Inactive</div>
+                                <div class="mt-2 text-2xl font-black text-slate-900">{{ selected_card.inactive_tenant_count }}</div>
+                            </div>
+                            <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                <div class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Provisioning</div>
+                                <div class="mt-2 text-sm font-black text-slate-900">{% if support_environment_actions %}{{ support_environment_actions|length }} available actions{% else %}No missing environments{% endif %}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid gap-4 xl:grid-cols-2">
+                        <form method="post" class="rounded-[28px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-5">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="bulk_set_environment_state">
+                            <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                            <input type="hidden" name="tenant_state" value="active">
+                            <input type="hidden" name="q" value="{{ search_query }}">
+                            <input type="hidden" name="status" value="{{ status_filter }}">
+                            <input type="hidden" name="tab" value="{{ selected_tab }}">
+
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-emerald-700">Bulk Activate</div>
+                            <div class="mt-3 text-lg font-black text-slate-950">Activate All Environments</div>
+                            <div class="mt-2 text-sm font-semibold text-slate-600">Turn on every inactive environment for this customer in one action.</div>
+                            <div class="mt-4 rounded-2xl border border-emerald-200 bg-white px-4 py-4 text-xs font-semibold text-slate-500">
+                                Company status must already be <span class="font-black text-emerald-700">active</span> before environments can be re-enabled in bulk.
+                            </div>
+                            <button type="submit" class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white transition hover:bg-emerald-700 {% if selected_card.organization.status != 'active' or not selected_card.inactive_tenant_count %}cursor-not-allowed opacity-60{% endif %}" {% if selected_card.organization.status != 'active' or not selected_card.inactive_tenant_count %}disabled{% endif %}>
+                                Activate All Environments
+                            </button>
+                        </form>
+
+                        <form method="post" class="rounded-[28px] border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-5">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="bulk_set_environment_state">
+                            <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                            <input type="hidden" name="tenant_state" value="inactive">
+                            <input type="hidden" name="q" value="{{ search_query }}">
+                            <input type="hidden" name="status" value="{{ status_filter }}">
+                            <input type="hidden" name="tab" value="{{ selected_tab }}">
+
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-amber-700">Bulk Deactivate</div>
+                            <div class="mt-3 text-lg font-black text-slate-950">Deactivate All Environments</div>
+                            <div class="mt-2 text-sm font-semibold text-slate-600">Shut off every active environment for this customer without changing each row manually.</div>
+                            <div class="mt-4 rounded-2xl border border-amber-200 bg-white px-4 py-4 text-xs font-semibold text-slate-500">
+                                Use this when support needs to freeze customer access quickly before deeper review or deletion.
+                            </div>
+                            <button type="submit" class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white transition hover:bg-amber-600 {% if not selected_card.active_tenant_count %}cursor-not-allowed opacity-60{% endif %}" {% if not selected_card.active_tenant_count %}disabled{% endif %}>
+                                Deactivate All Environments
+                            </button>
+                        </form>
+                    </div>
+                    {% if support_environment_actions %}
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Provision New Environment</div>
+                        <div class="mt-4 grid gap-4 xl:grid-cols-2">
+                            {% for action in support_environment_actions %}
+                            <form method="post" class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="provision_environment">
+                                <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                <input type="hidden" name="environment_type" value="{{ action.environment_type }}">
+                                <input type="hidden" name="q" value="{{ search_query }}">
+                                <input type="hidden" name="status" value="{{ status_filter }}">
+                                <input type="hidden" name="tab" value="{{ selected_tab }}">
+                                <div class="text-sm font-black text-slate-900">{{ action.label }}</div>
+                                <div class="mt-1 text-xs font-semibold text-slate-500">{{ action.description }}</div>
+                                <button type="submit" class="mt-4 inline-flex rounded-2xl px-4 py-3 text-sm font-black text-white transition {% if action.tone == 'emerald' %}bg-emerald-600 hover:bg-emerald-700{% elif action.tone == 'amber' %}bg-amber-500 hover:bg-amber-600{% elif action.tone == 'cyan' %}bg-cyan-600 hover:bg-cyan-700{% else %}bg-slate-800 hover:bg-slate-900{% endif %}">
+                                    {{ action.label }}
+                                </button>
+                            </form>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div>
+                        <div class="mb-4 flex items-center justify-between gap-3">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Environment Operations</div>
+                            <div class="hidden rounded-full bg-slate-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 lg:inline-flex">Dense Ops View</div>
+                        </div>
+                        <div class="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+                            <div class="hidden grid-cols-[minmax(0,1.15fr)_minmax(0,1.4fr)_auto] gap-4 border-b border-slate-200 bg-slate-50 px-5 py-3 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 lg:grid">
+                                <div>Environment</div>
+                                <div>Access And Runtime</div>
+                                <div>Actions</div>
+                            </div>
+                            <div class="divide-y divide-slate-200">
+                            {% for item in selected_card.tenant_cards %}
+                            <div class="px-4 py-4 lg:px-5">
+                                <div class="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.4fr)_auto] lg:items-center">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-3">
+                                            <span class="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] {% if item.tenant.environment_type == 'live' %}bg-emerald-100 text-emerald-700{% elif item.tenant.environment_type == 'test' %}bg-amber-100 text-amber-700{% elif item.tenant.environment_type == 'demo' %}bg-cyan-100 text-cyan-700{% else %}bg-slate-100 text-slate-700{% endif %}">
+                                                {{ item.tenant.get_environment_type_display }}
+                                            </span>
+                                            <span class="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] {% if item.tenant.is_active %}bg-emerald-100 text-emerald-700{% else %}bg-rose-100 text-rose-700{% endif %}">
+                                                {{ item.lifecycle.status_label }}
+                                            </span>
+                                        </div>
+                                        <div class="mt-3 text-lg font-black text-slate-900">{{ item.tenant.code }}</div>
+                                        <div class="mt-1 text-xs font-semibold text-slate-500">{{ item.tenant.owner_email|default:selected_card.owner_label }}</div>
+                                    </div>
+
+                                    <div class="grid gap-2 text-sm text-slate-600 md:grid-cols-2">
+                                        <div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                                            <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Hostname</div>
+                                            <div class="mt-1 font-semibold text-slate-700">{{ item.tenant.hostname|default:"No hostname" }}</div>
+                                        </div>
+                                        <div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+                                            <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">DB Alias</div>
+                                            <div class="mt-1 font-semibold text-slate-700">{{ item.tenant.db_alias }}</div>
+                                        </div>
+                                        <div class="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 md:col-span-2">
+                                            <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Access Summary</div>
+                                            <div class="mt-1 font-semibold text-slate-700">{{ item.lifecycle.summary|default:"No lifecycle summary available." }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-3 lg:w-48">
+                                        <a href="{{ item.login_url }}" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
+                                            Open Login
+                                        </a>
+                                        <a href="{{ item.app_url }}" target="_blank" rel="noreferrer" class="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:border-slate-300 hover:text-slate-900">
+                                            Open App
+                                        </a>
+                                        <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="set_tenant_state">
+                                    <input type="hidden" name="tenant_id" value="{{ item.tenant.id }}">
+                                    <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                    <input type="hidden" name="q" value="{{ search_query }}">
+                                    <input type="hidden" name="status" value="{{ status_filter }}">
+                                    <input type="hidden" name="tab" value="{{ selected_tab }}">
+                                    <input type="hidden" name="tenant_state" value="{% if item.tenant.is_active %}inactive{% else %}active{% endif %}">
+                                    <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-black text-white transition {% if item.tenant.is_active %}bg-rose-500 hover:bg-rose-600{% else %}bg-emerald-600 hover:bg-emerald-700{% endif %}">
+                                        {% if item.tenant.is_active %}Deactivate Environment{% else %}Activate Environment{% endif %}
+                                    </button>
+                                        </form>
+                                        <div class="rounded-2xl border border-rose-200 bg-rose-50/70 px-3 py-3">
+                                            <div class="text-[10px] font-black uppercase tracking-[0.18em] text-rose-600">Retire Environment</div>
+                                            {% if item.tenant.is_active %}
+                                            <div class="mt-2 text-[11px] font-semibold text-slate-600">Deactivate this environment first before deleting it.</div>
+                                            {% elif item.tenant.environment_type == 'live' and selected_card.organization.status == 'active' %}
+                                            <div class="mt-2 text-[11px] font-semibold text-slate-600">Move the company out of active status before deleting its live environment.</div>
+                                            {% else %}
+                                            <form method="post" class="mt-2 space-y-2">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="delete_environment">
+                                                <input type="hidden" name="tenant_id" value="{{ item.tenant.id }}">
+                                                <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                                <input type="hidden" name="q" value="{{ search_query }}">
+                                                <input type="hidden" name="status" value="{{ status_filter }}">
+                                                <input type="hidden" name="tab" value="{{ selected_tab }}">
+                                                <input type="text" name="delete_environment_code" placeholder="Type {{ item.tenant.code }}"
+                                                    class="w-full rounded-2xl border border-rose-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-700 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100">
+                                                <label class="inline-flex items-start gap-2 text-[11px] font-semibold text-slate-600">
+                                                    <input type="checkbox" name="acknowledge_environment_delete" class="mt-0.5 h-3.5 w-3.5 rounded border-rose-300 text-rose-600 focus:ring-rose-400">
+                                                    <span>I confirm this environment can be removed.</span>
+                                                </label>
+                                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-rose-600 px-3 py-2 text-[11px] font-black text-white transition hover:bg-rose-700">
+                                                    Delete Environment
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm font-semibold text-slate-500">
+                                This customer does not have any environments yet.
+                            </div>
+                            {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif selected_tab == 'billing' %}
+                <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">AWS Hosting Cost</div>
+                            {% if selected_billing and selected_billing.available %}
+                            <span class="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Connected</span>
+                            {% else %}
+                            <span class="rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-700">Needs Setup</span>
+                            {% endif %}
+                        </div>
+
+                        {% if selected_billing and selected_billing.available %}
+                        <div class="mt-4 text-3xl font-black text-slate-900">{{ selected_billing.currency_symbol }}{{ selected_billing.total_amount }}</div>
+                        <div class="mt-1 text-sm font-semibold text-slate-500">{{ selected_billing.period_label }}{% if selected_billing.estimated %} | estimated{% endif %}</div>
+                        <div class="mt-4 grid gap-3">
+                            {% for item in selected_card.tenant_cards %}
+                            <div class="rounded-2xl border border-white/80 bg-white px-4 py-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-black text-slate-900">{{ item.tenant.get_environment_type_display }}</div>
+                                        <div class="mt-1 text-xs font-semibold text-slate-500">{{ item.support_tag_value }}</div>
+                                    </div>
+                                    <div class="text-sm font-black text-slate-900">
+                                        {{ selected_billing.currency_symbol }}{{ item.billing_amount|default:"0.00" }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="mt-3 text-xs font-semibold text-slate-500">Source: AWS Cost Explorer tag `{{ selected_billing.tag_key }}` grouped month-to-date.</div>
+                        {% else %}
+                        <div class="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5">
+                            <div class="text-sm font-black text-slate-900">Live billing is not available yet</div>
+                            <div class="mt-2 text-xs font-semibold text-slate-500">{{ selected_billing.reason|default:"AWS billing integration is not configured." }}</div>
+                        </div>
+                        <div class="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                            <div class="text-sm font-black text-slate-900">Recommended tagging model</div>
+                            <div class="mt-2 text-xs font-semibold text-slate-500">Tag every AWS resource with a stable customer key such as `TenantCode=acme-demo`, `OrganizationSlug=acme`, and `EnvironmentType=demo` so support can compare costs per customer and per environment safely.</div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Billing Setup Checklist</div>
+                            <div class="mt-4 space-y-3">
+                                {% for check in selected_billing.readiness_checks %}
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="text-sm font-black text-slate-900">{{ check.label }}</div>
+                                            <div class="mt-1 text-xs font-semibold text-slate-500">{{ check.detail }}</div>
+                                        </div>
+                                        <span class="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] {% if check.ready %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                                            {% if check.ready %}Ready{% else %}Missing{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Security Guardrails</div>
+                            <div class="mt-4 space-y-3">
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-xs font-semibold text-slate-500">
+                                    The panel only shows aggregated billing totals. It does not expose AWS secret keys, raw credentials, or unrestricted billing console access.
+                                </div>
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-xs font-semibold text-slate-500">
+                                    If AWS credentials are attached later, use a read-only IAM policy limited to Cost Explorer and only cost-allocation tags approved for customer support reporting.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif selected_tab == 'activity' %}
+                <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Support Audit Log</div>
+                        <div class="mt-4 space-y-3 max-h-[560px] overflow-y-auto pr-1">
+                            {% for entry in support_log_entries %}
+                            <div class="rounded-2xl border border-white/80 bg-white px-4 py-3">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-black text-slate-900">{{ entry.action_type|cut:"_"|title }}</div>
+                                        <div class="mt-1 text-xs font-semibold text-slate-500">{{ entry.actor_email|default:"Unknown operator" }}{% if entry.target_label %} | {{ entry.target_label }}{% endif %}</div>
+                                    </div>
+                                    <div class="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">{{ entry.created_at|date:"M d, H:i" }}</div>
+                                </div>
+                                {% if entry.notes %}
+                                <div class="mt-2 text-xs font-semibold text-slate-600">{{ entry.notes }}</div>
+                                {% endif %}
+                            </div>
+                            {% empty %}
+                            <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm font-semibold text-slate-500">
+                                No support actions recorded yet.
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Customer Timeline</div>
+                        <div class="mt-4 space-y-4 max-h-[560px] overflow-y-auto pr-1">
+                            {% for event in selected_timeline %}
+                            <div class="flex gap-3">
+                                <div class="mt-1 h-3 w-3 shrink-0 rounded-full {% if event.tone == 'emerald' %}bg-emerald-500{% elif event.tone == 'rose' %}bg-rose-500{% elif event.tone == 'amber' %}bg-amber-500{% elif event.tone == 'cyan' %}bg-cyan-500{% else %}bg-slate-400{% endif %}"></div>
+                                <div class="min-w-0">
+                                    <div class="text-sm font-black text-slate-900">{{ event.title }}</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">{{ event.detail }}</div>
+                                    <div class="mt-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{{ event.timestamp|date:"M d, Y H:i"|default:"No timestamp" }}</div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="text-sm font-semibold text-slate-500">No timeline activity yet.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% elif selected_tab == 'support' %}
+                <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <form id="support-notes-form" method="post" class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update_support_notes">
+                        <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                        <input type="hidden" name="q" value="{{ search_query }}">
+                        <input type="hidden" name="status" value="{{ status_filter }}">
+                        <input type="hidden" name="tab" value="{{ selected_tab }}">
+
+                        <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Support Notes</div>
+                        <div class="mt-4">
+                            <label class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Working Notes</label>
+                            <textarea name="support_notes" rows="14" placeholder="Write onboarding status, customer risks, promised follow-up, billing blockers, environment context, and handoff notes."
+                                class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100">{{ selected_card.organization.support_notes }}</textarea>
+                        </div>
+                    </form>
+
+                    <div class="space-y-6">
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Note Prompts</div>
+                            <div class="mt-4 space-y-3">
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-xs font-semibold text-slate-500">What problem did the customer report?</div>
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-xs font-semibold text-slate-500">What did support change in the environment or customer controls?</div>
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-xs font-semibold text-slate-500">What is the next follow-up date or blocked dependency?</div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Recent Support Activity</div>
+                            <div class="mt-4 space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                                {% for entry in support_log_entries|slice:":8" %}
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-3">
+                                    <div class="text-sm font-black text-slate-900">{{ entry.action_type|cut:"_"|title }}</div>
+                                    <div class="mt-1 text-xs font-semibold text-slate-500">{{ entry.actor_email|default:"Unknown operator" }} | {{ entry.created_at|date:"M d, H:i" }}</div>
+                                    {% if entry.notes %}
+                                    <div class="mt-2 text-xs font-semibold text-slate-600">{{ entry.notes }}</div>
+                                    {% endif %}
+                                </div>
+                                {% empty %}
+                                <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm font-semibold text-slate-500">No support actions recorded yet.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% elif selected_tab == 'danger' %}
+                <div class="mt-6 grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                    <div class="space-y-6">
+                        <div class="rounded-[28px] border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-amber-700">Company Lifecycle</div>
+                            <div class="mt-3 text-2xl font-black tracking-[-0.03em] text-slate-950">Lifecycle Controls</div>
+                            <div class="mt-2 text-sm font-semibold text-slate-600">Use explicit company actions for activate, pending review, and deactivate instead of relying on hidden status changes.</div>
+
+                            <div class="mt-5 space-y-3">
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                    <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Current Status</div>
+                                    <div class="mt-2 flex items-center gap-3">
+                                        <span class="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] {% if selected_card.organization.status == 'active' %}bg-emerald-100 text-emerald-700{% elif selected_card.organization.status == 'suspended' %}bg-rose-100 text-rose-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                                            {{ selected_card.organization.status }}
+                                        </span>
+                                        <span class="text-sm font-semibold text-slate-500">{{ selected_card.active_tenant_count }} active environments</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form method="post" class="mt-5 space-y-4 rounded-2xl border border-emerald-200 bg-white px-4 py-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="set_organization_status">
+                                <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                <input type="hidden" name="q" value="{{ search_query }}">
+                                <input type="hidden" name="status" value="{{ status_filter }}">
+                                <input type="hidden" name="tab" value="{{ selected_tab }}">
+                                <input type="hidden" name="organization_status" value="active">
+
+                                <div class="text-sm font-black text-slate-900">Activate Company</div>
+                                <div class="text-xs font-semibold text-slate-500">
+                                    Restore the company to active status. Environment reactivation is optional for safety.
+                                </div>
+                                <label class="inline-flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-4">
+                                    <input type="checkbox" name="reactivate_environments" class="mt-1 h-4 w-4 rounded border-emerald-300 text-emerald-600 focus:ring-emerald-400">
+                                    <span>
+                                        <span class="block text-sm font-black text-slate-800">Also reactivate all environments</span>
+                                        <span class="mt-1 block text-xs font-semibold text-slate-500">Leave this unchecked if support wants the company active but environments controlled one by one.</span>
+                                    </span>
+                                </label>
+                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-black text-white transition hover:bg-emerald-700 {% if selected_card.organization.status == 'active' %}cursor-not-allowed opacity-60{% endif %}" {% if selected_card.organization.status == 'active' %}disabled{% endif %}>
+                                    {% if selected_card.organization.status == 'active' %}Company Already Active{% else %}Activate Company{% endif %}
+                                </button>
+                            </form>
+
+                            <form method="post" class="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="set_organization_status">
+                                <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                <input type="hidden" name="q" value="{{ search_query }}">
+                                <input type="hidden" name="status" value="{{ status_filter }}">
+                                <input type="hidden" name="tab" value="{{ selected_tab }}">
+                                <input type="hidden" name="organization_status" value="pending">
+
+                                <div class="text-sm font-black text-slate-900">Mark Pending Review</div>
+                                <div class="text-xs font-semibold text-slate-500">
+                                    Keep the customer visible in support while signaling that onboarding, billing, or approval is waiting on follow-up.
+                                </div>
+                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white transition hover:bg-slate-800 {% if selected_card.organization.status == 'pending' %}cursor-not-allowed opacity-60{% endif %}" {% if selected_card.organization.status == 'pending' %}disabled{% endif %}>
+                                    {% if selected_card.organization.status == 'pending' %}Company Already Pending{% else %}Move To Pending{% endif %}
+                                </button>
+                            </form>
+
+                            <form method="post" class="mt-4 space-y-4 rounded-2xl border border-amber-200 bg-white px-4 py-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="deactivate_organization">
+                                <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                <input type="hidden" name="q" value="{{ search_query }}">
+                                <input type="hidden" name="status" value="{{ status_filter }}">
+                                <input type="hidden" name="tab" value="{{ selected_tab }}">
+
+                                <div class="text-sm font-black text-slate-900">Deactivate Company</div>
+                                <div class="text-xs font-semibold text-slate-500">
+                                    Suspend the company now and shut off every active environment under it.
+                                </div>
+                                <div class="rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-4 text-sm font-semibold text-slate-600">
+                                    {% if selected_card.organization.status == 'suspended' %}
+                                    This company is already suspended. You can still delete it below if offboarding is approved.
+                                    {% else %}
+                                    Deactivation will suspend the company now and turn off all active environments before any delete action.
+                                    {% endif %}
+                                </div>
+                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-amber-500 px-4 py-3 text-sm font-black text-white transition hover:bg-amber-600 {% if selected_card.organization.status == 'suspended' %}cursor-not-allowed opacity-60{% endif %}" {% if selected_card.organization.status == 'suspended' %}disabled{% endif %}>
+                                    {% if selected_card.organization.status == 'suspended' %}Company Already Deactivated{% else %}Deactivate Company{% endif %}
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="rounded-[28px] border border-rose-200 bg-gradient-to-br from-rose-50 via-white to-white p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-rose-600">Danger Zone</div>
+                            <div class="mt-3 text-2xl font-black tracking-[-0.03em] text-slate-950">Delete Company</div>
+                            <div class="mt-2 text-sm font-semibold text-slate-600">This removes the customer record from the control plane and tears down its tenant environments. Use it only after offboarding is approved.</div>
+
+                            <div class="mt-5 space-y-3">
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                    <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Company Code</div>
+                                    <div class="mt-2 text-lg font-black text-slate-900">{{ selected_card.organization.slug }}</div>
+                                </div>
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                    <div class="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Delete Preconditions</div>
+                                    <div class="mt-2 text-sm font-semibold text-slate-600">All environments must be inactive before deletion is allowed.</div>
+                                    <div class="mt-2 text-sm font-semibold {% if selected_card.active_tenant_count %}text-rose-600{% else %}text-emerald-700{% endif %}">
+                                        {% if selected_card.active_tenant_count %}
+                                        {{ selected_card.active_tenant_count }} active environments still need deactivation.
+                                        {% else %}
+                                        All environments are inactive and the company can be deleted.
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form method="post" class="mt-5 space-y-4">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_organization">
+                                <input type="hidden" name="organization_id" value="{{ selected_card.organization.id }}">
+                                <input type="hidden" name="q" value="{{ search_query }}">
+                                <input type="hidden" name="status" value="{{ status_filter }}">
+                                <input type="hidden" name="tab" value="{{ selected_tab }}">
+
+                                <div>
+                                    <label class="mb-2 block text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Type Company Code To Confirm</label>
+                                    <input type="text" name="delete_confirmation_slug" placeholder="Type {{ selected_card.organization.slug }}"
+                                        class="w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 outline-none transition focus:border-rose-300 focus:ring-4 focus:ring-rose-100">
+                                </div>
+                                <label class="inline-flex items-start gap-3 rounded-2xl border border-rose-200 bg-white px-4 py-4">
+                                    <input type="checkbox" name="acknowledge_delete" class="mt-1 h-4 w-4 rounded border-rose-300 text-rose-600 focus:ring-rose-400">
+                                    <span>
+                                        <span class="block text-sm font-black text-slate-800">I confirm this customer is approved for deletion</span>
+                                        <span class="mt-1 block text-xs font-semibold text-slate-500">This includes environment teardown and company removal from the support queue.</span>
+                                    </span>
+                                </label>
+                                <button type="submit" class="inline-flex w-full items-center justify-center rounded-2xl bg-rose-600 px-4 py-3 text-sm font-black text-white transition hover:bg-rose-700">
+                                    Delete Company
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Before You Delete</div>
+                            <div class="mt-4 space-y-3">
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-sm font-semibold text-slate-600">Deactivate every environment first from the Environments tab.</div>
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-sm font-semibold text-slate-600">Confirm offboarding, billing closure, and data retention approval outside the app.</div>
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4 text-sm font-semibold text-slate-600">Use suspension instead of deletion if support might need to reopen the customer later.</div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-[28px] border border-slate-200 bg-slate-50/70 p-5">
+                            <div class="text-[11px] font-black uppercase tracking-[0.24em] text-slate-400">Environment Snapshot</div>
+                            <div class="mt-4 space-y-3">
+                                {% for item in selected_card.tenant_cards %}
+                                <div class="rounded-2xl border border-white/80 bg-white px-4 py-4">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <div class="text-sm font-black text-slate-900">{{ item.tenant.get_environment_type_display }}</div>
+                                            <div class="mt-1 text-xs font-semibold text-slate-500">{{ item.tenant.code }}</div>
+                                        </div>
+                                        <span class="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] {% if item.tenant.is_active %}bg-rose-100 text-rose-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                                            {% if item.tenant.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-5 text-sm font-semibold text-slate-500">This customer has no environments.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center">
+                    <div class="text-lg font-black text-slate-900">No customer selected</div>
+                    <div class="mt-2 text-sm font-semibold text-slate-500">Choose a customer from the left sidebar to open controls and support actions.</div>
+                </div>
+                {% endif %}
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

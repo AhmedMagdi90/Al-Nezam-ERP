@@ -1,0 +1,390 @@
+<!-- Production Log Modal -->
+<div id="productionLogModal" class="fixed inset-0 z-50 hidden" aria-labelledby="modal-title" role="dialog"
+    aria-modal="true" x-data="productionLog()" @open-log-modal.window="openModal($event.detail)">
+
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" @click="closeModal()"></div>
+
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+            <div
+                class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-3xl ring-1 ring-slate-900/5">
+
+                <div class="bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 py-4 sm:px-6">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-base font-bold leading-6 text-white flex items-center gap-2" id="modal-title">
+                            Report Production
+                        </h3>
+                        <button type="button" @click="closeModal()" class="text-indigo-100 hover:text-white transition">
+                            <span class="sr-only">Close</span>
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-indigo-100 opacity-80">
+                        Work Order #<span x-text="woId">--</span>
+                    </p>
+                </div>
+
+                <form @submit.prevent="submitLog" class="px-4 py-5 sm:p-6 space-y-5">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                                Qty Produced
+                            </label>
+                            <input type="number" x-model.number="quantity" @input.debounce.500ms="fetchBOM" required
+                                min="1"
+                                class="block w-full rounded-lg border-slate-300 py-2 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-slate-50 font-bold"
+                                placeholder="0">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">
+                                Shift
+                            </label>
+                            <select x-model="shift"
+                                class="block w-full rounded-lg border-slate-300 py-2 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-slate-50">
+                                <option value="morning">Morning</option>
+                                <option value="evening">Evening</option>
+                                <option value="night">Night</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-bold text-slate-700">Material Usage</h4>
+                            <span class="text-xs text-slate-500" x-show="materials.length > 0">Enter only what this stage used</span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mb-3">
+                            Leave unused BOM materials blank. Add extra materials below if the worker used something not listed on the BOM.
+                        </p>
+
+                        <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-slate-500 uppercase mb-2 px-1"
+                            x-show="materials.length > 0">
+                            <div class="col-span-5">Material</div>
+                            <div class="col-span-3 text-right">Std</div>
+                            <div class="col-span-4 text-right">Actual</div>
+                        </div>
+
+                        <template x-for="(mat, index) in materials" :key="mat.component_id || mat.product_id || mat.name">
+                            <div class="grid grid-cols-12 gap-2 items-center mb-2 text-sm">
+                                <div class="col-span-5 truncate text-slate-700" :title="mat.name" x-text="mat.name"></div>
+                                <div class="col-span-3 text-right text-slate-500">
+                                    <span x-text="mat.expected_qty"></span> <span x-text="mat.unit" class="text-xs"></span>
+                                </div>
+                                <div class="col-span-4 relative">
+                                    <input type="number" x-model.number="mat.actual_qty" step="any"
+                                        class="block w-full rounded-md border-slate-300 py-1 text-right text-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white shadow-sm"
+                                        :class="{'border-amber-400 bg-amber-50': isVarianceHigh(mat)}"
+                                        placeholder="Qty">
+                                    <div x-show="isVarianceHigh(mat)"
+                                        class="absolute -top-7 right-0 bg-amber-100 text-amber-800 text-[10px] px-2 py-0.5 rounded shadow pointer-events-none whitespace-nowrap">
+                                        High Variance
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <div x-show="materials.length === 0 && !loadingBOM" class="text-center py-2 text-xs text-slate-400 italic">
+                            No BOM materials found.
+                        </div>
+
+                        <div x-show="loadingBOM" class="text-center py-2 text-xs text-indigo-500 animate-pulse">
+                            Calculating material needs...
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-sm font-bold text-slate-700">Extra / Non-BOM Materials</h4>
+                            <span class="text-xs text-slate-500">Optional</span>
+                        </div>
+
+                        <div class="space-y-3">
+                            <template x-for="(extra, index) in manualMaterials" :key="extra.key">
+                                <div class="rounded-xl border border-slate-200 bg-white p-3">
+                                    <div class="grid grid-cols-12 gap-3 items-start">
+                                        <div class="col-span-12 md:col-span-5 space-y-2">
+                                            <select x-model="extra.product_id"
+                                                @change="syncManualMaterialSelection(index, $event)"
+                                                class="block w-full rounded-lg border-slate-300 py-2 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-slate-50">
+                                                <option value="">Custom material</option>
+                                                {% for material in material_catalog %}
+                                                <option value="{{ material.id }}" data-name="{{ material.name|escape }}"
+                                                    data-unit="{{ material.unit|default:'pcs'|escape }}">
+                                                    {{ material.name }} ({{ material.unit|default:"pcs" }})
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <input type="text" x-show="!extra.product_id" x-model.trim="extra.material_name"
+                                                placeholder="Material name"
+                                                class="block w-full rounded-lg border-slate-300 py-2 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-slate-50">
+                                            <div x-show="extra.product_id" class="text-[11px] text-slate-500"
+                                                x-text="extra.material_name || 'Catalog material selected'"></div>
+                                        </div>
+
+                                        <div class="col-span-4 md:col-span-3">
+                                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                                                Unit
+                                            </label>
+                                            <input type="text" x-model.trim="extra.unit" placeholder="pcs"
+                                                class="block w-full rounded-lg border-slate-300 py-2 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-slate-50">
+                                        </div>
+
+                                        <div class="col-span-6 md:col-span-3">
+                                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                                                Qty
+                                            </label>
+                                            <input type="number" x-model="extra.quantity" step="any" placeholder="0"
+                                                class="block w-full rounded-lg border-slate-300 py-2 text-right text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-slate-50 font-bold">
+                                        </div>
+
+                                        <div class="col-span-2 md:col-span-1 flex md:justify-end pt-6">
+                                            <button type="button" @click="removeManualMaterial(index)"
+                                                class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-red-500 hover:border-red-200">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3m-7 0h8" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div x-show="manualMaterials.length === 0" class="text-xs text-slate-400 italic">
+                            Add a catalog material or type a custom material name.
+                        </div>
+
+                        <div class="mt-3 pt-3 border-t border-slate-200 text-center">
+                            <button type="button" @click="addManualMaterial"
+                                class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center justify-center gap-1 mx-auto">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Add Extra Material
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <textarea x-model="note" rows="2"
+                            class="block w-full rounded-lg border-slate-300 py-2 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm bg-slate-50"
+                            placeholder="Issues encountered, scrap details..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <button type="button" @click="closeModal()"
+                            class="inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 shadow-sm ring-1 ring-inset ring-slate-300 hover:bg-slate-50">
+                            Cancel
+                        </button>
+                        <button type="submit" :disabled="submitting || quantity <= 0"
+                            class="inline-flex w-full justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                            <span x-show="submitting" class="animate-spin mr-2">...</span>
+                            <span x-text="submitting ? 'Saving...' : 'Submit Log'"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function productionLogNotify(message, type = 'info') {
+        const text = String(message || 'Updated');
+        if (typeof window.appNotify === 'function') {
+            window.appNotify(text, type);
+            return;
+        }
+        if (window.Toast && typeof window.Toast.show === 'function') {
+            const toastType = type === 'error' ? 'danger' : type;
+            window.Toast.show(text, toastType);
+            return;
+        }
+        window.alert(text);
+    }
+
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('productionLog', () => ({
+            open: false,
+            woId: null,
+            machineId: null,
+            quantity: '',
+            shift: 'morning',
+            note: '',
+            materials: [],
+            manualMaterials: [],
+            manualRowSeed: 0,
+            loadingBOM: false,
+            submitting: false,
+
+            init() {
+                const hour = new Date().getHours();
+                if (hour >= 14 && hour < 22) this.shift = 'evening';
+                else if (hour >= 22 || hour < 6) this.shift = 'night';
+            },
+
+            openModal(detail) {
+                this.woId = detail.woId;
+                this.machineId = detail.machineId;
+                this.quantity = '';
+                this.note = '';
+                this.materials = [];
+                this.manualMaterials = [];
+                document.getElementById('productionLogModal').classList.remove('hidden');
+                this.open = true;
+                this.fetchBOM();
+            },
+
+            closeModal() {
+                document.getElementById('productionLogModal').classList.add('hidden');
+                this.open = false;
+            },
+
+            fetchBOM() {
+                if (!this.woId) return;
+
+                this.loadingBOM = true;
+                const endpoint = new URL(`/manufacturing/api/v1/workorders/${this.woId}/bom-requirements/`, window.location.origin);
+                if (this.quantity && Number(this.quantity) > 0) {
+                    endpoint.searchParams.set('qty', this.quantity);
+                }
+
+                fetch(endpoint.toString())
+                    .then(res => res.json())
+                    .then(data => {
+                        const newMaterials = (data.components || []).map(comp => {
+                            const existing = this.materials.find(m =>
+                                (m.product_id && comp.product_id && String(m.product_id) === String(comp.product_id)) ||
+                                String(m.component_id || '') === String(comp.component_id || '')
+                            );
+                            return {
+                                ...comp,
+                                actual_qty: existing ? existing.actual_qty : ''
+                            };
+                        });
+                        this.materials = newMaterials;
+                    })
+                    .catch(err => console.error('BOM Fetch Error:', err))
+                    .finally(() => this.loadingBOM = false);
+            },
+
+            isVarianceHigh(mat) {
+                if (!mat.actual_qty || !mat.expected_qty || Number(mat.expected_qty) <= 0) return false;
+                const diff = Math.abs(mat.actual_qty - mat.expected_qty);
+                const variance = diff / mat.expected_qty;
+                return variance > 0.1;
+            },
+
+            addManualMaterial() {
+                this.manualRowSeed += 1;
+                this.manualMaterials.push({
+                    key: `manual-${this.manualRowSeed}`,
+                    product_id: '',
+                    material_name: '',
+                    unit: 'pcs',
+                    quantity: '',
+                });
+            },
+
+            removeManualMaterial(index) {
+                this.manualMaterials.splice(index, 1);
+            },
+
+            syncManualMaterialSelection(index, event) {
+                const row = this.manualMaterials[index];
+                if (!row) return;
+                const selectedOption = event && event.target && event.target.selectedOptions
+                    ? event.target.selectedOptions[0]
+                    : null;
+                row.product_id = event && event.target ? (event.target.value || '') : '';
+                if (row.product_id && selectedOption) {
+                    row.material_name = selectedOption.dataset.name || row.material_name || '';
+                    row.unit = selectedOption.dataset.unit || row.unit || 'pcs';
+                }
+            },
+
+            buildMaterialsPayload() {
+                const bomMaterials = (this.materials || [])
+                    .filter(m => m && m.actual_qty !== null && m.actual_qty !== '' && Number(m.actual_qty) > 0)
+                    .map(m => ({
+                        component_id: m.component_id || null,
+                        product_id: m.product_id || null,
+                        material_name: m.name || '',
+                        unit: m.unit || 'pcs',
+                        quantity: m.actual_qty
+                    }));
+
+                const extraMaterials = [];
+                for (const row of (this.manualMaterials || [])) {
+                    if (!row || !(Number(row.quantity || 0) > 0)) continue;
+                    const materialName = String(row.material_name || '').trim();
+                    if (!row.product_id && !materialName) {
+                        productionLogNotify('Enter a material name or select a catalog material for each extra row.', 'warning');
+                        return null;
+                    }
+                    extraMaterials.push({
+                        product_id: row.product_id || null,
+                        material_name: materialName,
+                        unit: String(row.unit || 'pcs').trim() || 'pcs',
+                        quantity: row.quantity
+                    });
+                }
+
+                return bomMaterials.concat(extraMaterials);
+            },
+
+            submitLog() {
+                this.submitting = true;
+
+                const materialsPayload = this.buildMaterialsPayload();
+                if (materialsPayload === null) {
+                    this.submitting = false;
+                    return;
+                }
+
+                const payload = {
+                    work_order_id: this.woId,
+                    quantity: this.quantity,
+                    shift: this.shift,
+                    note: this.note,
+                    materials: materialsPayload
+                };
+
+                fetch('{% url "log_production" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            this.closeModal();
+                            location.reload();
+                        } else {
+                            productionLogNotify('Error: ' + (data.error || 'Unknown error'), 'error');
+                        }
+                    })
+                    .catch(err => productionLogNotify('Network error: ' + err, 'error'))
+                    .finally(() => this.submitting = false);
+            }
+        }));
+    });
+
+    window.openLogModal = function (woId, machineId) {
+        window.dispatchEvent(new CustomEvent('open-log-modal', {
+            detail: { woId, machineId }
+        }));
+    };
+    window.closeLogModal = function () {
+        const modal = document.getElementById('productionLogModal');
+        if (modal) modal.classList.add('hidden');
+    };
+</script>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Nezam access details</title>
+</head>
+<body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a;">
+    <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden;">
+        <div style="padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);color:#ffffff;">
+            <div style="font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;opacity:0.8;">Nezam Access</div>
+            <h1 style="margin:12px 0 0;font-size:28px;line-height:1.2;">{{ organization.name }}</h1>
+        </div>
+        <div style="padding:28px;">
+            <h2 style="margin:0 0 12px;font-size:18px;">Admin account</h2>
+            <p style="margin:0 0 8px;"><strong>Email / username:</strong> {{ recipient_email }}</p>
+            <p style="margin:0 0 20px;"><strong>Portal sign in:</strong> <a href="{{ portal_login_url }}">{{ portal_login_url }}</a></p>
+
+            <h2 style="margin:0 0 12px;font-size:18px;">Available environments</h2>
+            {% for environment in environment_entries %}
+            <div style="margin:0 0 16px;padding:18px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc;">
+                <div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#475569;">{{ environment.label }}</div>
+                <div style="margin-top:10px;font-size:14px;"><strong>Tenant code:</strong> {{ environment.tenant_code }}</div>
+                <div style="margin-top:6px;font-size:14px;"><strong>Login URL:</strong> <a href="{{ environment.login_url }}">{{ environment.login_url }}</a></div>
+                {% if environment.setup_url %}
+                <div style="margin-top:6px;font-size:14px;"><strong>Setup / Reset URL:</strong> <a href="{{ environment.setup_url }}">{{ environment.setup_url }}</a></div>
+                {% endif %}
+                <div style="margin-top:6px;font-size:14px;"><strong>Workspace URL:</strong> <a href="{{ environment.app_url }}">{{ environment.app_url }}</a></div>
+                {% if environment.hostname %}
+                <div style="margin-top:6px;font-size:14px;"><strong>Hostname:</strong> {{ environment.hostname }}</div>
+                {% endif %}
+                {% if environment.description %}
+                <div style="margin-top:10px;font-size:14px;color:#475569;">{{ environment.description }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <p style="margin:0 0 20px;font-size:14px;">
+                <strong>Environment portal:</strong>
+                <a href="{{ portal_environment_url }}">{{ portal_environment_url }}</a>
+            </p>
+
+            {% if demo_accounts %}
+            <h2 style="margin:0 0 12px;font-size:18px;">Seeded demo users</h2>
+            <div style="margin:0 0 16px;padding:18px;border:1px dashed #0ea5e9;border-radius:16px;background:#ecfeff;">
+                {% for role, username in demo_accounts.items %}
+                <div style="margin-top:{% if forloop.first %}0{% else %}8px{% endif %};font-size:14px;"><strong>{{ role|title }}:</strong> {{ username }}</div>
+                {% endfor %}
+                <div style="margin-top:12px;font-size:14px;"><strong>Shared demo password:</strong> {{ demo_password }}</div>
+            </div>
+            {% endif %}
+
+            <div style="font-size:14px;color:#475569;">
+                <div>Use the setup/reset link above if you want to set or replace the admin password for a specific environment.</div>
+                <div style="margin-top:8px;">Test and Live environments appear here as soon as they are provisioned for your organization.</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

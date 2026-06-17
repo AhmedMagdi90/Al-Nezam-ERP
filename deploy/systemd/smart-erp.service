@@ -1,0 +1,17 @@
+[Unit]
+Description=Nezam Django application
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=www-data
+WorkingDirectory=/opt/smart-erp
+EnvironmentFile=/opt/smart-erp/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/smart-erp/.venv/bin/gunicorn kemet_erp.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 120
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

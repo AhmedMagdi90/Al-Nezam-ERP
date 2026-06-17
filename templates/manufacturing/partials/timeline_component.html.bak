@@ -1,0 +1,258 @@
+{% load static %}
+<!-- Timeline Component (Gantt Only) -->
+
+<!-- FORCE LAYER CSS to fix Z-Index Issues -->
+<style>
+    /* CUSTOM VIS.JS OVERRIDES */
+    .vis-time-axis .vis-grid.vis-vertical {
+        border-left: 1px dashed #e2e8f0;
+        opacity: 0.5;
+    }
+
+    .vis-item {
+        border-color: transparent !important;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .vis-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .vis-item.vis-selected {
+        box-shadow: 0 0 0 3px #3b82f6, 0 6px 12px rgba(59, 130, 246, 0.2);
+        z-index: 100 !important;
+    }
+
+    .vis-item .vis-item-content {
+        padding: 6px 10px;
+    }
+
+    /* Custom Scrollbar for Timeline */
+    #timelineScrollWrapper::-webkit-scrollbar {
+        height: 12px;
+        /* Thicker for visibility */
+        width: 12px;
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 4px;
+        border: 2px solid #f1f5f9;
+        /* Padding effect */
+    }
+
+    #timelineScrollWrapper::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    /* Late Order Styling */
+    .late-order {
+        border: 2px solid #dc2626 !important;
+        background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+        box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.1) !important;
+    }
+
+    .late-order:hover {
+        border-color: #b91c1c !important;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+    }
+</style>
+
+
+<!-- Timeline Content Wrapper -->
+<div class="flex-1 flex flex-col min-h-0 h-full">
+
+    <!-- Ultra-Compact Controls - Single Row -->
+    <div class="flex items-center gap-2 py-1 flex-shrink-0">
+
+
+        <!-- Search Icon Button -->
+        <button
+            class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-white hover:border-blue-500 transition-all text-slate-600 hover:text-blue-600"
+            onclick="document.getElementById('timelineSearch').classList.toggle('hidden')" title="Search">
+            <i class="ph ph-magnifying-glass text-sm"></i>
+        </button>
+
+        <!-- Hidden Search Input (toggleable) -->
+        <input type="text" id="timelineSearch" placeholder="Search Machine/WO"
+            class="hidden pl-3 pr-3 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all w-48">
+
+        <!-- Status Filter Dropdown -->
+        <select id="timelineFilter" onchange="filterTimeline()"
+            class="pl-3 pr-8 py-2 rounded-lg text-xs bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-600 font-medium cursor-pointer hover:bg-white transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:10px] bg-no-repeat bg-[right:10px_center]">
+            <option value="open" selected>Open</option>
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+            <option value="maintenance">Maintenance</option>
+        </select>
+
+        <!-- Divider -->
+        <div class="h-6 w-px bg-slate-200"></div>
+
+        <!-- Shift Selector - Icons Only -->
+        <div class="flex items-center gap-1" x-data="{ selectedShift: 'all' }">
+            <span class="text-[10px] font-bold text-slate-500 mr-1">Shift:</span>
+            <div class="flex bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                <button @click="selectedShift = 'all'; setTimelineShift('all')"
+                    :class="selectedShift === 'all' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="All Shifts (24h)">
+                    <i class="ph ph-clock text-sm"></i>
+                </button>
+                <button @click="selectedShift = 'day'; setTimelineShift('day')"
+                    :class="selectedShift === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Morning Shift (6AM-2PM)">
+                    <i class="ph ph-sun text-sm"></i>
+                </button>
+                <button @click="selectedShift = 'middle'; setTimelineShift('middle')"
+                    :class="selectedShift === 'middle' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Afternoon Shift (2PM-10PM)">
+                    <i class="ph ph-sun-dim text-sm"></i>
+                </button>
+                <button @click="selectedShift = 'night'; setTimelineShift('night')"
+                    :class="selectedShift === 'night' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Night Shift (10PM-6AM)">
+                    <i class="ph ph-moon text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- View Range Selector - Icons Only -->
+        <div class="flex items-center gap-1" x-data="{ selectedView: 'day' }">
+            <span class="text-[10px] font-bold text-slate-500 mr-1">View:</span>
+            <div class="flex bg-white p-0.5 rounded-lg border border-slate-200 shadow-sm">
+                <button @click="selectedView = 'day'; setGanttView('day')"
+                    :class="selectedView === 'day' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Day View">
+                    <i class="ph ph-calendar-blank text-sm"></i>
+                </button>
+                <button @click="selectedView = 'week'; setGanttView('week')"
+                    :class="selectedView === 'week' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Week View">
+                    <i class="ph ph-calendar text-sm"></i>
+                </button>
+                <button @click="selectedView = 'month'; setGanttView('month')"
+                    :class="selectedView === 'month' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'"
+                    class="p-2 rounded-md transition-all" title="Month View">
+                    <i class="ph ph-calendar-dots text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Spacer -->
+        <div class="flex-1"></div>
+
+        <!-- Refresh Button -->
+        <button onclick="window.initGanttChart(true)"
+            class="p-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-all shadow-sm hover:shadow-md"
+            title="Refresh Timeline">
+            <i class="ph ph-arrow-clockwise text-sm"></i>
+        </button>
+
+        <!-- Status Legend Toggle -->
+        <button
+            class="p-2 rounded-lg bg-slate-50 border border-slate-200 hover:bg-white hover:border-slate-300 transition-all text-slate-600"
+            onclick="document.getElementById('statusLegend').classList.toggle('hidden')" title="Toggle Status Legend">
+            <i class="ph ph-info text-sm"></i>
+        </button>
+    </div>
+
+    <!-- Smart Filter Bar -->
+    <div class="flex flex-wrap items-center gap-2 pb-2 px-1 flex-shrink-0">
+        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Smart Filters</span>
+        <div class="flex flex-wrap items-center gap-3 bg-white border border-slate-200 rounded-full px-3 py-2 shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="ph ph-magnifying-glass text-slate-400"></i>
+                <input type="text" id="timelineSmartSearch" placeholder="Search WO / product / machine"
+                    oninput="window.filterTimeline && window.filterTimeline()"
+                    class="text-xs font-semibold border border-slate-200 rounded-full px-3 py-1 bg-slate-50 hover:bg-white transition-all w-56">
+            </div>
+            <div class="h-4 w-px bg-slate-200"></div>
+            <div class="flex items-center gap-2">
+                <i class="ph ph-factory text-slate-400"></i>
+                <span class="text-[11px] font-semibold text-slate-500">Machine</span>
+                <select id="timelineMachineFilter" onchange="filterTimeline()"
+                    class="text-xs font-semibold border border-slate-200 rounded-full px-3 py-1 bg-slate-50 hover:bg-white transition-all">
+                    <option value="all">All</option>
+                    <option value="active">Active only</option>
+                    <option value="idle">Idle only</option>
+                    <option value="maintenance">Maintenance</option>
+                </select>
+            </div>
+            <div class="h-4 w-px bg-slate-200"></div>
+            <div class="flex items-center gap-2">
+                <i class="ph ph-stack text-slate-400"></i>
+                <span class="text-[11px] font-semibold text-slate-500">Stage</span>
+                <select id="timelineStageFilter" onchange="filterTimeline()"
+                    class="text-xs font-semibold border border-slate-200 rounded-full px-3 py-1 bg-slate-50 hover:bg-white transition-all min-w-[140px]">
+                    <option value="all">All Stages</option>
+                    <option value="__none__">Unspecified</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collapsible Status Legend -->
+    <div id="statusLegend" class="hidden flex items-center gap-3 text-xs pb-2 px-2 flex-shrink-0">
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Pending</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-blue-600 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Active</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+            <span class="text-slate-600 font-medium">Complete</span>
+        </div>
+    </div>
+
+
+    <div
+        class="flex justify-between items-center mb-1 p-2 bg-blue-50 rounded-lg border border-blue-100/50 flex-shrink-0">
+        <div class="flex items-center gap-2 text-xs text-blue-700">
+            <i class="ph ph-info text-sm"></i>
+            <span class="font-medium">Click empty slot to schedule. Drag to move orders.</span>
+        </div>
+        <div class="text-xs text-blue-600 font-medium">
+            <i class="ph ph-clock text-sm"></i>
+            Current Time: {% now "H:i" %}
+        </div>
+    </div>
+
+    <div class="flex gap-4 flex-1 min-h-0">
+        <!-- Main Gantt Chart (Vis.js) -->
+        <!-- Custom CSS Grid Timeline -->
+        <div class="flex-1 overflow-hidden border rounded-lg bg-white relative flex flex-col shadow-inner min-h-0">
+            <!-- Scroll Container (Fixed Height Fix) -->
+            <div class="w-full flex-1 overflow-y-auto overflow-x-auto" id="timelineScrollWrapper" style="height: 100%;">
+                <div id="customTimeline" class="min-w-full relative">
+                    <!-- Header (Time Axis) -->
+                    <div id="timelineHeader"
+                        class="sticky top-0 z-40 bg-gray-50 border-b border-gray-200 h-10 flex text-xs font-bold text-gray-500">
+                        <!-- JS will populate grid cols here -->
+                    </div>
+
+                    <!-- Body (Machine Rows) -->
+                    <div id="timelineBody" class="relative">
+                        <!-- JS will populate machine rows here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

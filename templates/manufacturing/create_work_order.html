@@ -1,0 +1,708 @@
+{% extends "manufacturing/base_dashboard.html" %}
+{% load static i18n tenant_i18n %}
+{% load form_tags %}
+
+{% block title %}Planner Dashboard - Nezam{% endblock %}
+
+{% block content %}
+<!-- 🔧 TOOLBAR & HEADER -->
+<!-- 🔄 Top Toolbar Removed (Now in App Shell) -->
+
+<!-- 🔄 APP ROUTING SWITCHER -->
+<div class="h-full flex flex-col relative">
+
+  <!-- 🏭 MODULE: MANUFACTURING -->
+  <div x-show="activeModule.id === 'manufacturing'" class="h-full flex flex-col w-full" x-data>
+
+    <!-- View Controller: Planner Board -->
+    <div x-show="activeTab === 'board'" class="h-full animate-fade-in">
+      <div
+        x-effect="if(activeTab === 'board') setTimeout(() => { if(typeof renderTimeline === 'function') renderTimeline(); }, 50)"
+        class="h-full">
+        <!-- Wrapper for Timeline -->
+        <div class="glass-panel rounded-2xl p-6 h-full flex flex-col">
+          <div class="flex justify-between items-center mb-4 flex-shrink-0">
+            <h3 class="text-lg font-bold text-slate-800">{% tenant_trans "Production Schedule" %}</h3>
+            <div class="flex gap-2">
+              <span
+                class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100 flex items-center gap-1">
+                <i class="ph ph-mouse-left"></i> Drag to Schedule
+              </span>
+            </div>
+          </div>
+          <div id="timelineContainer" class="rounded-xl overflow-hidden border border-slate-200/50 flex-1 relative">
+            {% include "manufacturing/partials/timeline.html" %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Controller: Work Orders -->
+    <div x-show="activeTab === 'orders'" class="h-full animate-fade-in" style="display: none;">
+      <div class="h-full overflow-y-auto custom-scrollbar glass-panel rounded-2xl p-4">
+        {% include "manufacturing/partials/workorders_list.html" %}
+      </div>
+    </div>
+
+    <!-- View Controller: Resources -->
+    <div x-show="activeTab === 'resources'" class="h-full animate-fade-in" x-data="{ activeMachineFilter: 'all' }">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full overflow-y-auto p-2">
+        <!-- Machines List -->
+        <div class="glass-panel-premium rounded-2xl p-6 border border-slate-200/50">
+          <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                    <i class="ph ph-engine text-lg"></i>
+                </div>
+                {% tenant_trans "Machines" %}
+            </h3>
+            <button id="openMachineModal"
+              class="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-200/50 transition-all hover:shadow-xl hover:scale-[1.02] flex items-center gap-2">
+              <i class="ph ph-plus"></i>
+              {% tenant_trans "Add" %}
+            </button>
+          </div>
+
+          <!-- Filter Tabs -->
+          <div class="flex gap-2 mb-6 p-1 bg-gray-50 rounded-xl border border-gray-200">
+            <button @click="activeMachineFilter = 'all'" 
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              :class="activeMachineFilter === 'all' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'">
+              All Machines
+            </button>
+            <button @click="activeMachineFilter = 'active'" 
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              :class="activeMachineFilter === 'active' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'">
+              Active
+            </button>
+            <button @click="activeMachineFilter = 'idle'" 
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              :class="activeMachineFilter === 'idle' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'">
+              Idle
+            </button>
+            <button @click="activeMachineFilter = 'maintenance'" 
+              class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              :class="activeMachineFilter === 'maintenance' ? 'bg-red-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'">
+              Maintenance
+            </button>
+          </div>
+
+          <div class="space-y-3" x-data="{ activeMachineFilter: 'all' }">
+            {% for machine in machines %}
+            <div x-show="activeMachineFilter === 'all' || 
+                      (activeMachineFilter === 'active' && '{{ machine.status|default:"active" }}' === 'active') ||
+                      (activeMachineFilter === 'idle' && '{{ machine.status|default:"active" }}' === 'idle') ||
+                      (activeMachineFilter === 'maintenance' && '{{ machine.status|default:"active" }}' === 'maintenance')"
+              class="flex items-center p-4 rounded-xl border border-slate-200/50 bg-white hover:shadow-lg transition-all hover:scale-[1.01] cursor-pointer group">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-3">
+                  {% if machine.image %}
+                  <img src="{{ machine.image.url }}" alt="{{ machine.display_label }}"
+                    class="w-12 h-12 rounded-xl object-cover border border-slate-200 shadow-sm">
+                  {% else %}
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-50 border border-slate-200 flex items-center justify-center">
+                    <i class="ph ph-engine text-lg text-slate-600"></i>
+                  </div>
+                  {% endif %}
+                  <div>
+                    <p class="font-bold text-slate-800 text-lg">{{ machine.display_label }}</p>
+                    <p class="text-sm text-slate-500 font-medium">{{ machine.type|default:"General" }}</p>
+                  </div>
+                </div>
+                
+                <!-- Planner Information -->
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                      <i class="ph ph-calendar-blank text-blue-600 text-sm"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-400">Next Scheduled</p>
+                      <p class="text-sm font-semibold text-slate-700">Today, 2:00 PM</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                      <i class="ph ph-gauge text-emerald-600 text-sm"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-400">Work Load</p>
+                      <p class="text-sm font-semibold text-slate-700">85%</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Status & Debug Info -->
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                      <i class="ph ph-clock text-amber-600 text-sm"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-400">Status</p>
+                      <p class="text-sm font-semibold text-slate-700">Running</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                      <i class="ph ph-warning text-red-600 text-sm"></i>
+                    </div>
+                    <div>
+                      <p class="text-xs text-slate-400">Debug</p>
+                      <p class="text-sm font-semibold text-slate-700">Error: Sensor #3</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Status Badge -->
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold"
+                      :class="'{{ machine.status|default:"active" }}' === 'active' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 
+                             '{{ machine.status|default:"active" }}' === 'idle' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                             'bg-red-100 text-red-700 border border-red-200'">
+                      <span x-text="'{{ machine.status|default:"active" }}' === 'active' ? 'Active' : 
+                                     '{{ machine.status|default:"active" }}' === 'idle' ? 'Idle' : 
+                                     '{{ machine.status|default:"active" }}' === 'maintenance' ? 'Maintenance' : 'Unknown'"></span>
+                    </span>
+                    
+                    <!-- Mini Task Status -->
+                    <div class="flex items-center gap-1">
+                      <div class="w-2 h-2 rounded-full" 
+                           :class="'{{ machine.status|default:"active" }}' === 'active' ? 'bg-emerald-500' : 
+                                      '{{ machine.status|default:"active" }}' === 'idle' ? 'bg-amber-500' : 
+                                      'bg-red-500'"></div>
+                      <div class="w-2 h-2 rounded-full bg-gray-300"></div>
+                      <div class="w-2 h-2 rounded-full bg-gray-300"></div>
+                    </div>
+                  </div>
+                  
+                  <!-- Progress Indicator -->
+                  <div class="flex items-center gap-2">
+                    <div class="text-xs text-slate-400">Progress</div>
+                    <div class="flex-1 w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-500" 
+                           :style="`width: ${'{{ machine.status|default:"active" }}' === 'active' ? '75' : '25'}%`"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-12">
+              <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-engine text-2xl text-gray-400"></i>
+              </div>
+              <p class="text-gray-500 font-medium">No machines found</p>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Stages & BOMs Placeholders -->
+        <div class="glass-panel rounded-2xl p-6">
+          <h3 class="text-lg font-bold text-slate-800 mb-4">Production Stages</h3>
+          <p class="text-slate-400 text-sm">Configure your production routing stages here.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 📦 MODULE: INVENTORY -->
+  <div x-show="activeModule.id === 'inventory'"
+    class="h-full w-full p-8 flex flex-col items-center justify-center text-center animate-fade-in"
+    style="display: none;">
+    <div class="bg-white p-8 rounded-3xl shadow-xl border border-blue-50 max-w-lg">
+      <div class="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
+        <i class="ph ph-package text-3xl"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-800 mb-2">Inventory Management</h2>
+      <p class="text-slate-500 mb-6">Track raw materials, WIP, and finished goods.</p>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="p-4 bg-gray-50 rounded-xl">
+          <div class="text-2xl font-bold text-slate-800">1,240</div>
+          <div class="text-xs text-slate-500 font-bold uppercase">Items in Stock</div>
+        </div>
+        <div class="p-4 bg-gray-50 rounded-xl">
+          <div class="text-2xl font-bold text-emerald-600">$42.5k</div>
+          <div class="text-xs text-slate-500 font-bold uppercase">Total Value</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📊 MODULE: REPORTS -->
+  <div x-show="activeModule.id === 'reports'"
+    class="h-full w-full p-8 flex flex-col items-center justify-center text-center animate-fade-in"
+    style="display: none;">
+    <div class="bg-white p-8 rounded-3xl shadow-xl border border-purple-50 max-w-lg">
+      <div class="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-6 text-purple-600">
+        <i class="ph ph-chart-line-up text-3xl"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-800 mb-2">Reports & Analytics</h2>
+      <button class="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-bold">
+        Generate Yield Report
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODALS -->
+<!-- 🆕 CREATE ORDER MODAL -->
+<div x-cloak x-show="showCreateModal"
+  class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-md" x-transition.opacity>
+
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200/50"
+    @click.away="showCreateModal = false" x-transition.scale>
+
+    <!-- Modal Header -->
+    <div class="px-8 py-6 border-b bg-gradient-to-r from-slate-50 to-blue-50 flex justify-between items-center">
+      <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+          <i class="ph ph-plus text-lg"></i>
+        </div>
+        {% tenant_trans "Create New Work Order" %}
+      </h2>
+      <button @click="showCreateModal = false" 
+        class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all flex items-center justify-center">
+        <i class="ph ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Modal Body (Form) -->
+    <div class="p-8 overflow-y-auto flex-1">
+      <form method="post" class="space-y-6" id="createOrderForm">
+        {% csrf_token %}
+        
+        <!-- Product Selection Section -->
+        <div class="glass-panel-premium p-6 rounded-2xl border border-slate-200/50">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+            Product Selection
+          </h3>
+          
+          {% for field in form %}
+          {% if field.name == 'bom' %}
+          <div class="group/field">
+            <label
+              class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <i class="ph ph-package text-slate-400"></i>
+              {{ field.label }}
+            </label>
+            <div class="relative">
+              {{ field }}
+              <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <i class="ph ph-caret-down text-lg"></i>
+              </div>
+            </div>
+            {% if field.help_text %}
+            <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
+              <i class="ph ph-info"></i> {{ field.help_text }}
+            </p>
+            {% endif %}
+          </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+
+        <!-- Production Details Section -->
+        <div class="glass-panel-premium p-6 rounded-2xl border border-slate-200/50">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
+            Production Details
+          </h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for field in form %}
+            {% if field.name == 'quantity' %}
+            <div class="group/field">
+              <label
+                class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <i class="ph ph-hash text-slate-400"></i>
+                {{ field.label }}
+              </label>
+              <div class="relative">
+                {{ field }}
+                <div class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <i class="ph ph-cube text-lg"></i>
+                </div>
+              </div>
+              {% if field.help_text %}
+              <p class="text-xs text-slate-400 mt-2">{{ field.help_text }}</p>
+              {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if field.name == 'start_date' %}
+            <div class="group/field">
+              <label
+                class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <i class="ph ph-calendar text-slate-400"></i>
+                {{ field.label }}
+              </label>
+              <div class="relative">
+                {{ field }}
+                <div class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <i class="ph ph-calendar-blank text-lg"></i>
+                </div>
+              </div>
+              {% if field.help_text %}
+              <p class="text-xs text-slate-400 mt-2">{{ field.help_text }}</p>
+              {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Additional Fields -->
+        {% for field in form %}
+        {% if field.name not in 'bom,quantity,start_date' %}
+        <div class="group/field">
+          <label
+            class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+            <i class="ph ph-textbox text-slate-400"></i>
+            {{ field.label }}
+          </label>
+          <div class="relative">
+            {{ field }}
+          </div>
+          {% if field.help_text %}
+          <p class="text-xs text-slate-400 mt-2">{{ field.help_text }}</p>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </form>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="p-6 border-t bg-gradient-to-r from-slate-50 to-blue-50 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <button type="button" @click="runSimulation()"
+          class="bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-700 px-5 py-2.5 rounded-xl hover:from-indigo-100 hover:to-indigo-200 transition-all font-bold flex items-center gap-2 text-sm border border-indigo-200/50">
+          <i class="ph ph-sparkle"></i>
+          {% tenant_trans "Simulate Order" %}
+        </button>
+      </div>
+      
+      <div class="flex items-center gap-3">
+        <button type="button" @click="showCreateModal = false"
+          class="px-5 py-2.5 rounded-xl text-slate-600 font-semibold hover:bg-slate-100 transition-all border border-slate-200">
+          Cancel
+        </button>
+        <button type="submit" form="createOrderForm"
+          class="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2.5 rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-200/50 transition-all font-bold flex items-center gap-2 text-sm hover:shadow-xl hover:scale-[1.02]">
+          <i class="ph ph-rocket-launch"></i>
+          {% tenant_trans "Create Work Order" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modals -->
+{% include "manufacturing/modals.html" %}
+{% include "manufacturing/modals/bom_modal.html" %}
+{% include "manufacturing/modals/upload_modal.html" %}
+
+<!-- Edit Work Order Modal -->
+<div id="workOrderModal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden flex items-center justify-center z-50">
+  <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden transform transition-all border border-slate-200/50">
+    <div class="flex justify-between items-center mb-6 p-6 border-b bg-gradient-to-r from-slate-50 to-blue-50">
+      <h3 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
+          <i class="ph ph-note-pencil text-lg"></i>
+        </div>
+        Edit Work Order #<span id="modal-wo-id" class="text-blue-600"></span>
+      </h3>
+      <button onclick="closeWorkOrderModal()" 
+        class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all flex items-center justify-center">
+        <i class="ph ph-x text-lg"></i>
+      </button>
+    </div>
+
+    <div class="p-6">
+      <form id="editWorkOrderForm" class="space-y-6">
+        <input type="hidden" id="modal-wo-db-id" name="id">
+
+        <!-- Product Information -->
+        <div class="glass-panel-premium p-6 rounded-2xl border border-slate-200/50">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+            Product Information
+          </h3>
+          
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <i class="ph ph-package text-slate-400"></i>
+              Product
+            </label>
+            <input type="text" id="modal-wo-product"
+              class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed font-medium"
+              readonly>
+          </div>
+        </div>
+
+        <!-- Production Details -->
+        <div class="glass-panel-premium p-6 rounded-2xl border border-slate-200/50">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
+            Production Details
+          </h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <i class="ph ph-hash text-slate-400"></i>
+                Quantity
+              </label>
+              <input type="number" id="modal-wo-quantity"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed font-medium"
+                readonly>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <i class="ph ph-calendar text-slate-400"></i>
+                Start Date
+              </label>
+              <input type="text" id="modal-wo-start"
+                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed font-medium"
+                readonly>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status Management -->
+        <div class="glass-panel-premium p-6 rounded-2xl border border-slate-200/50">
+          <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <div class="w-2 h-2 bg-amber-500 rounded-full"></div>
+            Status Management
+          </h3>
+          
+          <div>
+            <label class="block text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+              <i class="ph ph-flag text-slate-400"></i>
+              Order Status
+            </label>
+            <select id="modal-wo-status" name="status"
+              class="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition bg-white">
+              <option value="pending">Pending</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="halted">Halted</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-between items-center pt-6 border-t">
+          <div class="text-sm text-slate-400">
+            <i class="ph ph-info"></i> Changes will be saved immediately
+          </div>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="closeWorkOrderModal()"
+              class="px-6 py-3 rounded-xl text-slate-600 font-semibold hover:bg-slate-100 transition-all border border-slate-200">
+              Cancel
+            </button>
+            <button type="submit"
+              class="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-200/50 transition-all hover:shadow-xl hover:scale-[1.02]">
+              <i class="ph ph-check-circle mr-2"></i>
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script src="{% static 'js/manufacturing/boms.js' %}?v=2.3"></script>
+<script src="{% static 'js/manufacturing/timeline.js' %}?v=253"></script>
+<script>
+  // Simple work order form logic
+  // Simple work order form logic
+  // Defined on window to ensure global availability
+  window.switchTab = function (tabId) {
+    console.log("Switching to tab:", tabId);
+
+    // Hide all contents
+    document.querySelectorAll('.tab-content').forEach(el => {
+      el.classList.add('hidden');
+      el.classList.remove('block'); // Ensure block is removed if present
+    });
+
+    // Deactivate all buttons
+    document.querySelectorAll('.tab-btn').forEach(el => {
+      el.classList.remove('text-indigo-600', 'bg-indigo-50', 'bg-white/60');
+      el.classList.add('text-slate-600');
+    });
+
+    // Show selected content
+    const content = document.getElementById(tabId);
+    if (content) {
+      content.classList.remove('hidden');
+      content.classList.add('block'); // Explicitly add block
+    } else {
+      console.error("Tab content not found:", tabId);
+    }
+
+    // Activate selected button
+    const btn = document.getElementById('btn-' + tabId);
+    if (btn) {
+      btn.classList.add('text-indigo-600', 'bg-indigo-50');
+      btn.classList.remove('text-slate-600');
+    } else {
+      console.error("Tab button not found:", 'btn-' + tabId);
+    }
+
+    // Lazy Load Timeline
+    if (tabId === 'tab-timeline') {
+      if (typeof refreshTimeline === 'function') {
+        refreshTimeline();
+      } else {
+        console.error("refreshTimeline function not found! Check boms.js loading.");
+      }
+    }
+  };
+
+  // Modal Triggers
+  document.getElementById('openBOMModal').addEventListener('click', () => {
+    if (window.openBOMModal) window.openBOMModal(true);
+  });
+
+  // Focus Mode Logic
+  function toggleFocusMode() {
+    const navbar = document.querySelector('nav');
+    const focusBtn = document.getElementById('focusBtn');
+
+    if (navbar.classList.contains('hidden')) {
+      navbar.classList.remove('hidden');
+      focusBtn.classList.remove('bg-indigo-100', 'text-indigo-700');
+      focusBtn.classList.add('hover:bg-slate-100');
+    } else {
+      navbar.classList.add('hidden');
+      focusBtn.classList.add('bg-indigo-100', 'text-indigo-700');
+      focusBtn.classList.remove('hover:bg-slate-100');
+    }
+  }
+
+  // Auto-Select Tab if URL hash exists
+  if (window.location.hash) {
+    const hash = window.location.hash.substring(1); // remove #
+    if (document.getElementById(hash)) {
+      switchTab(hash);
+    }
+  }
+
+  // 🔮 Simulation Logic
+  function runSimulation() {
+    const bomSelect = document.getElementById('id_bom'); // Ensure form has this ID, or use querySelector
+    const qtyInput = document.getElementById('id_quantity');
+
+    // Fallback selectors if IDs differ (standard Django form rendering uses id_fieldname)
+    const bomId = bomSelect ? bomSelect.value : document.querySelector('[name="bom"]').value;
+    const qty = qtyInput ? qtyInput.value : document.querySelector('[name="quantity"]').value;
+
+    if (!bomId) {
+      alert("Please select a BOM first.");
+      return;
+    }
+
+    const btn = document.querySelector('button[onclick="runSimulation()"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span>⏳</span> Computing...';
+    btn.disabled = true;
+
+    fetch("/manufacturing/simulate-work-order/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: JSON.stringify({ bom_id: bomId, quantity: qty })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Show Modal
+          document.getElementById('simCost').textContent = "$" + data.data.estimated_cost;
+          document.getElementById('simTime').textContent = data.data.estimated_time_hours + " Hours";
+          document.getElementById('simBottleneck').textContent = data.data.bottleneck; // Fixed key access
+
+          document.getElementById('simModal').classList.remove('hidden');
+        } else {
+          alert("Simulation Failed: " + data.error);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Server Error during simulation.");
+      })
+      .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      });
+  }
+
+  // --- Work Order Modal (Edit) ---
+  window.openWorkOrderModal = function (woId) {
+    console.log("Opening edit modal for WO:", woId);
+
+    const modal = document.getElementById('workOrderModal');
+    if (!modal) {
+      alert(`Edit Work Order #${woId} (Modal template missing)`);
+      return;
+    }
+
+    // Fetch details
+    fetch(`/manufacturing/api/work-order/${woId}/`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const wo = data.work_order;
+          // Populate fields matching HTML IDs
+          const elIdSpan = document.getElementById('modal-wo-id');
+          const elDbId = document.getElementById('modal-wo-db-id');
+          const elProduct = document.getElementById('modal-wo-product');
+          const elQuantity = document.getElementById('modal-wo-quantity');
+          const elStart = document.getElementById('modal-wo-start');
+          const elStatus = document.getElementById('modal-wo-status');
+
+          if (elIdSpan) elIdSpan.textContent = wo.id;
+          if (elDbId) elDbId.value = wo.id;
+          if (elProduct) elProduct.value = wo.product_name;
+          if (elQuantity) elQuantity.value = wo.quantity;
+          if (elStart) elStart.value = wo.start_date || 'Not scheduled';
+          if (elStatus) elStatus.value = wo.status;
+
+          // Progress not in this modal template yet
+
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        } else {
+          alert("Error: " + data.error);
+        }
+      })
+      .catch(e => {
+        console.error(e);
+        alert("Network error: " + e);
+      });
+  };
+
+  window.closeWorkOrderModal = function () {
+    const modal = document.getElementById('workOrderModal');
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+  };
+</script>
+{% endblock %}

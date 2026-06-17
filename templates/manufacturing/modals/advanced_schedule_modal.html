@@ -1,0 +1,329 @@
+<!-- Advanced Multi-Stage Scheduling Modal -->
+<div x-data="advancedScheduleLogic()" x-show="showAdvancedModal" x-cloak
+    @advanced-schedule-open.window="showAdvancedModal = true; initAdvancedSchedule($event.detail)"
+    class="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md" x-transition.opacity>
+
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-hidden flex flex-col border border-slate-200/50"
+        @click.away="showAdvancedModal = false" x-transition.scale>
+
+        <!-- Header -->
+        <div class="px-8 py-6 border-b bg-gradient-to-r from-slate-50 to-purple-50 flex justify-between items-center">
+            <div>
+                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                        <i class="ph ph-flow-arrow text-lg"></i>
+                    </div>
+                    Advanced Multi-Stage Scheduling
+                </h2>
+                <p class="text-sm text-slate-500 mt-1">
+                    <span
+                        x-text="'WO #' + woData.id + ' • ' + woData.product_name + ' • ' + woData.quantity + ' units'"></span>
+                    <span x-show="woData.due_date" class="ml-2">
+                        • Due: <span x-text="new Date(woData.due_date).toLocaleDateString()"></span>
+                    </span>
+                </p>
+            </div>
+            <button @click="showAdvancedModal = false"
+                class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all flex items-center justify-center">
+                <i class="ph ph-x text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Body: Two-Column Layout -->
+        <div class="flex-1 overflow-hidden flex">
+
+            <!-- LEFT: Production Stages -->
+            <div class="w-1/2 border-r border-slate-200 flex flex-col">
+                <div class="px-6 py-4 border-b bg-slate-50">
+                    <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <i class="ph ph-list-checks text-purple-600"></i>
+                        Production Stages
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">Assign each stage to a machine and set dependencies</p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+                    <template x-for="(stage, idx) in stages" :key="stage.id">
+                        <div class="bg-white border-2 rounded-xl p-4 hover:shadow-md transition-all"
+                            :style="'border-left: 4px solid ' + stage.color">
+
+                            <!-- Stage Header -->
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="text-slate-400">
+                                    <i class="ph ph-dots-six-vertical text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="text-sm font-bold text-slate-800"
+                                        x-text="'Stage ' + (idx + 1) + ': ' + stage.name"></h4>
+                                    <p class="text-xs text-slate-500"
+                                        x-text="'Est. ' + stage.duration_hours + ' hours'"></p>
+                                </div>
+                                <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                                    :style="'background-color: ' + stage.color" x-text="idx + 1"></div>
+                            </div>
+
+                            <!-- Machine Selection -->
+                            <div class="space-y-2 mb-3">
+                                <label class="block text-xs font-bold text-slate-600">Assign to Machine</label>
+                                <div class="relative">
+                                    <i
+                                        class="ph ph-gear absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                    <select x-model="stage.machine_id"
+                                        class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-100 focus:border-purple-500 appearance-none">
+                                        <option value="">Select Machine...</option>
+                                        <template x-for="m in machines" :key="m.id">
+                                            <option :value="m.id" x-text="m.name + ' (' + m.status + ')'"></option>
+                                        </template>
+                                    </select>
+                                    <i
+                                        class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                            <!-- Quantity & Start Date -->
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div class="space-y-1">
+                                    <label class="block text-xs font-bold text-slate-600">Quantity</label>
+                                    <input type="number" x-model="stage.quantity"
+                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-100 focus:border-purple-500">
+                                </div>
+                                <div class="space-y-1">
+                                    <label class="block text-xs font-bold text-slate-600">Start Date</label>
+                                    <input type="datetime-local" x-model="stage.start_date"
+                                        class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-100 focus:border-purple-500">
+                                </div>
+                            </div>
+
+                            <!-- Dependencies -->
+                            <div class="space-y-1">
+                                <label class="block text-xs font-bold text-slate-600">Dependencies</label>
+                                <div class="relative">
+                                    <i
+                                        class="ph ph-git-branch absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                                    <select x-model="stage.depends_on_id"
+                                        class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-purple-100 focus:border-purple-500 appearance-none">
+                                        <option value="">No dependencies (Start immediately)</option>
+                                        <template x-for="(s, i) in stages.slice(0, idx)" :key="s.id">
+                                            <option :value="s.id"
+                                                x-text="'After: Stage ' + (i + 1) + ' (' + s.name + ')'"></option>
+                                        </template>
+                                    </select>
+                                    <i
+                                        class="ph ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                                </div>
+                            </div>
+
+                        </div>
+                    </template>
+
+                    <!-- Empty State -->
+                    <div x-show="stages.length === 0" class="text-center py-12">
+                        <i class="ph ph-warning-circle text-4xl text-slate-300"></i>
+                        <p class="text-sm text-slate-500 mt-2">No BOM stages found for this product</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Timeline Preview -->
+            <div class="w-1/2 flex flex-col bg-slate-50">
+                <div class="px-6 py-4 border-b bg-white">
+                    <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <i class="ph ph-chart-line text-purple-600"></i>
+                        Timeline Preview
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">Visual representation of your production flow</p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                    <!-- Simple Timeline Visualization -->
+                    <div class="space-y-3">
+                        <template x-for="(stage, idx) in stages" :key="stage.id">
+                            <div x-show="stage.machine_id && stage.start_date">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                                        :style="'background-color: ' + stage.color" x-text="idx + 1"></div>
+                                    <div class="flex-1">
+                                        <div class="text-xs font-bold text-slate-700" x-text="stage.name"></div>
+                                        <div class="text-xs text-slate-500" x-text="getMachineName(stage.machine_id)">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Timeline Bar -->
+                                <div class="ml-9 mb-3">
+                                    <div class="h-8 rounded-lg flex items-center px-3 text-xs font-medium text-white"
+                                        :style="'background: linear-gradient(90deg, ' + stage.color + ', ' + stage.color + '99)'">
+                                        <span x-text="formatDate(stage.start_date)"></span>
+                                        <span class="mx-2">→</span>
+                                        <span x-text="formatDate(calculateEndDate(stage))"></span>
+                                    </div>
+
+                                    <!-- Dependency Arrow -->
+                                    <div x-show="stage.depends_on_id"
+                                        class="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                                        <i class="ph ph-arrow-bend-down-right"></i>
+                                        <span>Waits for Stage <span
+                                                x-text="getStageIndex(stage.depends_on_id) + 1"></span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Validation Messages -->
+                    <div x-show="validationErrors.length > 0" class="mt-6 space-y-2">
+                        <template x-for="error in validationErrors" :key="error">
+                            <div
+                                class="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs">
+                                <i class="ph ph-warning text-base mt-0.5"></i>
+                                <span x-text="error"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="px-8 py-6 border-t bg-slate-50 flex justify-between items-center gap-3">
+            <button type="button" @click="showAdvancedModal = false"
+                class="px-5 py-2.5 rounded-xl text-slate-600 font-semibold hover:bg-slate-200 transition-all border border-slate-300">
+                Cancel
+            </button>
+            <button type="button" @click="submitAdvancedSchedule()" :disabled="!canSubmit()"
+                class="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-purple-200 flex items-center gap-2 transition-all">
+                <i class="ph ph-check-circle"></i>
+                Schedule Multi-Stage Production
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function advancedScheduleLogic() {
+        return {
+            showAdvancedModal: false,
+            woData: {},
+            stages: [],
+            machines: [],
+            validationErrors: [],
+
+            initAdvancedSchedule(data) {
+                this.woData = data;
+                this.loadBOMStages();
+                this.loadMachines();
+            },
+
+            async loadBOMStages() {
+                if (!this.woData.bom_id) {
+                    this.validationErrors = ['This work order has no BOM assigned'];
+                    return;
+                }
+
+                try {
+                    const res = await fetch(`/manufacturing/api/bom/${this.woData.bom_id}/json/`);
+                    const data = await res.json();
+
+                    if (data.success && data.bom.operations) {
+                        this.stages = data.bom.operations.map((op, idx) => ({
+                            id: op.id,
+                            name: op.stage_name || `Operation ${idx + 1}`,
+                            color: this.getStageColor(idx),
+                            machine_id: '',
+                            quantity: this.woData.quantity,
+                            start_date: '',
+                            depends_on_id: idx > 0 ? data.bom.operations[idx - 1].id : null, // Default sequential
+                            duration_hours: op.duration_minutes ? op.duration_minutes / 60 : 4
+                        }));
+                    }
+                } catch (e) {
+                    console.error('Failed to load BOM stages', e);
+                }
+            },
+
+            async loadMachines() {
+                // Machines should already be in context, but fetch if needed
+                this.machines = window.machinesData || [];
+            },
+
+            getStageColor(idx) {
+                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'];
+                return colors[idx % colors.length];
+            },
+
+            getMachineName(machineId) {
+                const machine = this.machines.find(m => m.id == machineId);
+                return machine ? (machine.display_name || machine.name) : 'Unknown';
+            },
+
+            getStageIndex(stageId) {
+                return this.stages.findIndex(s => s.id == stageId);
+            },
+
+            formatDate(dateStr) {
+                if (!dateStr) return '';
+                const d = new Date(dateStr);
+                return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            },
+
+            calculateEndDate(stage) {
+                if (!stage.start_date) return '';
+                const start = new Date(stage.start_date);
+                const end = new Date(start.getTime() + (stage.duration_hours * 60 * 60 * 1000));
+                return end.toISOString();
+            },
+
+            canSubmit() {
+                // All stages must have machines and start dates
+                return this.stages.length > 0 && this.stages.every(s => s.machine_id && s.start_date);
+            },
+
+            async submitAdvancedSchedule() {
+                this.validationErrors = [];
+
+                // Validate
+                if (!this.canSubmit()) {
+                    this.validationErrors.push('All stages must have a machine and start date assigned');
+                    return;
+                }
+
+                // Build payload
+                const payload = {
+                    work_order_id: this.woData.id,
+                    stages: this.stages.map(s => ({
+                        stage_id: s.id,
+                        machine_id: s.machine_id,
+                        quantity: s.quantity,
+                        start_date: s.start_date,
+                        depends_on_id: s.depends_on_id,
+                        duration_hours: s.duration_hours
+                    }))
+                };
+
+                try {
+                    const res = await fetch('/manufacturing/api/schedule-advanced/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await res.json();
+
+                    if (result.success) {
+                        location.reload();
+                    } else {
+                        this.validationErrors.push(result.error || 'Failed to schedule');
+                    }
+                } catch (e) {
+                    this.validationErrors.push('Network error: ' + e.message);
+                }
+            }
+        }
+    }
+</script>
