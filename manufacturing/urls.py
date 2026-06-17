@@ -109,9 +109,3 @@ urlpatterns = [
     path('', include('manufacturing.api_urls')),
     
 ]
-
-if settings.DEBUG:
-    urlpatterns += [
-        path('debug-wos/', views.debug_dump.DebugWOView.as_view(), name='debug_wos'),
-        path('debug-delete-wos/', views.DeleteAllWorkOrdersView.as_view(), name='debug_delete_wos'),
-    ]

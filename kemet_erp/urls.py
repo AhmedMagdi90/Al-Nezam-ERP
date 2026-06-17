@@ -26,11 +26,5 @@ urlpatterns = [
 
 # Serve media files in development
 if settings.DEBUG:
-    urlpatterns += [
-        path(
-            'debug/shift-config/',
-            lambda request: __import__('manufacturing.views.debug', fromlist=['ShiftConfigDebugView']).ShiftConfigDebugView.as_view()(request),
-            name='debug_shift_config'
-        ),
-    ]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

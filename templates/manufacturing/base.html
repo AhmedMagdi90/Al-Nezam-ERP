@@ -5,6 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Kemet ERP{% endblock %}</title>
 
     <!-- Tailwind CSS -->
@@ -438,6 +439,12 @@
             }
 
             window.getCsrfToken = window.getCsrfToken || function () {
+                const meta = document.querySelector('meta[name="csrf-token"]');
+                if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+
+                const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                if (input && input.value) return input.value;
+
                 return getCookie('csrftoken');
             };
 
@@ -460,7 +467,8 @@
                         const csrfToken = window.getCsrfToken();
                         if (csrfToken) {
                             const headers = new Headers(options.headers || (input && input.headers) || undefined);
-                            if (!headers.has('X-CSRFToken')) {
+                            const existingToken = headers.get('X-CSRFToken');
+                            if (!existingToken || existingToken === 'null' || existingToken === 'undefined') {
                                 headers.set('X-CSRFToken', csrfToken);
                             }
                             options.headers = headers;

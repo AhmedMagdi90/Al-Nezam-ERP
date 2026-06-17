@@ -44,6 +44,8 @@ class LegacyTenantSchemaUpgradeTests(TransactionTestCase):
 
     def setUp(self):
         source = Path.cwd() / "tenant_dbs" / "al-nour.sqlite3"
+        if not source.exists():
+            self.skipTest(f"Legacy tenant fixture not found: {source}")
         self.temp_root = TEST_TENANT_ROOT
         self.temp_root.mkdir(parents=True, exist_ok=True)
         self.db_path = TEST_TENANT_DB_PATH

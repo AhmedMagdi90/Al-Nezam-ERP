@@ -9268,6 +9268,20 @@ function filterMachinesByStage(stageId, preferredMachineId = '') {
 
 // --- Helper: CSRF Token ---
 function getCookie(name) {
+    if (name === 'csrftoken') {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.content && meta.content !== 'NOTPROVIDED') {
+            return meta.content;
+        }
+        const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (input && input.value) {
+            return input.value;
+        }
+        if (typeof window.getCsrfToken === 'function') {
+            const fallback = window.getCsrfToken();
+            if (fallback) return fallback;
+        }
+    }
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
         const cookies = document.cookie.split(';');
@@ -9278,16 +9292,6 @@ function getCookie(name) {
                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
                 break;
             }
-        }
-    }
-    if (!cookieValue && name === 'csrftoken') {
-        if (typeof window.getCsrfToken === 'function') {
-            const fallback = window.getCsrfToken();
-            if (fallback) return fallback;
-        }
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        if (meta && meta.content && meta.content !== 'NOTPROVIDED') {
-            return meta.content;
         }
     }
     return cookieValue;

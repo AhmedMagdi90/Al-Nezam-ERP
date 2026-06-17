@@ -42,8 +42,9 @@ PUBLIC_BASE_URL = os.getenv('PUBLIC_BASE_URL', '').strip().lower()
 PUBLIC_HTTPS = PUBLIC_BASE_URL.startswith('https://')
 # Use cookie-backed CSRF by default for browser compatibility.
 CSRF_USE_SESSIONS = os.getenv('CSRF_USE_SESSIONS', '0') == '1'
-CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_HTTPONLY = True
 CSRF_FAILURE_VIEW = 'kemet_erp.csrf.csrf_failure'
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -167,6 +168,8 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+if 'test' in sys.argv:
+    STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # Media files (uploads)
 MEDIA_URL = '/media/'
@@ -246,4 +249,3 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000' if PUBLIC_HTTPS else '0'))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-

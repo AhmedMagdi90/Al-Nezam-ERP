@@ -689,6 +689,16 @@
             }
 
             function getCookie(name) {
+                if (name === 'csrftoken') {
+                    if (typeof window.getCsrfToken === 'function') {
+                        const token = window.getCsrfToken();
+                        if (token) return token;
+                    }
+                    const meta = document.querySelector('meta[name="csrf-token"]');
+                    if (meta && meta.content && meta.content !== 'NOTPROVIDED') return meta.content;
+                    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                    if (input && input.value) return input.value;
+                }
                 let cookieValue = null;
                 if (document.cookie && document.cookie !== '') {
                     const cookies = document.cookie.split(';');

@@ -26,8 +26,6 @@ from .bulk import BulkImportView, DownloadTemplateView, HandleBulkImportView
 from .work_order import WorkOrderCreateAPI, WorkOrderSplitAPI, WorkOrderCancelSplitAPI, WorkOrderCombineAPI, WorkOrderRecommendationAPI, WorkOrderCloseAPI, WorkOrderReleaseNextStageAPI, WorkOrderUnscheduleAPI, WorkOrderApplyLatestBOMAPI, WorkOrderBOMChangeDecisionAPI
 from .schedule import WorkOrderDetailAPI, ScheduleWorkOrderAPI, AdvancedScheduleAPI
 from .worker_assignment import AssignWorkerToWOView, GetAvailableWorkersView
-from .debug_dump import DebugWOView
-from .debug_delete import DeleteAllWorkOrdersView
 
 # Reports (Import last to avoid cycles)
 from .reports import (
