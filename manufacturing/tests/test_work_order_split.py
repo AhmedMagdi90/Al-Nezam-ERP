@@ -238,7 +238,13 @@ class WorkOrderSplitTests(TestCase):
         wo.end_date = original_end
         wo.save(update_fields=["start_date", "end_date"])
 
-        new_wo = WorkOrderService.split_work_order(wo, 50, self.machine_2, self.planner)
+        new_wo = WorkOrderService.split_work_order(
+            wo,
+            50,
+            self.machine_2,
+            self.planner,
+            planned_start=original_start,
+        )
 
         wo.refresh_from_db()
         original_minutes = round((wo.end_date - wo.start_date).total_seconds() / 60)
