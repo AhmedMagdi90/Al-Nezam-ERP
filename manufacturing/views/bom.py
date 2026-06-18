@@ -7,7 +7,7 @@ from django.utils.text import slugify
 from django.db.models import Q
 import json
 import base64
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
 from django.core.files.base import ContentFile
 
@@ -41,6 +41,19 @@ def _next_bom_version(product):
         return f"v{fallback_major}.0"
     next_value = max(parsed_versions) + _BOM_VERSION_STEP
     return f"v{next_value:.1f}"
+
+
+def safe_decimal(value, default="0", field_name="value"):
+    if value is None or value == "":
+        value = default
+    try:
+        decimal_value = Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValueError(f"{field_name} must be a valid number.")
+    if not decimal_value.is_finite():
+        raise ValueError(f"{field_name} must be a valid number.")
+    return decimal_value
+
 
 class BOMBuilderView(LoginRequiredMixin, View):
     def get(self, request, bom_id=None):
@@ -344,7 +357,14 @@ class BOMSaveAPI(LoginRequiredMixin, View):
             # 1. Parse Basic Information
             product_id = data.get('product_id')
             product_name = data.get('product_name', '').strip()
-            base_qty = float(data.get('base_qty') or data.get('base_quantity') or data.get('batch') or 1)
+            try:
+                base_qty = safe_decimal(
+                    data.get('base_qty') or data.get('base_quantity') or data.get('batch'),
+                    default="1",
+                    field_name="Base quantity",
+                )
+            except ValueError as exc:
+                return JsonResponse({"status": "error", "message": str(exc)}, status=400)
             batch_type = (data.get('uom') or data.get('batch_type') or 'pcs').strip().lower()
             bom_status = data.get('status', 'draft')
             # Always start new BOMs as draft (activation is a separate step)
@@ -448,10 +468,13 @@ class BOMSaveAPI(LoginRequiredMixin, View):
                         )
 
                     try:
-                        qty_value = float(comp.get('qty'))
-                    except (TypeError, ValueError):
+                        qty_value = safe_decimal(comp.get('qty'), field_name=f"Material '{mat_name}' quantity")
+                        cost_value = safe_decimal(comp.get('cost'), field_name=f"Material '{mat_name}' cost")
+                        scrap_qty_value = safe_decimal(comp.get('scrap_qty'), field_name=f"Material '{mat_name}' scrap quantity")
+                        scrap_price_value = safe_decimal(comp.get('scrap_price'), field_name=f"Material '{mat_name}' scrap price")
+                    except ValueError as exc:
                         return JsonResponse(
-                            {"status": "error", "message": f"Material '{mat_name}' must have a valid quantity."},
+                            {"status": "error", "message": str(exc)},
                             status=400
                         )
 
@@ -480,9 +503,9 @@ class BOMSaveAPI(LoginRequiredMixin, View):
                         material_name=mat_name,
                         quantity=qty_value,
                         unit=comp['unit'],
-                        cost_per_unit=comp['cost'],
-                        wastage_quantity=comp.get('scrap_qty', 0),
-                        scrap_value_per_unit=comp.get('scrap_price', 0),
+                        cost_per_unit=cost_value,
+                        wastage_quantity=scrap_qty_value,
+                        scrap_value_per_unit=scrap_price_value,
                         scrap_type=comp.get('scrap_type', 'sell_as_scrap')
                     )
 
@@ -559,7 +582,10 @@ class BOMSaveAPI(LoginRequiredMixin, View):
                         order=idx + 1,
                         setup_time=setup,
                         run_time=run,
-                        duration_minutes=max(int(round(float(setup + (run * base_qty)))), 0),
+                        duration_minutes=max(
+                            int((setup + (run * base_qty)).to_integral_value(rounding=ROUND_HALF_UP)),
+                            0,
+                        ),
                         description=description
                     )
 

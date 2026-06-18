@@ -487,6 +487,118 @@ class BOMSaveAPITests(TestCase):
         self.assertEqual(response.status_code, 400, response.content.decode())
         self.assertIn("JPG, PNG, or PDF", response.json()["message"])
 
+    def test_legacy_bom_save_api_accepts_decimal_quantities_and_blank_optional_numbers(self):
+        response = self.client.post(
+            "/manufacturing/api/bom/save/",
+            data=json.dumps(
+                {
+                    "product_name": "decimal_bom_product",
+                    "base_qty": "1.5",
+                    "uom": "pcs",
+                    "status": "draft",
+                    "components": [
+                        {
+                            "name": "Copper Coil",
+                            "qty": "1.5",
+                            "unit": "kg",
+                            "cost": "2.25",
+                            "scrap_qty": "",
+                            "scrap_price": "",
+                            "scrap_type": "sell_as_scrap",
+                        }
+                    ],
+                    "criteria": [],
+                    "operations": [
+                        {
+                            "stage_name": "Winding",
+                            "setup_time": "0.5",
+                            "setup_time_unit": "min",
+                            "run_time": "1.5",
+                            "run_time_unit": "min",
+                        }
+                    ],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        bom = BillOfMaterial.objects.get(id=response.json()["bom_id"])
+        component = bom.components.get()
+        operation = bom.operations.get()
+
+        self.assertEqual(bom.base_quantity, Decimal("1.50"))
+        self.assertEqual(component.quantity, Decimal("1.500"))
+        self.assertEqual(component.cost_per_unit, Decimal("2.25"))
+        self.assertEqual(component.wastage_quantity, Decimal("0.000"))
+        self.assertEqual(component.scrap_value_per_unit, Decimal("0.00"))
+        self.assertEqual(component.total_cost(), Decimal("3.38"))
+        self.assertEqual(operation.duration_minutes, 3)
+
+    def test_legacy_bom_save_api_accepts_json_decimal_quantity_number(self):
+        response = self.client.post(
+            "/manufacturing/api/bom/save/",
+            data=json.dumps(
+                {
+                    "product_name": "json_decimal_quantity_product",
+                    "base_qty": 1.25,
+                    "uom": "pcs",
+                    "status": "draft",
+                    "components": [
+                        {
+                            "name": "Resin",
+                            "qty": 2.25,
+                            "unit": "kg",
+                            "cost": "4.00",
+                            "scrap_qty": "0",
+                            "scrap_price": "0",
+                        }
+                    ],
+                    "criteria": [],
+                    "operations": [],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        bom = BillOfMaterial.objects.get(id=response.json()["bom_id"])
+        component = bom.components.get()
+        self.assertEqual(bom.base_quantity, Decimal("1.25"))
+        self.assertEqual(component.quantity, Decimal("2.250"))
+        self.assertEqual(component.total_cost(), Decimal("9.00"))
+
+    def test_legacy_bom_save_api_rejects_invalid_numeric_material_cost(self):
+        response = self.client.post(
+            "/manufacturing/api/bom/save/",
+            data=json.dumps(
+                {
+                    "product_name": "invalid_cost_product",
+                    "base_qty": 1,
+                    "uom": "pcs",
+                    "status": "draft",
+                    "components": [
+                        {
+                            "name": "Steel Plate",
+                            "qty": "1.5",
+                            "unit": "pcs",
+                            "cost": "not-a-number",
+                            "scrap_qty": "",
+                            "scrap_price": "",
+                        }
+                    ],
+                    "criteria": [],
+                    "operations": [],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400, response.content.decode())
+        payload = response.json()
+        self.assertEqual(payload["status"], "error")
+        self.assertIn("cost", payload["message"])
+
     def test_full_bom_save_api_accepts_attachment(self):
         with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
             response = self.client.post(
