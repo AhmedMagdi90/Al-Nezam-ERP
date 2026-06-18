@@ -1,5 +1,4 @@
 import os
-import shutil
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -124,13 +123,24 @@ class TenantProvisioningFoundationTests(TestCase):
     def setUp(self):
         self.temp_root = TEST_TENANT_ROOT
         self.temp_root.mkdir(parents=True, exist_ok=True)
+        _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_TENANT_ALIAS)
+        _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_DEMO_ALIAS)
+        _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_TEST_ALIAS)
+        _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_DEV_ALIAS)
+        connections[FOUNDATION_TENANT_ALIAS].ensure_connection()
+        connections[FOUNDATION_DEMO_ALIAS].ensure_connection()
+        connections[FOUNDATION_TEST_ALIAS].ensure_connection()
+        connections[FOUNDATION_DEV_ALIAS].ensure_connection()
+        call_command("flush", database=FOUNDATION_TENANT_ALIAS, interactive=False, verbosity=0)
+        call_command("flush", database=FOUNDATION_DEMO_ALIAS, interactive=False, verbosity=0)
+        call_command("flush", database=FOUNDATION_TEST_ALIAS, interactive=False, verbosity=0)
+        call_command("flush", database=FOUNDATION_DEV_ALIAS, interactive=False, verbosity=0)
 
     def tearDown(self):
         _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_TENANT_ALIAS)
         _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_DEMO_ALIAS)
         _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_TEST_ALIAS)
         _TENANT_SCHEMA_READY_ALIASES.discard(FOUNDATION_DEV_ALIAS)
-        shutil.rmtree(self.temp_root, ignore_errors=True)
         super().tearDown()
 
     @patch.dict(os.environ, {"TENANT_BASE_DOMAIN": "nezam.test"}, clear=False)
