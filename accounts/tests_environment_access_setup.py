@@ -1,5 +1,4 @@
 import os
-import shutil
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
@@ -7,6 +6,8 @@ from unittest.mock import patch
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.middleware import SessionMiddleware
+from django.core.management import call_command
+from django.db import connections
 from django.http import HttpResponseRedirect
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -43,6 +44,7 @@ if ACCESS_DEMO_ALIAS not in settings.DATABASES:
             "DEPENDENCIES": [],
         },
     }
+    connections.databases[ACCESS_DEMO_ALIAS] = settings.DATABASES[ACCESS_DEMO_ALIAS]
 
 
 @override_settings(ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"])
@@ -51,10 +53,13 @@ class EnvironmentAccessSetupTests(TestCase):
 
     def setUp(self):
         self.client = Client()
+        TEST_TENANT_ROOT.mkdir(parents=True, exist_ok=True)
+        _TENANT_SCHEMA_READY_ALIASES.discard(ACCESS_DEMO_ALIAS)
+        connections[ACCESS_DEMO_ALIAS].ensure_connection()
+        call_command("flush", database=ACCESS_DEMO_ALIAS, interactive=False, verbosity=0)
 
     def tearDown(self):
         _TENANT_SCHEMA_READY_ALIASES.discard(ACCESS_DEMO_ALIAS)
-        shutil.rmtree(TEST_TENANT_ROOT, ignore_errors=True)
         super().tearDown()
 
     @patch.dict(os.environ, {"TENANT_BASE_DOMAIN": "nezam.test"}, clear=False)
