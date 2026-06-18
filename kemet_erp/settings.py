@@ -17,12 +17,13 @@ SQLITE_ENABLE_WAL = os.getenv('SQLITE_ENABLE_WAL', '1') == '1'
 DEFAULT_SECRET_KEY = 'dev-secret-key-change-me'
 SECRET_KEY = os.getenv('SECRET_KEY', DEFAULT_SECRET_KEY)
 DEBUG = os.getenv('DEBUG', '1') == '1'
+TESTING = 'test' in sys.argv
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
     if host.strip()
 ]
-if DEBUG or 'test' in sys.argv:
+if DEBUG or TESTING:
     for host in ('127.0.0.1', 'localhost', 'testserver'):
         if host not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(host)
@@ -129,7 +130,7 @@ if DATABASE_URL and dj_database_url:
 DATABASE_ROUTERS = ['tenancy.router.TenantDatabaseRouter']
 TENANCY_SHARED_APPS = ['tenancy']
 TENANCY_TENANT_APPS = ['auth', 'contenttypes', 'accounts', 'manufacturing', 'dashboard']
-if 'test' in sys.argv:
+if TESTING:
     TENANCY_ALLOW_TENANT_APPS_ON_DEFAULT = True
 else:
     TENANCY_ALLOW_TENANT_APPS_ON_DEFAULT = os.getenv(
@@ -137,7 +138,7 @@ else:
         '0'
     ) == '1'
 
-if 'test' in sys.argv:
+if TESTING:
     AUTHENTICATION_BACKENDS = [
         'django.contrib.auth.backends.ModelBackend',
         'tenancy.auth_backend.TenantModelBackend',
@@ -168,7 +169,7 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-if 'test' in sys.argv:
+if TESTING:
     STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 # Media files (uploads)
@@ -249,3 +250,9 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000' if PUBLIC_HTTPS else '0'))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+
+if TESTING:
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
+    SECURE_HSTS_SECONDS = 0
