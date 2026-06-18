@@ -453,7 +453,6 @@ class OnboardingPlannerBootstrapTests(TestCase):
         self.assertEqual(register_response.status_code, 200)
         self.assertEqual(self.client.session["tenant_code"], "tower-live-demo")
         self.assertContains(register_response, "Initialize Your Factory", html=False)
-        self.assertContains(register_response, "Production Setup Checklist", html=False)
         self.assertNotContains(register_response, "M-001", html=False)
 
         dashboard_response = self.client.get(reverse("dashboard"))

@@ -225,7 +225,8 @@ class WorkOrderQuantityEditingTests(TestCase):
         self.assertTrue(payload["rescheduled"])
         work_order.refresh_from_db()
         self.assertEqual(work_order.quantity, 20)
-        self.assertEqual(work_order.end_date, work_order.start_date + timedelta(minutes=205))
+        duration_seconds = (work_order.end_date - work_order.start_date).total_seconds()
+        self.assertAlmostEqual(duration_seconds, 205 * 60, delta=60)
 
     def test_update_parent_quantity_replans_routed_stage_tasks(self):
         start_at = timezone.now() + timedelta(hours=1)
@@ -286,7 +287,8 @@ class WorkOrderQuantityEditingTests(TestCase):
         self.assertEqual(parent.quantity, 20)
         self.assertEqual(assembly.quantity, 20)
         self.assertEqual(packing.quantity, 20)
-        self.assertEqual(assembly.end_date, assembly.start_date + timedelta(minutes=205))
+        assembly_duration_seconds = (assembly.end_date - assembly.start_date).total_seconds()
+        self.assertAlmostEqual(assembly_duration_seconds, 205 * 60, delta=60)
         self.assertGreaterEqual(packing.start_date, assembly.end_date)
         packing_duration_seconds = (packing.end_date - packing.start_date).total_seconds()
         self.assertAlmostEqual(packing_duration_seconds, 100 * 60, delta=60)

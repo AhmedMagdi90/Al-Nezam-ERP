@@ -4523,8 +4523,9 @@ class WorkOrderService:
             else:
                 return None
 
+        actual_completion_at = timezone.now()
+
         if stage_work_order.parent_id:
-            actual_completion_at = timezone.now()
             if stage_work_order.status != 'completed':
                 WorkOrderLifecycle.apply_transition(
                     stage_work_order,

@@ -239,10 +239,16 @@ class ProductionCycleEdgeCaseTests(TestCase):
             quantity=20,
             status='pending'
         )
+        before_approval = timezone.now()
         ProductionLogService.approve_log(log, self.supervisor)
+        after_approval = timezone.now()
 
         wo.refresh_from_db()
         self.assertTrue(wo.planner_action_required)
+        self.assertIsNotNone(wo.end_date)
+        self.assertGreaterEqual(wo.end_date, before_approval)
+        self.assertLessEqual(wo.end_date, after_approval)
+        completion_at = wo.end_date
         wo.store_receipt_status = 'received'
         wo.save(update_fields=['store_receipt_status'])
 
@@ -257,6 +263,7 @@ class ProductionCycleEdgeCaseTests(TestCase):
         self.assertTrue(wo.closed_by_planner)
         self.assertFalse(wo.planner_action_required)
         self.assertEqual(wo.status, 'completed')
+        self.assertEqual(wo.end_date, completion_at)
 
     def test_planner_close_trims_future_slot_for_immediate_machine_reuse(self):
         product, bom, stages = self._create_bom_with_stages(

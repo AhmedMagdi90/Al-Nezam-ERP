@@ -16,11 +16,13 @@ class EnterpriseBOMTests(TestCase):
     def test_recursive_costing(self):
         """test that cost rolls up from sub-assembly."""
         # 1. Create Sub-Assembly BOM
-        bom_sub = BillOfMaterial.objects.create(product=self.p_sub, status='active', base_quantity=1)
+        bom_sub = BillOfMaterial.objects.create(product=self.p_sub, status='draft', base_quantity=1)
         # Sub BOM: 2 Rods @ $10 each = $20
         BOMComponent.objects.create(
             bom=bom_sub, material_name="Steel Rod", quantity=2, cost_per_unit=10, unit='pcs'
         )
+        bom_sub.status = 'active'
+        bom_sub.save()
         
         # 2. Create Finished BOM
         bom_main = BillOfMaterial.objects.create(product=self.p_finished, status='draft', base_quantity=1)

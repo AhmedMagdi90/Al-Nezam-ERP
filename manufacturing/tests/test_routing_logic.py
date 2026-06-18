@@ -32,7 +32,8 @@ class RoutingLogicTests(TestCase):
             quantity=100,
             status='in_progress',
             start_date=timezone.now(),
-            company=self.company
+            company=self.company,
+            material_readiness_status='ready',
         )
         
         # Create Sub-Task (Backlog Item)
@@ -43,7 +44,8 @@ class RoutingLogicTests(TestCase):
             quantity=100,
             machine=self.machine, # Linked to machine via routing
             status='pending',
-            company=self.company
+            company=self.company,
+            material_readiness_status='ready',
         )
 
     def test_dashboard_backlog_context(self):

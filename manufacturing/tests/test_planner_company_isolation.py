@@ -54,8 +54,9 @@ class PlannerCompanyIsolationTests(TestCase):
             product_name="Planner Product",
             bom=self.bom,
             quantity=10,
-            status="draft",
+            status="pending",
             company=self.company,
+            material_readiness_status="ready",
         )
 
         self.other_machine = Machine.objects.create(

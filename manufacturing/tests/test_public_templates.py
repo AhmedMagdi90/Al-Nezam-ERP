@@ -45,20 +45,21 @@ class PublicTemplateSubscriptionTests(SimpleTestCase):
         with open("templates/registration/onboarding_data.html", encoding="utf-8") as handle:
             content = handle.read()
 
-        self.assertIn('data-setup-guide-step="required-data"', content)
-        self.assertIn("Step 5 of 8", content)
-        self.assertIn("Load the production foundation", content)
-        self.assertIn('data-setup-guide-step="work-orders"', content)
-        self.assertIn("Step 6 of 8", content)
-        self.assertIn('data-setup-guide-finish', content)
+        self.assertIn("Initialize Your Factory", content)
+        self.assertIn("Explore with Sample Data", content)
+        self.assertIn("Import from Excel", content)
+        self.assertIn("Skip for Now", content)
+        self.assertIn('name="load_demo" value="true"', content)
+        self.assertIn('name="next" value="onboarding_data"', content)
+        self.assertIn("{% url 'onboarding_users' %}", content)
 
     def test_onboarding_users_page_has_guided_team_steps(self):
         with open("templates/registration/onboarding_users.html", encoding="utf-8") as handle:
             content = handle.read()
 
-        self.assertIn('data-setup-guide-step="launch-team"', content)
-        self.assertIn("Step 7 of 8", content)
-        self.assertIn("Add the launch team", content)
-        self.assertIn('data-setup-guide-step="open-planner"', content)
-        self.assertIn("Step 8 of 8", content)
-        self.assertIn('data-setup-guide-finish', content)
+        self.assertIn("Build Your Team", content)
+        self.assertIn("Quick Add", content)
+        self.assertIn("Import from Excel", content)
+        self.assertIn("Skip for Now", content)
+        self.assertIn('name="skip_team_setup" value="1"', content)
+        self.assertIn('name="next" value="onboarding_users"', content)
