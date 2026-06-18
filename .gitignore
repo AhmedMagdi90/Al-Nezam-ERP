@@ -1,0 +1,16 @@
+__pycache__/
+**pycache**/
+**/**pycache**/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.codex_tmp/
+.tmp_*/
+.venv*/
+dist/
+*.zip
+*.tgz
+*.tar.gz
+*.bak
+*.backup
+*.broken_*
