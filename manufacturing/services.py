@@ -877,6 +877,14 @@ class DashboardService:
                     )
                 ]
 
+        if role in {"supervisor", "worker"} and viewer:
+            from manufacturing.work_order_visibility import can_user_see_work_order
+
+            visible = [
+                wo for wo in visible
+                if can_user_see_work_order(viewer, wo, shift_config=shift_config)
+            ]
+
         return visible
 
     @staticmethod

@@ -13,11 +13,13 @@ from manufacturing.models import (
     Product,
     ProductionLog,
     ProductionStage,
+    ShiftAssignment,
     SystemSettings,
     WorkOrder,
 )
 from manufacturing.services import DashboardService
 from manufacturing.tests.utils import create_company, create_user_with_role
+from manufacturing.work_order_visibility import get_current_shift_window_for_company
 
 
 class StageRoutePlanningTests(TestCase):
@@ -73,6 +75,32 @@ class StageRoutePlanningTests(TestCase):
             category="CNC",
             status="operational",
             company=self.company,
+        )
+        settings, _ = SystemSettings.objects.get_or_create(company=self.company)
+        settings.shift_mode = "1"
+        settings.shift_configuration = self._active_shift_config()
+        settings.save(update_fields=["shift_mode", "shift_configuration"])
+        shift_window = get_current_shift_window_for_company(self.company)
+        ShiftAssignment.objects.create(
+            worker=self.supervisor_cut,
+            machine=self.machine_cut,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
+            created_by=self.planner,
+        )
+        ShiftAssignment.objects.create(
+            worker=self.supervisor_pack,
+            machine=self.machine_pack,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
+            created_by=self.planner,
+        )
+        ShiftAssignment.objects.create(
+            worker=self.supervisor_production,
+            machine=self.machine_cut,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
+            created_by=self.planner,
         )
         self.stage_cut = ProductionStage.objects.create(
             name="Cutting",
@@ -987,7 +1015,7 @@ class StageRoutePlanningTests(TestCase):
             current_stage=self.stage_cut,
             company=self.company,
         )
-        start_at = timezone.now() - timedelta(hours=2)
+        start_at = timezone.now()
         stage_one = WorkOrder.objects.create(
             parent=parent,
             product_name="Widget Batch - Cutting",
@@ -1201,7 +1229,7 @@ class StageRoutePlanningTests(TestCase):
             current_stage=self.stage_cut,
             company=self.company,
         )
-        start_at = timezone.now() - timedelta(hours=2)
+        start_at = timezone.now()
         stage_one = WorkOrder.objects.create(
             parent=parent,
             product_name="Widget Batch - Cutting",
@@ -1257,7 +1285,7 @@ class StageRoutePlanningTests(TestCase):
             current_stage=self.stage_cut,
             company=self.company,
         )
-        start_at = timezone.now() - timedelta(hours=2)
+        start_at = timezone.now()
         stage_one = WorkOrder.objects.create(
             parent=parent,
             product_name="Widget Batch - Cutting",
@@ -1575,9 +1603,9 @@ class StageRoutePlanningTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         pending_ids = {wo.id for wo in response.context["pending_tasks"]}
-        self.assertIn(stage_two.id, pending_ids)
+        self.assertNotIn(stage_two.id, pending_ids)
         self.assertNotIn(stage_one.id, pending_ids)
-        self.assertEqual(response.context["upcoming_pending_tasks_count"], 1)
+        self.assertEqual(response.context["upcoming_pending_tasks_count"], 0)
 
     def test_supervisor_shift_filter_keeps_previous_shift_open_work_order_visible(self):
         now = timezone.localtime()
@@ -1598,7 +1626,6 @@ class StageRoutePlanningTests(TestCase):
             current_stage=self.stage_cut,
             status="in_progress",
             start_date=timezone.now() - timedelta(hours=3),
-            end_date=timezone.now() - timedelta(hours=2),
             company=self.company,
         )
 
@@ -1633,7 +1660,6 @@ class StageRoutePlanningTests(TestCase):
             current_stage=self.stage_cut,
             status="in_progress",
             start_date=timezone.now() - timedelta(days=1, hours=3),
-            end_date=timezone.now() - timedelta(days=1, hours=2),
             company=self.company,
         )
 

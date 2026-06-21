@@ -40,6 +40,7 @@ from manufacturing.services import (
 )
 from .dashboard import get_company_stage, require_company, user_has_role
 from manufacturing.access_control import acts_as_worker
+from manufacturing.work_order_visibility import can_user_see_work_order
 from django.utils.dateparse import parse_date
 
 
@@ -572,6 +573,9 @@ class ShopFloorUpdateView(LoginRequiredMixin, View):
             if not user_has_role(request.user, ['worker', 'supervisor', 'admin']):
                 return JsonResponse({'status': 'error', 'message': 'Unauthorized'}, status=403)
 
+            if not can_user_see_work_order(request.user, wo):
+                return JsonResponse({'status': 'error', 'message': 'Unauthorized'}, status=403)
+
             if wo.assigned_worker and wo.assigned_worker != request.user:
                 if strict_worker_mode or not user_has_role(request.user, ['supervisor', 'admin']):
                     return JsonResponse({'status': 'error', 'message': 'Not assigned to this work order'}, status=403)
@@ -672,6 +676,8 @@ class WorkOrderDetailsAPI(LoginRequiredMixin, View):
                 WorkOrder.objects.select_related("parent", "bom", "parent__bom")
                 .get(id=wo_id, company=company)
             )
+            if not can_user_see_work_order(request.user, wo):
+                return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
             route_bom = resolve_bom_for_work_order(wo, company)
             base_qty, compensation_qty, adjusted_qty = get_workorder_quantity_breakdown(wo)
             approved_qty = wo.production_logs.filter(status='approved').aggregate(

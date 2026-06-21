@@ -2,8 +2,9 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from manufacturing.models import BOMOperation, BillOfMaterial, Machine, Product, ProductionStage, WorkOrder
+from manufacturing.models import BOMOperation, BillOfMaterial, Machine, Product, ProductionStage, ShiftAssignment, WorkOrder
 from manufacturing.tests.utils import create_company, create_user_with_role
+from manufacturing.work_order_visibility import get_current_shift_window_for_company
 
 
 class MachineDisplayLabelTests(TestCase):
@@ -49,6 +50,14 @@ class MachineDisplayLabelTests(TestCase):
             current_stage=self.stage,
             assigned_worker=self.supervisor,
             start_date=timezone.now(),
+        )
+        shift_window = get_current_shift_window_for_company(self.company)
+        ShiftAssignment.objects.create(
+            worker=self.supervisor,
+            machine=self.machine,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
+            created_by=self.planner,
         )
 
     def test_machine_display_label_combines_code_and_name(self):

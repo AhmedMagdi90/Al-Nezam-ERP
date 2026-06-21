@@ -8,15 +8,30 @@ from django.urls import reverse
 from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 
-from manufacturing.models import BillOfMaterial, BOMComponent, Machine, Product, WorkOrder
+from manufacturing.models import BillOfMaterial, BOMComponent, Machine, Product, ShiftAssignment, SystemSettings, WorkOrder
 from manufacturing.services import DashboardService, ProductionLogService
 from manufacturing.tests.utils import create_company, create_user_with_role
+from manufacturing.work_order_visibility import get_current_shift_window_for_company
 from manufacturing.views.shop_floor import _assigned_leaf_work_orders, _prepare_shop_floor_work_order
 
 
 class ShopFloorTests(TestCase):
     def setUp(self):
         self.company = create_company("Shop Floor Co")
+        settings, _ = SystemSettings.objects.get_or_create(company=self.company)
+        now_local = timezone.localtime()
+        settings.shift_mode = "1"
+        settings.shift_configuration = {
+            "morning": {
+                "enabled": True,
+                "start": (now_local - timedelta(hours=1)).strftime("%H:%M"),
+                "end": (now_local + timedelta(hours=6)).strftime("%H:%M"),
+            },
+            "afternoon": {"enabled": False, "start": "14:00", "end": "22:00"},
+            "night": {"enabled": False, "start": "22:00", "end": "06:00"},
+        }
+        settings.save(update_fields=["shift_mode", "shift_configuration"])
+
         self.supervisor = create_user_with_role("supervisor_sf", "supervisor", self.company)
         self.supervisor.profile.worker_mode_enabled = True
         self.supervisor.profile.save(update_fields=["worker_mode_enabled"])
@@ -40,6 +55,13 @@ class ShopFloorTests(TestCase):
             start_date=timezone.now(),
             material_readiness_status="ready",
             material_available_qty=10,
+        )
+        shift_window = get_current_shift_window_for_company(self.company)
+        ShiftAssignment.objects.create(
+            worker=self.supervisor,
+            machine=self.machine,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
         )
         self.client = Client()
         self.client.force_login(self.supervisor)

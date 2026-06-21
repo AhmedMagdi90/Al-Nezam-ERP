@@ -23,6 +23,7 @@ from manufacturing.services import DashboardService, ProductionLogService
 from django.db.models import Sum
 from django.db.models import Q
 from manufacturing.access_control import acts_as_worker
+from manufacturing.work_order_visibility import can_user_see_work_order, get_visible_work_orders_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +33,12 @@ def _strict_worker_mode(user):
 
 
 def _assigned_leaf_work_orders(company, user):
-    return WorkOrder.objects.filter(
+    queryset = WorkOrder.objects.filter(
         company=company,
         sub_tasks__isnull=True,
         assigned_worker_id=getattr(user, "id", None),
     )
+    return get_visible_work_orders_for_user(user, queryset)
 
 
 def _safe_related(instance, attr_name):
@@ -132,11 +134,12 @@ class RecordOutputView(LoginRequiredMixin, View):
         
         # Supervisors with worker mode enabled should behave like a worker on this surface.
         if user_has_role(request.user, ['admin', 'supervisor']) and not _strict_worker_mode(request.user):
-            active_wo = WorkOrder.objects.filter(
+            active_qs = WorkOrder.objects.filter(
                 company=company,
                 status='in_progress',
                 sub_tasks__isnull=True
-            ).order_by('-worker_start_at', '-start_date', '-id').first()
+            ).order_by('-worker_start_at', '-start_date', '-id')
+            active_wo = get_visible_work_orders_for_user(request.user, active_qs).first()
         else:
             active_wo = _assigned_leaf_work_orders(company, request.user).filter(
                 status='in_progress',
@@ -165,16 +168,17 @@ class RecordOutputView(LoginRequiredMixin, View):
         
         # Supervisors with worker mode enabled should behave like a worker on this surface.
         if user_has_role(request.user, ['admin', 'supervisor']) and not _strict_worker_mode(request.user):
-            active_wo = WorkOrder.objects.filter(
+            active_qs = WorkOrder.objects.filter(
                 company=company, 
                 status='in_progress',
                 sub_tasks__isnull=True
-            ).order_by('-worker_start_at', '-start_date', '-id').first() # Grab most recent active leaf task
+            ).order_by('-worker_start_at', '-start_date', '-id')
+            active_wo = get_visible_work_orders_for_user(request.user, active_qs).first() # Grab most recent active leaf task
             
             # If specific WO passed in hidden field, try to use that
             if request.POST.get('work_order'):
                  specific_wo = WorkOrder.objects.filter(company=company, id=request.POST.get('work_order')).first()
-                 if specific_wo:
+                 if specific_wo and can_user_see_work_order(request.user, specific_wo):
                      active_wo = specific_wo
         else:
             active_wo = _assigned_leaf_work_orders(company, request.user).filter(
@@ -477,8 +481,7 @@ class LogProductionAPI(LoginRequiredMixin, View):
             
             company = require_company(request.user)
             work_order_qs = WorkOrder.objects.filter(company=company)
-            if _strict_worker_mode(request.user):
-                work_order_qs = work_order_qs.filter(assigned_worker_id=request.user.id)
+            work_order_qs = get_visible_work_orders_for_user(request.user, work_order_qs)
             work_order = work_order_qs.get(id=wo_id)
 
             log = ProductionLogService.create_log(
@@ -516,6 +519,8 @@ class LogProductionAPI(LoginRequiredMixin, View):
                 'logged_quantity': int(log.quantity),
                 'remaining_qty': int(remaining_qty),
             })
+        except WorkOrder.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
 
@@ -535,6 +540,8 @@ class ApproveLogView(LoginRequiredMixin, View):
             ).prefetch_related('material_usage').get(id=log_id)
 
             wo = log.work_order
+            if not can_user_see_work_order(request.user, wo):
+                return JsonResponse({"error": "Unauthorized"}, status=403)
             stage = wo.current_stage or wo.stage
             approved_qty = wo.production_logs.filter(status='approved').aggregate(
                 total=Sum('quantity')
@@ -590,6 +597,8 @@ class ApproveLogView(LoginRequiredMixin, View):
         try:
             company = require_company(request.user)
             log = ProductionLog.objects.filter(work_order__company=company).get(id=log_id)
+            if not can_user_see_work_order(request.user, log.work_order):
+                return JsonResponse({"error": "Unauthorized"}, status=403)
             action = request.POST.get("action")
             
             if action == 'approve':
@@ -647,6 +656,8 @@ class WorkOrderStartDateUpdateView(LoginRequiredMixin, View):
                 dt = timezone.make_aware(dt)
 
             wo = WorkOrder.objects.filter(company=company).get(id=wo_id)
+            if not can_user_see_work_order(request.user, wo):
+                return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
             old_start = wo.start_date
             wo.start_date = dt
             wo.save(update_fields=['start_date'])
@@ -692,6 +703,8 @@ class ProductionLogEditView(LoginRequiredMixin, View):
             data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
 
             log = ProductionLog.objects.select_related('work_order').get(id=log_id, work_order__company=company)
+            if not can_user_see_work_order(request.user, log.work_order):
+                return JsonResponse({"success": False, "error": "Unauthorized"}, status=403)
             if log.status != 'pending':
                 return JsonResponse({"success": False, "error": "Only pending logs can be edited."}, status=400)
 
@@ -873,8 +886,7 @@ class ReportFaultAPI(LoginRequiredMixin, View):
             
             company = require_company(request.user)
             work_order_qs = WorkOrder.objects.filter(company=company)
-            if _strict_worker_mode(request.user):
-                work_order_qs = work_order_qs.filter(assigned_worker_id=request.user.id)
+            work_order_qs = get_visible_work_orders_for_user(request.user, work_order_qs)
             work_order = work_order_qs.get(id=wo_id)
             
             if not work_order.machine:
@@ -905,5 +917,7 @@ class ReportFaultAPI(LoginRequiredMixin, View):
             work_order.machine.save()
 
             return JsonResponse({'success': True, 'message': 'Fault reported. Machine marked as Broken.'})
+        except WorkOrder.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})

@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 
 from django.test import TestCase, Client
 from django.urls import reverse
@@ -12,10 +13,13 @@ from manufacturing.models import (
     Product,
     ProductionLog,
     QualityCheck,
+    ShiftAssignment,
+    SystemSettings,
     WorkOrder,
 )
 from manufacturing.services import ProductionLogService
 from manufacturing.tests.utils import create_company, create_user_with_role
+from manufacturing.work_order_visibility import get_current_shift_window_for_company
 
 class ManufacturingWorkflowTests(TestCase):
     def setUp(self):
@@ -33,6 +37,27 @@ class ManufacturingWorkflowTests(TestCase):
             status="operational",
             company=self.company
         )
+        settings, _ = SystemSettings.objects.get_or_create(company=self.company)
+        now_local = timezone.localtime()
+        settings.shift_mode = "1"
+        settings.shift_configuration = {
+            "morning": {
+                "enabled": True,
+                "start": (now_local - timedelta(hours=1)).strftime("%H:%M"),
+                "end": (now_local + timedelta(hours=6)).strftime("%H:%M"),
+            },
+            "afternoon": {"enabled": False, "start": "14:00", "end": "22:00"},
+            "night": {"enabled": False, "start": "22:00", "end": "06:00"},
+        }
+        settings.save(update_fields=["shift_mode", "shift_configuration"])
+        shift_window = get_current_shift_window_for_company(self.company)
+        for user in (self.supervisor, self.worker):
+            ShiftAssignment.objects.create(
+                worker=user,
+                machine=self.machine,
+                shift_type=shift_window["shift_type"],
+                date=shift_window["assignment_date"],
+            )
         self.wo = WorkOrder.objects.create(
             product_name="Test Product",
             quantity=100,

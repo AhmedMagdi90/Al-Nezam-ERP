@@ -2,9 +2,10 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from manufacturing.models import Company, Machine, ProductionLog, QualityCheck, WorkOrder
+from manufacturing.models import Company, Machine, ProductionLog, QualityCheck, ShiftAssignment, WorkOrder
 from manufacturing.services import DashboardService, WorkOrderCycleService
 from manufacturing.tests.utils import create_user_with_role
+from manufacturing.work_order_visibility import get_current_shift_window_for_company
 
 
 class WorkOrderCycleStateTests(TestCase):
@@ -18,6 +19,14 @@ class WorkOrderCycleStateTests(TestCase):
             name="Cutting Machine",
             code="CUT-01",
             status="operational",
+        )
+        shift_window = get_current_shift_window_for_company(self.company)
+        ShiftAssignment.objects.create(
+            worker=self.supervisor,
+            machine=self.machine,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
+            created_by=self.planner,
         )
 
     def _make_wo(self, **overrides):

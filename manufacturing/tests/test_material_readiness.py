@@ -13,10 +13,12 @@ from manufacturing.models import (
     Machine,
     Product,
     ProductionStage,
+    ShiftAssignment,
     WorkOrder,
 )
 from manufacturing.services import DashboardService
 from manufacturing.tests.utils import create_company, create_user_with_role
+from manufacturing.work_order_visibility import get_current_shift_window_for_company
 
 
 class MaterialReadinessTests(TestCase):
@@ -44,6 +46,14 @@ class MaterialReadinessTests(TestCase):
             code="CNC-01",
             category="CNC",
             status="operational",
+        )
+        shift_window = get_current_shift_window_for_company(self.company)
+        ShiftAssignment.objects.create(
+            worker=self.worker,
+            machine=self.machine,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
+            created_by=self.planner,
         )
         self.bom = BillOfMaterial.objects.create(
             product=self.product,

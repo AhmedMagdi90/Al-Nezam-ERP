@@ -6,13 +6,28 @@ from django.test import TestCase, Client, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
-from manufacturing.models import WorkOrder, Machine, Product, BillOfMaterial, ProductionLog, ProductionStage, SystemSettings
+from manufacturing.models import WorkOrder, Machine, Product, BillOfMaterial, ProductionLog, ProductionStage, ShiftAssignment, SystemSettings
 from manufacturing.tests.utils import create_company, create_user_with_role
+from manufacturing.work_order_visibility import get_current_shift_window_for_company
 from manufacturing.views.dashboard import SupervisorDashboardView
 
 class SupervisorLogicTests(TestCase):
     def setUp(self):
         self.company = create_company()
+        settings, _ = SystemSettings.objects.get_or_create(company=self.company)
+        now_local = timezone.localtime()
+        settings.shift_mode = "1"
+        settings.shift_configuration = {
+            "morning": {
+                "enabled": True,
+                "start": (now_local - timedelta(hours=1)).strftime("%H:%M"),
+                "end": (now_local + timedelta(hours=6)).strftime("%H:%M"),
+            },
+            "afternoon": {"enabled": False, "start": "14:00", "end": "22:00"},
+            "night": {"enabled": False, "start": "22:00", "end": "06:00"},
+        }
+        settings.save(update_fields=["shift_mode", "shift_configuration"])
+
         # Assign planner role for assignment API
         self.planner = create_user_with_role('planner', 'planner', self.company)
         
@@ -39,6 +54,16 @@ class SupervisorLogicTests(TestCase):
         self.client = Client()
         self.client.force_login(self.planner)
         self.factory = RequestFactory()
+
+    def _assign_current_shift(self, user, machine):
+        shift_window = get_current_shift_window_for_company(self.company)
+        return ShiftAssignment.objects.create(
+            worker=user,
+            machine=machine,
+            shift_type=shift_window["shift_type"],
+            date=shift_window["assignment_date"],
+            created_by=self.planner,
+        )
 
     def test_assign_work_order_api(self):
         """Test the API endpoint used by Drag & Drop."""
@@ -245,6 +270,7 @@ class SupervisorLogicTests(TestCase):
             category="Cutting",
             company=self.company,
         )
+        self._assign_current_shift(supervisor, cut_machine)
         pack_machine = Machine.objects.create(
             name="Pack Line",
             code="PACK-US21",
@@ -304,6 +330,7 @@ class SupervisorLogicTests(TestCase):
             status="operational",
             company=self.company,
         )
+        self._assign_current_shift(supervisor, cut_machine)
         pack_machine = Machine.objects.create(
             name="Pack Machine",
             code="PACK-1",
@@ -485,6 +512,7 @@ class SupervisorLogicTests(TestCase):
             "night": {"start": "23:30", "end": "05:30"},
         }
         settings.save(update_fields=["shift_configuration"])
+        self._assign_current_shift(supervisor, self.machine)
 
         inherited_wo = WorkOrder.objects.create(
             product_name="Previous Shift WO",
@@ -495,7 +523,6 @@ class SupervisorLogicTests(TestCase):
             machine=self.machine,
             assigned_worker=worker,
             start_date=timezone.now() - timedelta(hours=3),
-            end_date=timezone.now() - timedelta(hours=2),
         )
         current_shift_wo = WorkOrder.objects.create(
             product_name="Current Shift WO",
@@ -539,6 +566,7 @@ class SupervisorLogicTests(TestCase):
     def test_supervisor_context_marks_partial_log_remaining_for_reassignment(self):
         supervisor = create_user_with_role('supervisor_partial_remaining', 'supervisor', self.company)
         worker = create_user_with_role('worker_partial_remaining', 'worker', self.company)
+        self._assign_current_shift(supervisor, self.machine)
         wo = WorkOrder.objects.create(
             product_name="Partial Remaining WO",
             bom=self.bom,
@@ -573,6 +601,7 @@ class SupervisorLogicTests(TestCase):
     def test_supervisor_ready_dispatch_includes_future_split_remainder(self):
         supervisor = create_user_with_role('supervisor_future_split', 'supervisor', self.company)
         worker = create_user_with_role('worker_future_split', 'worker', self.company)
+        self._assign_current_shift(supervisor, self.machine)
         source = WorkOrder.objects.create(
             product_name="mac",
             bom=self.bom,
