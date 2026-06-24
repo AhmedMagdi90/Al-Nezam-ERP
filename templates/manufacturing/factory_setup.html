@@ -173,22 +173,31 @@
                             <span class="text-slate-600">{% tenant_trans "Working Hours" %}</span>
                             <span class="font-semibold text-slate-800 text-right">{{ machine.working_hours_summary }}</span>
                         </div>
-                        <button type="button"
-                            data-machine-id="{{ machine.id }}"
-                            data-machine-name="{{ machine.name|escapejs }}"
-                            data-machine-code="{{ machine.code|escapejs }}"
-                            data-machine-category="{{ machine.category|default:''|escapejs }}"
-                            data-machine-type="{{ machine.type|default:''|escapejs }}"
-                            data-machine-status="{{ machine.status|escapejs }}"
-                            data-machine-image-url="{% if machine.image %}{{ machine.image.url|escapejs }}{% endif %}"
-                            data-machine-use-factory-shifts="{% if machine.use_factory_shifts %}1{% else %}0{% endif %}"
-                            data-machine-shift-configuration="{{ machine.shift_configuration_json|escapejs }}"
-                            onclick="openMachineEditModal(this)"
-                            aria-label="{% tenant_trans 'Edit machine' %} {{ machine.name }}"
-                            class="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1">
-                            <i class="ph ph-pencil-simple"></i>
-                            {% tenant_trans "Edit Machine" %}
-                        </button>
+                        <div class="flex items-center justify-between gap-3">
+                            <button type="button"
+                                data-machine-id="{{ machine.id }}"
+                                data-machine-name="{{ machine.name|escapejs }}"
+                                data-machine-code="{{ machine.code|escapejs }}"
+                                data-machine-category="{{ machine.category|default:''|escapejs }}"
+                                data-machine-type="{{ machine.type|default:''|escapejs }}"
+                                data-machine-status="{{ machine.status|escapejs }}"
+                                data-machine-image-url="{% if machine.image %}{{ machine.image.url|escapejs }}{% endif %}"
+                                data-machine-use-factory-shifts="{% if machine.use_factory_shifts %}1{% else %}0{% endif %}"
+                                data-machine-shift-configuration="{{ machine.shift_configuration_json|escapejs }}"
+                                onclick="openMachineEditModal(this)"
+                                aria-label="{% tenant_trans 'Edit machine' %} {{ machine.name }}"
+                                class="text-blue-600 hover:text-blue-700 text-sm font-semibold flex items-center gap-1">
+                                <i class="ph ph-pencil-simple"></i>
+                                {% tenant_trans "Edit Machine" %}
+                            </button>
+                            <button type="button"
+                                onclick="deleteFactoryResource('machine', '{{ machine.id }}', '{{ machine.name|escapejs }}')"
+                                aria-label="{% tenant_trans 'Delete machine' %} {{ machine.name }}"
+                                class="text-red-500 hover:text-red-600 text-sm font-semibold flex items-center gap-1">
+                                <i class="ph ph-trash"></i>
+                                {% tenant_trans "Delete" %}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 {% empty %}
@@ -262,6 +271,12 @@
                                 <button type="button" class="text-blue-600 hover:text-blue-700 font-semibold text-sm"
                                     aria-label="{% tenant_trans 'Edit stage' %} {{ stage.name }}">
                                     <i class="ph ph-pencil-simple"></i>
+                                </button>
+                                <button type="button"
+                                    onclick="deleteFactoryResource('stage', '{{ stage.id }}', '{{ stage.name|escapejs }}')"
+                                    class="ml-3 text-red-500 hover:text-red-600 font-semibold text-sm"
+                                    aria-label="{% tenant_trans 'Delete stage' %} {{ stage.name }}">
+                                    <i class="ph ph-trash"></i>
                                 </button>
                             </td>
                         </tr>
@@ -657,6 +672,47 @@
         } catch (e) {
             console.error(e);
             if (window.appNotify) window.appNotify('Activation request failed.', 'error');
+        }
+    }
+
+    async function deleteFactoryResource(type, id, label) {
+        const resourceLabel = type === 'machine' ? 'machine' : 'stage';
+        const confirmed = typeof window.appConfirm === 'function'
+            ? await window.appConfirm(`Delete ${resourceLabel} "${label}"? This is allowed only when it is not used by work orders, BOM routes, shifts, or history.`, {
+                title: `Delete ${resourceLabel}`,
+                confirmText: 'Delete',
+                kind: 'warning'
+            })
+            : window.confirm(`Delete ${resourceLabel} "${label}"?`);
+        if (!confirmed) return;
+
+        const url = type === 'machine'
+            ? `/manufacturing/machine/${id}/delete/`
+            : `/manufacturing/stage/${id}/delete/`;
+
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: '{}'
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success) {
+                if (window.appNotify) window.appNotify(data.message || `${resourceLabel} deleted.`, 'success');
+                window.location.reload();
+            } else {
+                if (window.appNotify) {
+                    window.appNotify(data.error || `Could not delete ${resourceLabel}.`, 'error');
+                } else {
+                    alert(data.error || `Could not delete ${resourceLabel}.`);
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            if (window.appNotify) window.appNotify(`Error deleting ${resourceLabel}. Check console for details.`, 'error');
         }
     }
 

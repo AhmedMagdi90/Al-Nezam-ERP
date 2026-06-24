@@ -6,7 +6,18 @@ from django.db.models import Max, Q
 import json
 import logging
 
-from manufacturing.models import Machine, ProductionStage, BillOfMaterial, Product, WorkOrder, BOMOperation
+from manufacturing.models import (
+    BOMOperation,
+    BillOfMaterial,
+    Machine,
+    MachineFault,
+    Product,
+    ProductionStage,
+    ShiftAssignment,
+    WorkOrder,
+    WorkerCertification,
+    WorkOrderStage,
+)
 from manufacturing.machine_shift_propagation import propagate_machine_department_shift_configuration
 from manufacturing.security import audit_request_action
 from manufacturing.shift_utils import coerce_shift_configuration_payload, summarize_shift_configuration, parse_bool
@@ -365,6 +376,112 @@ class CreateStageView(LoginRequiredMixin, View):
             return JsonResponse({"success": True, "id": stage.id, "message": "Stage created"})
         except Exception as e:
              return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+def _stage_queryset_for_company(company):
+    bom_stage_ids = (
+        BOMOperation.objects
+        .filter(bom__product__company=company, stage_id__isnull=False)
+        .values_list("stage_id", flat=True)
+        .distinct()
+    )
+    return ProductionStage.objects.filter(
+        Q(machine__company=company) | Q(id__in=bom_stage_ids)
+    ).distinct()
+
+
+def _dependency_message(resource_name, dependencies):
+    parts = [
+        f"{label}: {count}"
+        for label, count in dependencies.items()
+        if count
+    ]
+    detail = ", ".join(parts)
+    return f"Cannot delete {resource_name} because it is in use ({detail})."
+
+
+class DeleteMachineView(LoginRequiredMixin, View):
+    def post(self, request, machine_id):
+        if not user_has_role(request.user, "ui.factory_setup.manage"):
+            return JsonResponse({"success": False, "error": "Unauthorized."}, status=403)
+
+        company = require_company(request.user)
+        machine = Machine.objects.filter(company=company, id=machine_id).first()
+        if not machine:
+            return JsonResponse({"success": False, "error": "Machine not found."}, status=404)
+
+        dependencies = {
+            "work orders": WorkOrder.objects.filter(company=company, machine=machine).count(),
+            "production stages": ProductionStage.objects.filter(machine=machine).count(),
+            "BOM operations": BOMOperation.objects.filter(bom__product__company=company, machine=machine).count(),
+            "work order stages": WorkOrderStage.objects.filter(work_order__company=company, machine=machine).count(),
+            "maintenance tickets": MachineFault.objects.filter(machine=machine).count(),
+            "shift assignments": ShiftAssignment.objects.filter(machine=machine).count(),
+            "worker certifications": WorkerCertification.objects.filter(machine=machine).count(),
+        }
+        if any(dependencies.values()):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": _dependency_message(machine.display_label or machine.name, dependencies),
+                    "dependencies": dependencies,
+                },
+                status=409,
+            )
+
+        machine_label = machine.display_label or machine.name
+        machine.delete()
+        audit_request_action(
+            request,
+            "delete",
+            details={
+                "event": "machine_deleted",
+                "machine_id": machine_id,
+                "machine_label": machine_label,
+            },
+        )
+        return JsonResponse({"success": True, "message": f"Deleted machine {machine_label}."})
+
+
+class DeleteStageView(LoginRequiredMixin, View):
+    def post(self, request, stage_id):
+        if not user_has_role(request.user, "ui.factory_setup.manage"):
+            return JsonResponse({"success": False, "error": "Unauthorized."}, status=403)
+
+        company = require_company(request.user)
+        stage = _stage_queryset_for_company(company).filter(id=stage_id).first()
+        if not stage:
+            return JsonResponse({"success": False, "error": "Stage not found."}, status=404)
+
+        dependencies = {
+            "work orders": WorkOrder.objects.filter(company=company).filter(
+                Q(stage=stage) | Q(current_stage=stage)
+            ).count(),
+            "BOM operations": BOMOperation.objects.filter(bom__product__company=company, stage=stage).count(),
+            "work order stages": WorkOrderStage.objects.filter(work_order__company=company, stage=stage).count(),
+        }
+        if any(dependencies.values()):
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": _dependency_message(stage.name, dependencies),
+                    "dependencies": dependencies,
+                },
+                status=409,
+            )
+
+        stage_name = stage.name
+        stage.delete()
+        audit_request_action(
+            request,
+            "delete",
+            details={
+                "event": "stage_deleted",
+                "stage_id": stage_id,
+                "stage_name": stage_name,
+            },
+        )
+        return JsonResponse({"success": True, "message": f"Deleted stage {stage_name}."})
 
 
 class BulkWorkOrderActionView(LoginRequiredMixin, View):

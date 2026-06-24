@@ -30,6 +30,8 @@ urlpatterns = [
     path('create-workorder/', views.PlannerDashboardView.as_view(), name='create_workorder'), # Handled by Planner POST
     path('create-machine/', views.CreateMachineView.as_view(), name='create_machine'),
     path('create-stage/', views.CreateStageView.as_view(), name='create_stage'),
+    path('machine/<int:machine_id>/delete/', views.DeleteMachineView.as_view(), name='delete_machine'),
+    path('stage/<int:stage_id>/delete/', views.DeleteStageView.as_view(), name='delete_stage'),
     
     # 🏗️ BOM Logic
     path('bom-builder/', views.BOMBuilderView.as_view(), name='bom_builder'),

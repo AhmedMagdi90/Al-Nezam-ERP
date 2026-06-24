@@ -12,7 +12,14 @@ from .bom import (
     BOMBuilderView, BOMSaveAPI, BOMDetailsView, BOMJsonView, BOMLifecycleView
 )
 from .material_search import search_materials
-from .setup import FactorySetupView, CreateMachineView, CreateStageView, BulkWorkOrderActionView
+from .setup import (
+    BulkWorkOrderActionView,
+    CreateMachineView,
+    CreateStageView,
+    DeleteMachineView,
+    DeleteStageView,
+    FactorySetupView,
+)
 from .shop_floor import (
     RecordOutputView, ShopFloorKioskView, LogProductionAPI,
     ApproveLogView, ReportFaultAPI, WorkOrderStartDateUpdateView,

@@ -100,6 +100,117 @@ class FactorySetupWorkOrdersTests(TestCase):
         self.assertIn('aria-label="Close stage form"', modal)
         self.assertIn("factoryMachineSaveNotice", setup)
         self.assertIn("localStorage.getItem('factorySetup.machineSaveNotice')", setup)
+        self.assertIn("deleteFactoryResource('machine'", setup)
+        self.assertIn("deleteFactoryResource('stage'", setup)
+
+    def test_delete_unused_machine(self):
+        machine = Machine.objects.create(
+            company=self.company,
+            name="Unused Machine",
+            code="UNUSED-01",
+            category="Setup",
+            type="Setup",
+            status="operational",
+        )
+
+        response = self.client.post(reverse("delete_machine", args=[machine.id]))
+
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        self.assertTrue(response.json()["success"])
+        self.assertFalse(Machine.objects.filter(id=machine.id).exists())
+
+    def test_delete_machine_blocks_when_in_use(self):
+        machine = Machine.objects.create(
+            company=self.company,
+            name="Used Machine",
+            code="USED-01",
+            category="Setup",
+            type="Setup",
+            status="operational",
+        )
+        WorkOrder.objects.create(
+            product_name="Machine Job",
+            bom=self.bom,
+            quantity=1,
+            status="pending",
+            company=self.company,
+            machine=machine,
+        )
+
+        response = self.client.post(reverse("delete_machine", args=[machine.id]))
+
+        self.assertEqual(response.status_code, 409, response.content.decode())
+        self.assertFalse(response.json()["success"])
+        self.assertIn("work orders", response.json()["error"])
+        self.assertTrue(Machine.objects.filter(id=machine.id).exists())
+
+    def test_delete_unused_stage(self):
+        machine = Machine.objects.create(
+            company=self.company,
+            name="Stage Machine",
+            code="STAGE-01",
+            category="Setup",
+            type="Setup",
+            status="operational",
+        )
+        stage = ProductionStage.objects.create(
+            name="Temporary Stage",
+            category="Setup",
+            machine=machine,
+            order=99,
+        )
+
+        response = self.client.post(reverse("delete_stage", args=[stage.id]))
+
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        self.assertTrue(response.json()["success"])
+        self.assertFalse(ProductionStage.objects.filter(id=stage.id).exists())
+
+    def test_delete_stage_blocks_when_in_use(self):
+        machine = Machine.objects.create(
+            company=self.company,
+            name="Route Machine",
+            code="ROUTE-01",
+            category="Route",
+            type="Route",
+            status="operational",
+        )
+        stage = ProductionStage.objects.create(
+            name="Route Stage",
+            category="Route",
+            machine=machine,
+            order=1,
+        )
+        BOMOperation.objects.create(bom=self.bom, stage=stage, order=1, duration_minutes=30)
+
+        response = self.client.post(reverse("delete_stage", args=[stage.id]))
+
+        self.assertEqual(response.status_code, 409, response.content.decode())
+        self.assertFalse(response.json()["success"])
+        self.assertIn("BOM operations", response.json()["error"])
+        self.assertTrue(ProductionStage.objects.filter(id=stage.id).exists())
+
+    def test_delete_stage_rejects_cross_company_stage(self):
+        other_company = create_company("Other Factory Setup Co")
+        other_machine = Machine.objects.create(
+            company=other_company,
+            name="Other Machine",
+            code="OTHER-01",
+            category="Other",
+            type="Other",
+            status="operational",
+        )
+        other_stage = ProductionStage.objects.create(
+            name="Other Stage",
+            category="Other",
+            machine=other_machine,
+            order=1,
+        )
+
+        response = self.client.post(reverse("delete_stage", args=[other_stage.id]))
+
+        self.assertEqual(response.status_code, 404, response.content.decode())
+        self.assertTrue(ProductionStage.objects.filter(id=other_stage.id).exists())
 
     def test_create_stage_order_considers_stages_owned_through_bom_operations(self):
         machine = Machine.objects.create(
