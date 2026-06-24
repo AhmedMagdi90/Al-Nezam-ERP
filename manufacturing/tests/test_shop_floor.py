@@ -113,9 +113,12 @@ class ShopFloorTests(TestCase):
         self.assertIn("No jobs in this category.", content)
 
     def test_shop_floor_upcoming_tab_lists_section_future_work_orders(self):
+        shift_window = get_current_shift_window_for_company(self.company)
+        profile_shift = "evening" if shift_window["config_key"] == "afternoon" else shift_window["config_key"]
         self.supervisor.profile.worker_mode_enabled = False
         self.supervisor.profile.department = "Cutting"
-        self.supervisor.profile.save(update_fields=["worker_mode_enabled", "department"])
+        self.supervisor.profile.shift = profile_shift
+        self.supervisor.profile.save(update_fields=["worker_mode_enabled", "department", "shift"])
         cutting_worker = create_user_with_role("cutting_worker_upcoming", "worker", self.company)
         packing_worker = create_user_with_role("packing_worker_upcoming", "worker", self.company)
         cutting_machine = Machine.objects.create(

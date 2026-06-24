@@ -75,6 +75,23 @@ class WorkOrderVisibilityTests(TestCase):
             material_available_qty=10,
         )
 
+    def _different_shift_type(self):
+        shift_types = ["day", "middle", "night"]
+        current_shift = self.shift_window["shift_type"]
+        return next(shift for shift in shift_types if shift != current_shift)
+
+    def _profile_shift_value(self):
+        return {
+            "morning": "morning",
+            "afternoon": "evening",
+            "night": "night",
+        }[self.shift_window["config_key"]]
+
+    def _different_profile_shift_value(self):
+        shift_values = ["morning", "evening", "night"]
+        current_shift = self._profile_shift_value()
+        return next(shift for shift in shift_values if shift != current_shift)
+
     def test_supervisor_sees_assigned_machine_work_order_during_active_shift(self):
         wo = self._work_order(machine=self.machine)
 
@@ -106,6 +123,83 @@ class WorkOrderVisibilityTests(TestCase):
         wo = self._work_order(machine=self.machine, start_date=outside_shift)
 
         self.assertFalse(can_user_see_work_order(self.supervisor, wo, now=self.now))
+
+    def test_same_machine_members_outside_active_shift_do_not_see_planned_work_order(self):
+        out_shift_supervisor = create_user_with_role(
+            "visibility_out_shift_supervisor",
+            "supervisor",
+            self.company,
+        )
+        out_shift_worker = create_user_with_role(
+            "visibility_out_shift_worker",
+            "worker",
+            self.company,
+        )
+        other_shift = self._different_shift_type()
+        for user in (out_shift_supervisor, out_shift_worker):
+            ShiftAssignment.objects.create(
+                worker=user,
+                machine=self.machine,
+                shift_type=other_shift,
+                date=self.shift_window["assignment_date"],
+                created_by=self.planner,
+            )
+        in_shift_wo = self._work_order(machine=self.machine, worker=self.worker, start_date=self.now)
+        out_shift_wo = self._work_order(machine=self.machine, worker=out_shift_worker, start_date=self.now)
+
+        self.assertTrue(can_user_see_work_order(self.supervisor, in_shift_wo, now=self.now))
+        self.assertTrue(can_user_see_work_order(self.worker, in_shift_wo, now=self.now))
+        self.assertFalse(can_user_see_work_order(out_shift_supervisor, in_shift_wo, now=self.now))
+        self.assertFalse(can_user_see_work_order(out_shift_worker, out_shift_wo, now=self.now))
+
+    def test_supervisor_profile_shift_can_see_planned_work_without_machine_shift_assignment(self):
+        profile_shift_supervisor = create_user_with_role(
+            "visibility_profile_shift_supervisor",
+            "supervisor",
+            self.company,
+        )
+        profile_shift_supervisor.profile.shift = self._profile_shift_value()
+        profile_shift_supervisor.profile.department = ""
+        profile_shift_supervisor.profile.save(update_fields=["shift", "department"])
+        wo = self._work_order(machine=self.machine, start_date=self.now)
+
+        self.assertTrue(can_user_see_work_order(profile_shift_supervisor, wo, now=self.now))
+
+    def test_supervisor_outside_profile_shift_does_not_see_planned_work(self):
+        out_shift_supervisor = create_user_with_role(
+            "visibility_profile_out_shift_supervisor",
+            "supervisor",
+            self.company,
+        )
+        out_shift_supervisor.profile.shift = self._different_profile_shift_value()
+        out_shift_supervisor.profile.save(update_fields=["shift"])
+        wo = self._work_order(machine=self.machine, start_date=self.now)
+
+        self.assertFalse(can_user_see_work_order(out_shift_supervisor, wo, now=self.now))
+
+    def test_assigned_worker_profile_shift_can_see_planned_work_without_machine_shift_assignment(self):
+        profile_shift_worker = create_user_with_role(
+            "visibility_profile_shift_worker",
+            "worker",
+            self.company,
+        )
+        profile_shift_worker.profile.shift = self._profile_shift_value()
+        profile_shift_worker.profile.save(update_fields=["shift"])
+        wo = self._work_order(machine=self.machine, worker=profile_shift_worker, start_date=self.now)
+
+        self.assertTrue(can_user_see_work_order(profile_shift_worker, wo, now=self.now))
+
+    def test_assigned_worker_outside_profile_shift_does_not_see_planned_work(self):
+        out_shift_worker = create_user_with_role(
+            "visibility_profile_out_shift_worker",
+            "worker",
+            self.company,
+        )
+        out_shift_worker.profile.shift = self._different_profile_shift_value()
+        out_shift_worker.profile.save(update_fields=["shift"])
+        wo = self._work_order(machine=self.machine, worker=out_shift_worker, start_date=self.now)
+
+        self.assertFalse(can_user_see_work_order(out_shift_worker, wo, now=self.now))
 
     def test_worker_sees_assigned_task_during_active_shift(self):
         wo = self._work_order(machine=self.machine, worker=self.worker)

@@ -14,6 +14,12 @@ SHIFT_TYPE_BY_CONFIG_KEY = {
     "night": "night",
 }
 
+PROFILE_SHIFT_BY_CONFIG_KEY = {
+    "morning": "morning",
+    "afternoon": "evening",
+    "night": "night",
+}
+
 
 def _role_value(value):
     return str(value.value if hasattr(value, "value") else value or "").strip().lower()
@@ -132,6 +138,38 @@ def _work_order_matches_machine_ids(work_order, machine_ids):
     )
 
 
+def _normalize_shift_value(value):
+    normalized = str(value or "").strip().lower()
+    aliases = {
+        "day": "morning",
+        "middle": "evening",
+        "afternoon": "evening",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def _active_profile_shift(user, effective_date):
+    profile = getattr(user, "profile", None)
+    if not profile:
+        return ""
+
+    planned_shift = _normalize_shift_value(getattr(profile, "planned_shift", None))
+    planned_start = getattr(profile, "planned_shift_start_date", None)
+    if planned_shift and planned_start and planned_start <= effective_date:
+        return planned_shift
+    return _normalize_shift_value(getattr(profile, "shift", None))
+
+
+def _profile_shift_matches_window(user, shift_window):
+    if not shift_window.get("is_active"):
+        return False
+    expected = PROFILE_SHIFT_BY_CONFIG_KEY.get(shift_window.get("config_key"), "")
+    if not expected:
+        return False
+    effective_date = shift_window.get("assignment_date") or timezone.localdate()
+    return _active_profile_shift(user, effective_date) == expected
+
+
 def _normalized_departments_for_user(user):
     profile = getattr(user, "profile", None)
     raw = getattr(profile, "department", None) if profile else None
@@ -192,20 +230,23 @@ def can_user_see_work_order(user, work_order, now=None, shift_config=None):
         shift_config=shift_config,
     )
     machine_ids = set(assignments.values_list("machine_id", flat=True))
-    if not machine_ids or not _work_order_overlaps_shift(work_order, shift_window):
+    profile_shift_matches = _profile_shift_matches_window(user, shift_window)
+    has_active_shift = bool(machine_ids) or profile_shift_matches
+    if not has_active_shift or not _work_order_overlaps_shift(work_order, shift_window):
         return False
 
     if acts_as_worker(user):
-        return (
-            getattr(work_order, "assigned_worker_id", None) == getattr(user, "id", None)
-            and _work_order_matches_machine_ids(work_order, machine_ids)
-        )
+        if getattr(work_order, "assigned_worker_id", None) != getattr(user, "id", None):
+            return False
+        return profile_shift_matches or _work_order_matches_machine_ids(work_order, machine_ids)
 
     if _work_order_matches_machine_ids(work_order, machine_ids):
         return True
 
     viewer_departments = _normalized_departments_for_user(user)
-    return bool(viewer_departments and viewer_departments & _work_order_department_keys(work_order))
+    if viewer_departments:
+        return bool(has_active_shift and viewer_departments & _work_order_department_keys(work_order))
+    return profile_shift_matches
 
 
 def get_visible_work_orders_for_user(user, queryset=None, now=None, shift_config=None):
