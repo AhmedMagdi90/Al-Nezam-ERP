@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 
 from accounts.constants import RoleType
-from manufacturing.access_control import acts_as_worker, resolve_user_role
+from manufacturing.access_control import resolve_user_role
 from manufacturing.models import ShiftAssignment, SystemSettings, WorkOrder
 from manufacturing.shift_utils import factory_shift_configuration
 
@@ -235,7 +235,7 @@ def can_user_see_work_order(user, work_order, now=None, shift_config=None):
     if not has_active_shift or not _work_order_overlaps_shift(work_order, shift_window):
         return False
 
-    if acts_as_worker(user):
+    if role == _role_value(RoleType.WORKER):
         if getattr(work_order, "assigned_worker_id", None) != getattr(user, "id", None):
             return False
         return profile_shift_matches or _work_order_matches_machine_ids(work_order, machine_ids)

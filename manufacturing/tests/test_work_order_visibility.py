@@ -165,6 +165,19 @@ class WorkOrderVisibilityTests(TestCase):
 
         self.assertTrue(can_user_see_work_order(profile_shift_supervisor, wo, now=self.now))
 
+    def test_worker_mode_supervisor_sees_unassigned_department_work_during_active_shift(self):
+        self.supervisor.profile.worker_mode_enabled = True
+        self.supervisor.profile.shift = self._profile_shift_value()
+        self.supervisor.profile.department = "Cutting"
+        self.supervisor.profile.save(update_fields=["worker_mode_enabled", "shift", "department"])
+        self.machine.category = "Cutting"
+        self.machine.type = "Cutting"
+        self.machine.save(update_fields=["category", "type"])
+        wo = self._work_order(machine=self.machine, start_date=self.now)
+
+        self.assertIsNone(wo.assigned_worker_id)
+        self.assertTrue(can_user_see_work_order(self.supervisor, wo, now=self.now))
+
     def test_supervisor_outside_profile_shift_does_not_see_planned_work(self):
         out_shift_supervisor = create_user_with_role(
             "visibility_profile_out_shift_supervisor",
