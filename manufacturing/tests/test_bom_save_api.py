@@ -412,6 +412,62 @@ class BOMSaveAPITests(TestCase):
         self.assertEqual(float(bom.base_quantity), 8.0)
         self.assertEqual(bom.uom, "kg")
 
+    def test_legacy_bom_save_api_links_typed_material_to_active_sub_bom(self):
+        sub_product = Product.objects.create(
+            company=self.company,
+            name="control-box",
+            material_type="semi",
+            unit="pcs",
+        )
+        sub_bom = BillOfMaterial.objects.create(
+            product=sub_product,
+            status="draft",
+            base_quantity=1,
+            uom="pcs",
+            created_by=self.user,
+        )
+        BOMComponent.objects.create(
+            bom=sub_bom,
+            product=Product.objects.create(company=self.company, name="Wire", material_type="raw"),
+            material_name="Wire",
+            quantity=2,
+            unit="pcs",
+        )
+        sub_bom.status = "active"
+        sub_bom.save(update_fields=["status"])
+
+        response = self.client.post(
+            "/manufacturing/api/bom/save/",
+            data=json.dumps(
+                {
+                    "product_name": "final-panel",
+                    "base_qty": 1,
+                    "uom": "pcs",
+                    "status": "draft",
+                    "components": [
+                        {
+                            "name": "control-box",
+                            "qty": 1,
+                            "unit": "pcs",
+                            "cost": 0,
+                            "scrap_qty": 0,
+                            "scrap_price": 0,
+                        }
+                    ],
+                    "criteria": [],
+                    "operations": [],
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        bom = BillOfMaterial.objects.get(id=response.json()["bom_id"])
+        component = bom.components.get()
+        self.assertEqual(component.product, sub_product)
+        self.assertEqual(component.sub_bom, sub_bom)
+        self.assertEqual(component.source_type, "semi_finished")
+
     def test_legacy_bom_save_api_accepts_attachment_and_base_quantity_alias(self):
         with tempfile.TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
             response = self.client.post(

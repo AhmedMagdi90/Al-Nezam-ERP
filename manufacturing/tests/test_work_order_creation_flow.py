@@ -113,6 +113,113 @@ class WorkOrderCreationFlowTests(TestCase):
         self.assertEqual(work_order.bom_snapshot["bom_id"], self.bom.id)
         self.assertEqual(work_order.bom_snapshot["components"][0]["material_name"], "Snapshot Steel")
 
+    def test_single_work_order_creates_subassembly_child_wo_when_stock_missing(self):
+        sub_product = Product.objects.create(
+            name="control-box",
+            company=self.company,
+            material_type="semi",
+        )
+        sub_bom = BillOfMaterial.objects.create(
+            product=sub_product,
+            status="draft",
+            base_quantity=1,
+        )
+        BOMComponent.objects.create(
+            bom=sub_bom,
+            material_name="Wire",
+            quantity=2,
+            unit="pcs",
+        )
+        sub_bom.status = "active"
+        sub_bom.save(update_fields=["status"])
+
+        self.bom.status = "draft"
+        self.bom.save(update_fields=["status"])
+        component = BOMComponent.objects.create(
+            bom=self.bom,
+            product=sub_product,
+            material_name="control-box",
+            quantity=1,
+            unit="pcs",
+            sub_bom=sub_bom,
+            source_type="semi_finished",
+        )
+        self.bom.status = "active"
+        self.bom.save(update_fields=["status"])
+
+        response = self.client.post(
+            reverse("api_create_work_order"),
+            data=json.dumps({
+                "bom_id": self.bom.id,
+                "quantity": 5,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        payload = response.json()
+        self.assertEqual(len(payload["subassembly_wo_ids"]), 1)
+
+        parent = WorkOrder.objects.get(id=payload["wo_id"])
+        child = WorkOrder.objects.get(id=payload["subassembly_wo_ids"][0])
+        self.assertEqual(child.subassembly_parent, parent)
+        self.assertEqual(child.source_bom_component, component)
+        self.assertEqual(child.bom, sub_bom)
+        self.assertEqual(child.product_name, "control-box")
+        self.assertEqual(child.quantity, 5)
+        self.assertEqual(parent.material_readiness_status, "shortage")
+        self.assertIn(f"WO #{child.id}", parent.material_shortage_note)
+
+    def test_single_work_order_does_not_create_subassembly_child_when_store_stock_available(self):
+        sub_product = Product.objects.create(
+            name="stocked-control-box",
+            company=self.company,
+            material_type="semi",
+        )
+        sub_bom = BillOfMaterial.objects.create(
+            product=sub_product,
+            status="active",
+            base_quantity=1,
+        )
+        WorkOrder.objects.create(
+            company=self.company,
+            product_name=sub_product.name,
+            bom=sub_bom,
+            quantity=10,
+            status="completed",
+            store_receipt_status="received",
+            store_received_qty=10,
+        )
+
+        self.bom.status = "draft"
+        self.bom.save(update_fields=["status"])
+        BOMComponent.objects.create(
+            bom=self.bom,
+            product=sub_product,
+            material_name=sub_product.name,
+            quantity=1,
+            unit="pcs",
+            sub_bom=sub_bom,
+            source_type="semi_finished",
+        )
+        self.bom.status = "active"
+        self.bom.save(update_fields=["status"])
+
+        response = self.client.post(
+            reverse("api_create_work_order"),
+            data=json.dumps({
+                "bom_id": self.bom.id,
+                "quantity": 5,
+            }),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200, response.content.decode())
+        payload = response.json()
+        self.assertEqual(payload["subassembly_wo_ids"], [])
+        parent = WorkOrder.objects.get(id=payload["wo_id"])
+        self.assertFalse(parent.subassembly_work_orders.exists())
+
 
 class PlannerDashboardCreateWorkOrderEntryTests(TestCase):
     def setUp(self):

@@ -609,6 +609,22 @@ class WorkOrder(models.Model):
         related_name="released_children",
         help_text="Original stage task that released this task (split/QC tracking)."
     )
+    subassembly_parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="subassembly_work_orders",
+        help_text="Parent work order that requires this manufactured sub-assembly.",
+    )
+    source_bom_component = models.ForeignKey(
+        BOMComponent,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="generated_work_orders",
+        help_text="BOM component shortage that generated this sub-assembly work order.",
+    )
     
     # 👤 Customer Link
     customer = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)

@@ -21,6 +21,7 @@ from manufacturing.services import (
     NotificationService,
     workorder_has_material_shortage,
 )
+from manufacturing.subassembly_planning import create_subassembly_work_orders_for_shortages
 from .dashboard import get_company_stage, require_company, user_has_role
 
 def _parse_client_datetime(value):
@@ -167,8 +168,14 @@ class WorkOrderCreateAPI(LoginRequiredMixin, View):
                         link="/manufacturing/store/",
                         exclude_user=user,
                     )
+                    subassembly_wos = create_subassembly_work_orders_for_shortages(parent_wo, actor=user)
                     
-                    return JsonResponse({"success": True, "message": "Split Work Order Created", "wo_id": parent_wo.id})
+                    return JsonResponse({
+                        "success": True,
+                        "message": "Split Work Order Created",
+                        "wo_id": parent_wo.id,
+                        "subassembly_wo_ids": [child.id for child in subassembly_wos],
+                    })
 
                 else:
                     # Single Work Order
@@ -215,12 +222,14 @@ class WorkOrderCreateAPI(LoginRequiredMixin, View):
                         link="/manufacturing/store/",
                         exclude_user=user,
                     )
+                    subassembly_wos = create_subassembly_work_orders_for_shortages(wo, actor=user)
 
                     return JsonResponse({
                         "success": True,
                         "message": f"Work Order Created ({wo.status})",
                         "wo_id": wo.id,
                         "status": wo.status,
+                        "subassembly_wo_ids": [child.id for child in subassembly_wos],
                     })
 
         except Exception as e:

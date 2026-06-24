@@ -13,7 +13,8 @@ from django.core.files.base import ContentFile
 
 from manufacturing.bom_attachments import save_bom_attachment, serialize_bom_attachment
 from manufacturing.models import BillOfMaterial, Product, Machine, ProductionStage, BOMComponent, BOMOperation, BOMAcceptanceCriteria, Notification, WorkOrder
-from manufacturing.services import flag_bom_change_impact
+from manufacturing.services import BOMService, flag_bom_change_impact
+from manufacturing.subassembly_planning import resolve_active_sub_bom_for_component
 from manufacturing.utils import normalize_operation_time_minutes
 from .dashboard import require_company, user_has_role
 
@@ -497,6 +498,13 @@ class BOMSaveAPI(LoginRequiredMixin, View):
                                 description='Auto-created via BOM Builder'
                             )
                     
+                    sub_bom = resolve_active_sub_bom_for_component(bom, product)
+                    material_type = str(getattr(product, "material_type", "") or "").strip().lower()
+                    source_type = {
+                        "semi": "semi_finished",
+                        "finished": "finished",
+                    }.get(material_type, "raw")
+
                     BOMComponent.objects.create(
                         bom=bom,
                         product=product,
@@ -506,7 +514,9 @@ class BOMSaveAPI(LoginRequiredMixin, View):
                         cost_per_unit=cost_value,
                         wastage_quantity=scrap_qty_value,
                         scrap_value_per_unit=scrap_price_value,
-                        scrap_type=comp.get('scrap_type', 'sell_as_scrap')
+                        scrap_type=comp.get('scrap_type', 'sell_as_scrap'),
+                        source_type=source_type,
+                        sub_bom=sub_bom,
                     )
 
                 # 4. Acceptance Criteria (CREATE FIRST to allow linking)
@@ -591,6 +601,12 @@ class BOMSaveAPI(LoginRequiredMixin, View):
 
             # FINAL STEP: Activate if requested (now safe because components are added)
             if bom_status == 'active' and bom.status != 'active':
+                valid_structure, validation_message = BOMService.validate_structure(bom)
+                if not valid_structure:
+                    return JsonResponse(
+                        {"status": "error", "message": validation_message},
+                        status=400,
+                    )
                 bom.status = 'active'
                 bom.save()    
                 flag_bom_change_impact(bom, actor=user)
